@@ -7,7 +7,7 @@ import { BigCalendar, type CalendarEventType } from './components/BigCalendar';
 import { TaskList } from './components/TaskList';
 import { TaskDialog } from './components/TaskDialog';
 import { AuthDialog } from './components/AuthDialog';
-import { ShimmerButton } from './components/ui/shimmer-button';
+import { Button } from './components/ui/button';
 import { AlertCircle, Link2, RefreshCw, LogIn, Zap, Settings2 } from 'lucide-react';
 import { detectConflicts } from './lib/rescheduler';
 import { isSupabaseReady } from './lib/supabase';
@@ -252,10 +252,10 @@ function App() {
                 </p>
               </div>
             </div>
-            <ShimmerButton onClick={() => setShowAuthDialog(true)} className="mt-6 w-full gap-2 h-10" background="var(--primary)" shimmerColor="var(--primary-foreground)" shimmerSize="0.03em">
+            <Button onClick={() => setShowAuthDialog(true)} className="mt-6 w-full gap-2 h-10">
               <LogIn className="w-4 h-4" />
               Sign in to Tempo
-            </ShimmerButton>
+            </Button>
             <div className="mt-6 grid grid-cols-3 gap-3 text-center">
               {['Auto-schedule', 'Calendar sync', 'Smart recalc'].map((label) => (
                 <div key={label} className="rounded-lg bg-muted/50 px-2 py-2.5 text-xs font-medium text-muted-foreground">
@@ -316,10 +316,10 @@ function App() {
                 </p>
               </div>
             </div>
-            <ShimmerButton onClick={calendar.connect} disabled={calendar.isLoading} className="mt-6 w-full gap-2 h-10" background="var(--primary)" shimmerColor="var(--primary-foreground)" shimmerSize="0.03em">
+            <Button onClick={calendar.connect} disabled={calendar.isLoading} className="mt-6 w-full gap-2 h-10">
               <Link2 className="w-4 h-4" />
               {calendar.isLoading ? 'Connecting...' : 'Connect Google Calendar'}
-            </ShimmerButton>
+            </Button>
             <div className="mt-6 grid grid-cols-3 gap-3 text-center">
               {['Import events', 'Find space', 'Sync tasks'].map((label) => (
                 <div key={label} className="rounded-lg bg-muted/50 px-2 py-2.5 text-xs font-medium text-muted-foreground">
