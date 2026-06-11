@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, X, Calendar, Zap, Inbox, Sparkles, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -61,7 +61,6 @@ export function OnboardingTour({ forceOpen, onComplete }: OnboardingTourProps) {
 
   // Sync open state when forceOpen changes after mount.
   // Canonical "external prop -> state" pattern.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (forceOpen) {
       setOpen(true);
