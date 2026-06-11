@@ -147,12 +147,13 @@ interface DayViewProps {
 
 function DayView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot }: DayViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [, setTick] = useState(0);
   const dayEvents = useMemo(() => getEventsForDay(events, date), [events, date]);
   const allDayEvents = useMemo(() => getAllDayEvents(dayEvents), [dayEvents]);
   const timedEvents = useMemo(() => dayEvents.filter((e) => !e.allDay), [dayEvents]);
   const positioned = useMemo(() => positionEvents(timedEvents, date, startHour), [timedEvents, date, startHour]);
 
-  // Scroll to current time on mount
+  // Scroll to current time on mount and tick every minute
   useEffect(() => {
     if (!containerRef.current) return;
     const now = new Date();
@@ -163,6 +164,9 @@ function DayView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot
     const minutesFromTop = Math.max(0, (now.getHours() - startHour) * 60 + now.getMinutes());
     const target = (minutesFromTop / 60) * HOUR_HEIGHT - 80;
     containerRef.current.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+
+    const id = setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => clearInterval(id);
   }, [date, startHour]);
 
   // Now line
@@ -184,7 +188,7 @@ function DayView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot
     if (!onSelectSlot) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top + (containerRef.current?.scrollTop || 0);
-    const hour = Math.floor(y / HOUR_HEIGHT) + startHour;
+    const hour = Math.min(endHour - 1, Math.max(startHour, Math.floor(y / HOUR_HEIGHT) + startHour));
     const minute = Math.round((y % HOUR_HEIGHT) / HOUR_HEIGHT * 60 / 15) * 15;
     const start = setMilliseconds(setSeconds(setMinutes(setHours(date, hour), minute), 0), 0);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
@@ -219,7 +223,7 @@ function DayView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot
             {hours.map((h) => (
               <div key={h} className="relative h-14 border-b border-border/40">
                 <span className="absolute top-0 right-3 -translate-y-1/2 text-[10px] font-medium text-muted-foreground bg-card px-1 tabular-nums">
-                  {format(setHours(d, h), 'h a')}
+                  {format(setHours(date, h), 'h a')}
                 </span>
               </div>
             ))}
@@ -312,6 +316,7 @@ interface WeekViewProps {
 
 function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [, setTick] = useState(0);
   const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn: 1 }), [date]);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -329,7 +334,7 @@ function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlo
   const allDayPerDay = useMemo(() => days.map((d) => getAllDayEvents(getEventsForDay(events, d))), [days, events]);
   const hasAllDay = allDayPerDay.some((d) => d.length > 0);
 
-  // Scroll to current time on mount
+  // Scroll to current time on mount and tick every minute
   useEffect(() => {
     if (!containerRef.current) return;
     const now = new Date();
@@ -341,6 +346,9 @@ function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlo
     const minutesFromTop = Math.max(0, (now.getHours() - startHour) * 60 + now.getMinutes());
     const target = (minutesFromTop / 60) * HOUR_HEIGHT - 80;
     containerRef.current.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+
+    const id = setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => clearInterval(id);
   }, [days, startHour]);
 
   // Now line position (% of week view)
@@ -356,7 +364,7 @@ function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlo
     if (!onSelectSlot) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top + (containerRef.current?.scrollTop || 0);
-    const hour = Math.floor(y / HOUR_HEIGHT) + startHour;
+    const hour = Math.min(endHour - 1, Math.max(startHour, Math.floor(y / HOUR_HEIGHT) + startHour));
     const minute = Math.round((y % HOUR_HEIGHT) / HOUR_HEIGHT * 60 / 15) * 15;
     const start = setMilliseconds(setSeconds(setMinutes(setHours(day, hour), minute), 0), 0);
     const end = new Date(start.getTime() + 60 * 60 * 1000);

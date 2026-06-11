@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, X, Calendar, Zap, Inbox, Sparkles, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -58,16 +58,14 @@ export function OnboardingTour({ forceOpen, onComplete }: OnboardingTourProps) {
     }
   });
   const [stepIndex, setStepIndex] = useState(0);
-  const prevForceOpenRef = useRef(forceOpen);
 
-  // Handle forceOpen changes by setting state during render (allowed React pattern)
-  if (forceOpen && !prevForceOpenRef.current) {
-    prevForceOpenRef.current = true;
-    setOpen(true);
-    setStepIndex(0);
-  } else if (!forceOpen && prevForceOpenRef.current) {
-    prevForceOpenRef.current = false;
-  }
+  // Sync open state when forceOpen changes after mount
+  useEffect(() => {
+    if (forceOpen) {
+      setOpen(true);
+      setStepIndex(0);
+    }
+  }, [forceOpen]);
 
   const finish = useCallback(() => {
     try { localStorage.setItem(STORAGE_KEY, 'true'); } catch { /* ignore */ }
