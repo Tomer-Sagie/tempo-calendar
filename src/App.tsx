@@ -13,11 +13,32 @@ import { detectConflicts } from './lib/rescheduler';
 import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
 
+function useTheme() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'light';
+    const stored = localStorage.getItem('tempo-theme');
+    if (stored === 'dark' || stored === 'light') return stored;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('tempo-theme', theme);
+  }, [theme]);
+
+  return { theme, toggleTheme: () => setTheme(t => t === 'dark' ? 'light' : 'dark') };
+}
 
 function App() {
   const auth = useAuth();
   const calendar = useGoogleCalendar();
   const tasksHook = useTasks();
+  const { theme, toggleTheme } = useTheme();
 
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -134,6 +155,18 @@ function App() {
     if (task) handleEditTask(task);
   };
 
+  const handleEventDrop = async (eventId: string, newStart: Date, newEnd: Date) => {
+    const taskId = eventId.replace('task-', '');
+    try {
+      await tasksHook.update(taskId, {
+        scheduled_start: newStart.toISOString(),
+        scheduled_end: newEnd.toISOString(),
+      });
+    } catch (err) {
+      console.error('[App] Drag reschedule failed:', err);
+    }
+  };
+
   // Not signed in to Tempo: show auth prompt
   if (!auth.isAuthenticated) {
     return (
@@ -153,6 +186,8 @@ function App() {
           user={auth.user}
           onSignIn={() => setShowAuthDialog(true)}
           onSignOut={auth.signOut}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
         <main className="flex-1 grid place-items-center px-6">
           <div className="w-full max-w-[440px] rounded-xl bg-card p-8 shadow-sm">
@@ -215,6 +250,8 @@ function App() {
           user={auth.user}
           onSignIn={() => setShowAuthDialog(true)}
           onSignOut={auth.signOut}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
         <main className="flex-1 grid place-items-center px-6">
           <div className="w-full max-w-[440px] rounded-xl bg-card p-8 shadow-sm">
@@ -270,6 +307,8 @@ function App() {
         user={auth.user}
         onSignIn={() => setShowAuthDialog(true)}
         onSignOut={auth.signOut}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Error banners */}
@@ -322,6 +361,7 @@ function App() {
                   defaultView="day"
                   onSelectEvent={handleSelectEvent}
                   onSelectSlot={handleSelectSlot}
+                  onEventDrop={handleEventDrop}
                 />
               </div>
               <div className="hidden md:block h-full">
@@ -330,6 +370,7 @@ function App() {
                   defaultView="week"
                   onSelectEvent={handleSelectEvent}
                   onSelectSlot={handleSelectSlot}
+                  onEventDrop={handleEventDrop}
                 />
               </div>
             </div>
@@ -355,6 +396,11 @@ function App() {
 
       {/* Auth dialog */}
       <AuthDialog open={showAuthDialog} onClose={() => setShowAuthDialog(false)} />
+
+      {/* Version — inconspicuous */}
+      <div className="fixed bottom-1.5 right-3 text-[10px] text-muted-foreground/25 select-none pointer-events-none z-50">
+        {TEMPO_VERSION}
+      </div>
 
       {/* Task dialog */}
       {showTaskDialog && (
@@ -399,4 +445,9 @@ function App() {
 }
 
 export default App;
+
+// Version banner — inconspicuous, bottom-right
+// Increment on each phase completion
+const TEMPO_VERSION = 'v0.1.0';
+export { TEMPO_VERSION };
 

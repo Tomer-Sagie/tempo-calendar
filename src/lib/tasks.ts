@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import type {
   Task, TaskPriority, TaskFrequency, TaskStatus,
   TaskList, TaskListInput,
-  SchedulingProfile, SchedulingProfileInput, ScheduleWindow,
+  SchedulingProfile, SchedulingProfileInput,
   TaskDependency,
 } from './types';
 

@@ -165,10 +165,10 @@ export function useGoogleCalendar(): UseGoogleCalendarReturn {
       const mapped = googleEvents.map(mapGoogleEvent);
       setEvents(mapped);
       console.log(`[useGoogleCalendar] Loaded ${mapped.length} events`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[useGoogleCalendar] Connection failed:', err);
       setIsAuthenticated(false);
-      setError(err.message || 'Failed to connect to Google Calendar');
+      setError(err instanceof Error ? err.message : 'Failed to connect to Google Calendar');
     } finally {
       setIsLoading(false);
     }
@@ -198,9 +198,9 @@ export function useGoogleCalendar(): UseGoogleCalendarReturn {
       const mapped = googleEvents.map(mapGoogleEvent);
       setEvents(mapped);
       console.log(`[useGoogleCalendar] Refreshed ${mapped.length} events`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[useGoogleCalendar] Refresh failed:', err);
-      setError(err.message || 'Failed to refresh events');
+      setError(err instanceof Error ? err.message : 'Failed to refresh events');
     } finally {
       setIsLoading(false);
     }

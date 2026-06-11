@@ -4,7 +4,6 @@ import {
   addMinutes,
   subMinutes,
   differenceInMinutes,
-  isBefore,
   isAfter,
   format,
   getDay,
@@ -546,7 +545,7 @@ export function scheduleMultipleTasks(
   const schedulable = getAutoSchedulableTasks(sortedTasks);
 
   // 5. Schedule each task in order
-  let accumulatedBusy = [...allBusy];
+  const accumulatedBusy = [...allBusy];
 
   for (const task of schedulable) {
     // Skip locked tasks that are already scheduled

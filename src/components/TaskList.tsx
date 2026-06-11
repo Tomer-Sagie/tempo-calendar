@@ -62,7 +62,9 @@ export function TaskList({
 
   const [activeListId, setActiveListId] = useState<string | null>(null);
 
-  const activeTasks = tasks.filter((t) => t.status !== 'completed' && (activeListId === null || t.list_id === activeListId || (activeListId === '__none__' && !t.list_id)));
+  const activeTasks = useMemo(() => 
+    tasks.filter((t) => t.status !== 'completed' && (activeListId === null || t.list_id === activeListId || (activeListId === '__none__' && !t.list_id))),
+  [tasks, activeListId]);
 
   const hasLists = taskLists.length > 0 || listCounts.size > 1;
   const completedTasks = tasks

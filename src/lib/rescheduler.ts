@@ -88,7 +88,7 @@ export function batchReschedule(
   const priorityOrder: Record<string, number> = { ASAP: 0, HIGH: 1, NORMAL: 2, LOW: 3 };
 
   // Build a working copy of busy slots (starts with Google events)
-  let currentBusy = [...googleEvents];
+  const currentBusy = [...googleEvents];
 
   // Sort tasks: highest priority first
   const movableTasks = scheduledTasks

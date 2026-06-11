@@ -1,4 +1,4 @@
-import { Calendar, RefreshCw, Link2, Unlink, ChevronDown, LogOut, User } from 'lucide-react';
+import { Calendar, RefreshCw, Link2, Unlink, ChevronDown, LogOut, User, Sun, Moon } from 'lucide-react';
 import { Button } from './ui/button';
 import { useState } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -18,12 +18,14 @@ interface HeaderProps {
   user: SupabaseUser | null;
   onSignIn: () => void;
   onSignOut: () => Promise<void>;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
 }
 
 export function Header({
   activeView, onViewChange, isAuthenticated, isLoaded, isLoading,
   error, onConnect, onDisconnect, onRefresh, onScheduleAll, unscheduledCount,
-  user, onSignIn, onSignOut,
+  user, onSignIn, onSignOut, theme, onToggleTheme,
 }: HeaderProps) {
   const [showAccount, setShowAccount] = useState(false);
 
@@ -106,6 +108,13 @@ export function Header({
                   <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border truncate">
                     {user?.email || 'Account'}
                   </div>
+                  <button
+                    onClick={() => { onToggleTheme(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"
+                  >
+                    {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                    {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                  </button>
                   <button
                     onClick={() => { onDisconnect(); setShowAccount(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"

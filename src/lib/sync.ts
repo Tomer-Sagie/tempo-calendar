@@ -52,9 +52,10 @@ export async function syncTaskToGoogle(
     const ev = await createCalendarEvent(buildEventPayload(task, scheduledStart, scheduledEnd));
     console.log('[Sync] Created Google event:', ev.id);
     return { success: true, googleEventId: ev.id };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Sync] Failed to create Google event:', err);
-    return { success: false, error: err?.message || 'Failed to create Google event' };
+    const message = err instanceof Error ? err.message : 'Failed to create Google event';
+    return { success: false, error: message };
   }
 }
 
@@ -72,9 +73,10 @@ export async function updateTaskInGoogle(
     await updateCalendarEvent(task.google_event_id, buildEventPayload(task, scheduledStart, scheduledEnd));
     console.log('[Sync] Updated Google event:', task.google_event_id);
     return { success: true, googleEventId: task.google_event_id };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Sync] Failed to update Google event:', err);
-    return { success: false, error: err?.message || 'Failed to update Google event' };
+    const message = err instanceof Error ? err.message : 'Failed to update Google event';
+    return { success: false, error: message };
   }
 }
 
@@ -88,9 +90,10 @@ export async function removeTaskFromGoogle(task: Task): Promise<SyncResult> {
     await deleteCalendarEvent(task.google_event_id);
     console.log('[Sync] Deleted Google event:', task.google_event_id);
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Sync] Failed to delete Google event:', err);
-    return { success: false, error: err?.message || 'Failed to delete Google event' };
+    const message = err instanceof Error ? err.message : 'Failed to delete Google event';
+    return { success: false, error: message };
   }
 }
 

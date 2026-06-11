@@ -195,9 +195,9 @@ export interface CalendarProviderInterface {
   connect(): Promise<string>;
   disconnect(): void;
   isConnected(): boolean;
-  fetchEvents(timeMin?: string, timeMax?: string): Promise<any[]>;
-  createEvent(event: any): Promise<any>;
-  updateEvent(eventId: string, event: any): Promise<any>;
+  fetchEvents(timeMin?: string, timeMax?: string): Promise<Record<string, unknown>[]>;
+  createEvent(event: Record<string, unknown>): Promise<Record<string, unknown>>;
+  updateEvent(eventId: string, event: Record<string, unknown>): Promise<Record<string, unknown>>;
   deleteEvent(eventId: string): Promise<void>;
 }
 

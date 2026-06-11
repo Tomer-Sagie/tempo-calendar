@@ -53,7 +53,7 @@ const STORAGE_KEY_EXPIRY = 'tempo_google_expiry';
         sessionStorage.removeItem(STORAGE_KEY_EXPIRY);
       }
     }
-  } catch (e) {
+  } catch {
     // sessionStorage not available
   }
 })();
@@ -64,7 +64,7 @@ function persistToken(token: string, expiresIn: number) {
   try {
     sessionStorage.setItem(STORAGE_KEY_TOKEN, token);
     sessionStorage.setItem(STORAGE_KEY_EXPIRY, String(tokenExpiry));
-  } catch (e) {
+  } catch {
     // sessionStorage not available
   }
 }
@@ -75,7 +75,7 @@ function clearPersistedToken() {
   try {
     sessionStorage.removeItem(STORAGE_KEY_TOKEN);
     sessionStorage.removeItem(STORAGE_KEY_EXPIRY);
-  } catch (e) {
+  } catch {
     // sessionStorage not available
   }
 }
