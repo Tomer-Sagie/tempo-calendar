@@ -1,6 +1,8 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { format, startOfWeek, endOfWeek, addDays, addWeeks, addMonths, subWeeks, subMonths, subDays, startOfDay, endOfDay, isSameDay, isSameMonth, isToday, differenceInMinutes, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addDays, addWeeks, addMonths, subWeeks, subMonths, subDays, startOfDay, endOfDay, isSameDay, isSameMonth, isToday, differenceInMinutes, setHours, setMinutes, setSeconds, setMilliseconds, addMinutes } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
+import { DraggableEvent } from './CalendarEvent';
 import { cn } from '../lib/utils';
 
 export type CalendarEventVariant = 'primary' | 'secondary' | 'warning' | 'destructive' | 'success' | 'muted';
@@ -29,6 +31,7 @@ interface TempoCalendarProps {
   defaultView?: CalendarView;
   onSelectEvent?: (event: CalendarEventType) => void;
   onSelectSlot?: (slot: { start: Date; end: Date }) => void;
+  onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
   className?: string;
   startHour?: number;
   endHour?: number;
@@ -143,9 +146,10 @@ interface DayViewProps {
   endHour: number;
   onSelectEvent?: (event: CalendarEventType) => void;
   onSelectSlot?: (slot: { start: Date; end: Date }) => void;
+  onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
 }
 
-function DayView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot }: DayViewProps) {
+function DayView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot, onEventDrop }: DayViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
   const dayEvents = useMemo(() => getEventsForDay(events, date), [events, date]);
@@ -311,9 +315,10 @@ interface WeekViewProps {
   endHour: number;
   onSelectEvent?: (event: CalendarEventType) => void;
   onSelectSlot?: (slot: { start: Date; end: Date }) => void;
+  onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
 }
 
-function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot }: WeekViewProps) {
+function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot, onEventDrop }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
   const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn: 1 }), [date]);
@@ -645,6 +650,7 @@ export function TempoCalendar({
   defaultView = 'week',
   onSelectEvent,
   onSelectSlot,
+  onEventDrop,
   className,
   startHour = 6,
   endHour = 22,
@@ -753,6 +759,7 @@ export function TempoCalendar({
             endHour={endHour}
             onSelectEvent={onSelectEvent}
             onSelectSlot={onSelectSlot}
+            onEventDrop={onEventDrop}
           />
         )}
         {view === 'week' && (
@@ -763,6 +770,7 @@ export function TempoCalendar({
             endHour={endHour}
             onSelectEvent={onSelectEvent}
             onSelectSlot={onSelectSlot}
+            onEventDrop={onEventDrop}
           />
         )}
         {view === 'month' && (
