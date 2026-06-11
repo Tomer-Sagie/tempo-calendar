@@ -54,6 +54,10 @@ export function useTasks(): UseTasksReturn {
     let cancelled = false;
 
     async function load() {
+      if (!supabase) {
+        setIsLoading(false);
+        return;
+      }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setTasks([]);

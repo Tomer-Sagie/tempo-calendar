@@ -34,6 +34,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     mountedRef.current = true;
 
+    if (!supabase) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- supabase not configured, stop loading
+      setIsLoading(false);
+      return;
+    }
+
     // Check for existing session
     supabase.auth.getSession().then(({ data, error: err }) => {
       if (!mountedRef.current) return;
@@ -60,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
+    if (!supabase) throw new Error('Supabase is not configured');
     setError(null);
     setIsLoading(true);
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
@@ -71,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
+    if (!supabase) throw new Error('Supabase is not configured');
     setError(null);
     setIsLoading(true);
     const { error: err } = await supabase.auth.signUp({ email, password });
@@ -82,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
+    if (!supabase) throw new Error('Supabase is not configured');
     setError(null);
     // Note: Calendar scopes are handled by the separate Google Calendar GIS integration.
     // Supabase Google OAuth is used here only for identity/authentication.
@@ -98,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    if (!supabase) throw new Error('Supabase is not configured');
     setError(null);
     setIsLoading(true);
     await supabase.auth.signOut();

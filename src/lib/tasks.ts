@@ -6,6 +6,11 @@ import type {
   TaskDependency,
 } from './types';
 
+function requireSupabase() {
+  if (!supabase) throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  return supabase;
+}
+
 // ============================================================
 // Task CRUD
 // ============================================================
@@ -61,7 +66,7 @@ export type TaskUpdate = Omit<Partial<TaskInput>, 'google_event_id'> & {
 };
 
 export async function fetchTasks(): Promise<Task[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('tasks')
     .select('*')
     .order('priority', { ascending: true })
@@ -72,7 +77,7 @@ export async function fetchTasks(): Promise<Task[]> {
 }
 
 export async function fetchUnscheduledTasks(): Promise<Task[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('tasks')
     .select('*')
     .eq('is_scheduled', false)
@@ -85,7 +90,7 @@ export async function fetchUnscheduledTasks(): Promise<Task[]> {
 }
 
 export async function fetchAutoScheduledTasks(): Promise<Task[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('tasks')
     .select('*')
     .eq('status', 'active')
@@ -98,7 +103,7 @@ export async function fetchAutoScheduledTasks(): Promise<Task[]> {
 }
 
 export async function createTask(input: TaskInput): Promise<Task> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('tasks')
     .insert([input])
     .select()
@@ -109,7 +114,7 @@ export async function createTask(input: TaskInput): Promise<Task> {
 }
 
 export async function updateTask(id: string, updates: TaskUpdate): Promise<Task> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('tasks')
     .update(updates)
     .eq('id', id)
@@ -121,7 +126,7 @@ export async function updateTask(id: string, updates: TaskUpdate): Promise<Task>
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await requireSupabase()
     .from('tasks')
     .delete()
     .eq('id', id);
@@ -184,7 +189,7 @@ export async function toggleTaskLock(id: string, isLocked: boolean): Promise<Tas
 // ============================================================
 
 export async function fetchTaskLists(): Promise<TaskList[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('task_lists')
     .select('*')
     .order('sort_order', { ascending: true })
@@ -195,7 +200,7 @@ export async function fetchTaskLists(): Promise<TaskList[]> {
 }
 
 export async function createTaskList(input: TaskListInput): Promise<TaskList> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('task_lists')
     .insert([{ name: input.name, color: input.color, sort_order: input.sort_order ?? 0 }])
     .select()
@@ -206,7 +211,7 @@ export async function createTaskList(input: TaskListInput): Promise<TaskList> {
 }
 
 export async function updateTaskList(id: string, updates: Partial<TaskListInput>): Promise<TaskList> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('task_lists')
     .update(updates)
     .eq('id', id)
@@ -219,7 +224,7 @@ export async function updateTaskList(id: string, updates: Partial<TaskListInput>
 
 export async function deleteTaskList(id: string): Promise<void> {
   // Tasks with this list_id will have list_id set to NULL via FK ON DELETE SET NULL
-  const { error } = await supabase
+  const { error } = await requireSupabase()
     .from('task_lists')
     .delete()
     .eq('id', id);
@@ -232,7 +237,7 @@ export async function deleteTaskList(id: string): Promise<void> {
 // ============================================================
 
 export async function fetchSchedulingProfiles(): Promise<SchedulingProfile[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('scheduling_profiles')
     .select('*')
     .order('is_default', { ascending: false })
@@ -243,7 +248,7 @@ export async function fetchSchedulingProfiles(): Promise<SchedulingProfile[]> {
 }
 
 export async function createSchedulingProfile(input: SchedulingProfileInput): Promise<SchedulingProfile> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('scheduling_profiles')
     .insert([{
       name: input.name,
@@ -263,7 +268,7 @@ export async function updateSchedulingProfile(
   id: string,
   updates: Partial<SchedulingProfileInput>
 ): Promise<SchedulingProfile> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('scheduling_profiles')
     .update(updates)
     .eq('id', id)
@@ -275,7 +280,7 @@ export async function updateSchedulingProfile(
 }
 
 export async function deleteSchedulingProfile(id: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await requireSupabase()
     .from('scheduling_profiles')
     .delete()
     .eq('id', id);
@@ -288,7 +293,7 @@ export async function deleteSchedulingProfile(id: string): Promise<void> {
 // ============================================================
 
 export async function fetchTaskDependencies(taskId: string): Promise<TaskDependency[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('task_dependencies')
     .select('*')
     .eq('task_id', taskId);
@@ -298,7 +303,7 @@ export async function fetchTaskDependencies(taskId: string): Promise<TaskDepende
 }
 
 export async function fetchAllTaskDependencies(): Promise<TaskDependency[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('task_dependencies')
     .select('*');
 
@@ -311,7 +316,7 @@ export async function addDependency(taskId: string, dependsOnId: string): Promis
     throw new Error('A task cannot depend on itself');
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('task_dependencies')
     .insert([{ task_id: taskId, depends_on_task_id: dependsOnId }])
     .select()
@@ -322,7 +327,7 @@ export async function addDependency(taskId: string, dependsOnId: string): Promis
 }
 
 export async function removeDependency(taskId: string, dependsOnId: string): Promise<void> {
-  const { error } = await supabase
+  const { error } = await requireSupabase()
     .from('task_dependencies')
     .delete()
     .eq('task_id', taskId)

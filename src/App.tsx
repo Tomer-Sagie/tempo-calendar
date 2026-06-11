@@ -8,8 +8,9 @@ import { TaskList } from './components/TaskList';
 import { TaskDialog } from './components/TaskDialog';
 import { AuthDialog } from './components/AuthDialog';
 import { ShimmerButton } from './components/ui/shimmer-button';
-import { AlertCircle, Link2, RefreshCw, LogIn, Zap } from 'lucide-react';
+import { AlertCircle, Link2, RefreshCw, LogIn, Zap, Settings2 } from 'lucide-react';
 import { detectConflicts } from './lib/rescheduler';
+import { isSupabaseReady } from './lib/supabase';
 import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
 
@@ -166,6 +167,55 @@ function App() {
       console.error('[App] Drag reschedule failed:', err);
     }
   };
+
+  // Supabase not configured: show configuration error
+  if (!isSupabaseReady()) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col app-gradient">
+        <Header
+          activeView={activeView}
+          onViewChange={setActiveView}
+          isAuthenticated={false}
+          isLoaded={false}
+          isLoading={false}
+          error={null}
+          onConnect={() => {}}
+          onDisconnect={() => {}}
+          onRefresh={() => {}}
+          onScheduleAll={() => {}}
+          unscheduledCount={0}
+          user={null}
+          onSignIn={() => {}}
+          onSignOut={async () => {}}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+        <main className="flex-1 grid place-items-center px-6">
+          <div className="w-full max-w-[460px] rounded-xl bg-card p-8 shadow-sm border border-border">
+            <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0 mb-4">
+              <Settings2 className="w-5 h-5 text-destructive" />
+            </div>
+            <h1 className="text-base font-semibold text-foreground">Configuration Required</h1>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+              This app needs Supabase environment variables to function. Add these to your Vercel project settings:
+            </p>
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg text-xs font-mono text-muted-foreground space-y-1">
+              <div>VITE_SUPABASE_URL=https://your-project.supabase.co</div>
+              <div>VITE_SUPABASE_ANON_KEY=your-anon-key</div>
+            </div>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Find these in your{' '}
+              <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">Supabase dashboard</a>
+              {' '}→ Project Settings → API.
+            </p>
+          </div>
+        </main>
+        <div className="fixed bottom-1.5 right-3 text-[10px] text-muted-foreground/25 select-none pointer-events-none z-50">
+          {TEMPO_VERSION}
+        </div>
+      </div>
+    );
+  }
 
   // Not signed in to Tempo: show auth prompt
   if (!auth.isAuthenticated) {
@@ -448,6 +498,6 @@ export default App;
 
 // Version banner — inconspicuous, bottom-right
 // Increment on each phase completion
-const TEMPO_VERSION = 'v0.2.0';
+const TEMPO_VERSION = 'v0.2.1';
 export { TEMPO_VERSION };
 
