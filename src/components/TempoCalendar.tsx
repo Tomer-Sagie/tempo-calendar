@@ -147,7 +147,7 @@ interface DayViewProps {
 
 function DayView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot }: DayViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
   const dayEvents = useMemo(() => getEventsForDay(events, date), [events, date]);
   const allDayEvents = useMemo(() => getAllDayEvents(dayEvents), [dayEvents]);
   const timedEvents = useMemo(() => dayEvents.filter((e) => !e.allDay), [dayEvents]);
@@ -176,7 +176,7 @@ function DayView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot
     const minutesFromTop = (now.getHours() - startHour) * 60 + now.getMinutes();
     if (minutesFromTop < 0 || minutesFromTop > (endHour - startHour) * 60) return null;
     return (minutesFromTop / 60) * HOUR_HEIGHT;
-  }, [date, startHour, endHour]);
+  }, [date, startHour, endHour, tick]);
 
   const hours = useMemo(() => {
     const arr: number[] = [];
@@ -316,7 +316,7 @@ interface WeekViewProps {
 
 function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
   const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn: 1 }), [date]);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -358,7 +358,7 @@ function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlo
     const minutesFromTop = (now.getHours() - startHour) * 60 + now.getMinutes();
     if (minutesFromTop < 0 || minutesFromTop > (endHour - startHour) * 60) return null;
     return (minutesFromTop / 60) * HOUR_HEIGHT;
-  }, [days, startHour, endHour]);
+  }, [days, startHour, endHour, tick]);
 
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>, day: Date) => {
     if (!onSelectSlot) return;

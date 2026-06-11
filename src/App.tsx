@@ -311,7 +311,7 @@ function App() {
           onClose={() => setShowSettings(false)}
           theme={theme}
           onToggleTheme={toggleTheme}
-          onSetTheme={setTheme}
+          onSetTheme={setTheme}\n          onUseSystemTheme={useSystemTheme}
           user={auth.user}
           isGoogleConnected={calendar.isAuthenticated}
           onDisconnectGoogle={calendar.disconnect}
@@ -394,7 +394,7 @@ function App() {
           onClose={() => setShowSettings(false)}
           theme={theme}
           onToggleTheme={toggleTheme}
-          onSetTheme={setTheme}
+          onSetTheme={setTheme}\n          onUseSystemTheme={useSystemTheme}
           user={auth.user}
           isGoogleConnected={false}
           onDisconnectGoogle={() => {}}
@@ -532,7 +532,7 @@ function App() {
         onClose={() => setShowSettings(false)}
         theme={theme}
         onToggleTheme={toggleTheme}
-        onSetTheme={setTheme}
+        onSetTheme={setTheme}\n          onUseSystemTheme={useSystemTheme}
         onUseSystemTheme={useSystemTheme}
         user={auth.user}
         isGoogleConnected={calendar.isAuthenticated}
