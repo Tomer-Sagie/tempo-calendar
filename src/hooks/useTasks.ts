@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Task, SchedulingOutput } from '../lib/types';
+import type { Task } from '../lib/types';
 import type { CalendarEvent } from '../lib/google';
 import {
   fetchTasks, fetchUnscheduledTasks,
@@ -14,6 +14,7 @@ import type { SchedulerConfig } from '../lib/scheduler';
 import {
   syncTaskToGoogle, updateTaskInGoogle, removeTaskFromGoogle,
 } from '../lib/sync';
+import { supabase } from '../lib/supabase';
 
 interface UseTasksReturn {
   tasks: Task[];
@@ -43,16 +44,24 @@ export function useTasks(): UseTasksReturn {
   useEffect(() => {
     mountedRef.current = true;
     let cancelled = false;
+
     async function load() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setTasks([]);
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         const data = await fetchTasks();
         if (!cancelled) { setTasks(data); setIsLoading(false); }
-      } catch (err: any) {
-        if (!cancelled) { setError(err?.message || 'Failed to load tasks'); setIsLoading(false); }
+      } catch (err) {
+        if (!cancelled) { setError(err instanceof Error ? err.message : 'Failed to load tasks'); setIsLoading(false); }
       }
     }
     load();
+
     return () => { cancelled = true; mountedRef.current = false; };
   }, []);
 
@@ -62,8 +71,8 @@ export function useTasks(): UseTasksReturn {
     try {
       const data = await fetchTasks();
       if (mountedRef.current) { setTasks(data); setIsLoading(false); }
-    } catch (err: any) {
-      if (mountedRef.current) { setError(err?.message || 'Failed to load tasks'); setIsLoading(false); }
+    } catch (err) {
+      if (mountedRef.current) { setError(err instanceof Error ? err.message : 'Failed to load tasks'); setIsLoading(false); }
     }
   }, []);
 
@@ -84,7 +93,7 @@ export function useTasks(): UseTasksReturn {
           const updated = await updateTaskApi(task.id, { google_event_id: result.googleEventId });
           if (mountedRef.current) setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)));
         } else if (result.error) recordSyncError(`"${task.title}": ${result.error}`);
-      } catch (err: any) { recordSyncError(`"${task.title}": ${err?.message || 'Google sync failed'}`); }
+      } catch (err) { recordSyncError(`"${task.title}": ${err instanceof Error ? err.message : 'Google sync failed'}`); }
     }
     return task;
   }, []);
@@ -99,7 +108,7 @@ export function useTasks(): UseTasksReturn {
       try {
         const result = await updateTaskInGoogle(task, task.scheduled_start, task.scheduled_end);
         if (!result.success && result.error) recordSyncError(`"${task.title}": ${result.error}`);
-      } catch (err: any) { recordSyncError(`"${task.title}": ${err?.message || 'Google sync failed'}`); }
+      } catch (err) { recordSyncError(`"${task.title}": ${err instanceof Error ? err.message : 'Google sync failed'}`); }
     }
     // If task was unscheduled and had a Google event, remove it
     if (!task.is_scheduled && task.google_event_id) {
@@ -109,7 +118,7 @@ export function useTasks(): UseTasksReturn {
           const cleared = await updateTaskApi(id, { google_event_id: null });
           if (mountedRef.current) setTasks((prev) => prev.map((t) => (t.id === id ? cleared : t)));
         }
-      } catch (err: any) { recordSyncError(`"${task.title}": ${err?.message || 'Google delete failed'}`); }
+      } catch (err) { recordSyncError(`"${task.title}": ${err instanceof Error ? err.message : 'Google delete failed'}`); }
     }
     return task;
   }, []);
@@ -121,7 +130,7 @@ export function useTasks(): UseTasksReturn {
       try {
         const syncResult = await removeTaskFromGoogle(task);
         if (!syncResult.success && syncResult.error) recordSyncError(`"${task.title}": ${syncResult.error}`);
-      } catch (err: any) { recordSyncError(`"${task.title}": ${err?.message || 'Google delete failed'}`); }
+      } catch (err) { recordSyncError(`"${task.title}": ${err instanceof Error ? err.message : 'Google delete failed'}`); }
     }
     await deleteTaskApi(id);
     if (mountedRef.current) setTasks((prev) => prev.filter((t) => t.id !== id));
@@ -175,7 +184,7 @@ export function useTasks(): UseTasksReturn {
           }
           if (googleEventId) await updateTaskSchedule(task.id, startISO, endISO, googleEventId);
           scheduledCount++;
-        } catch (err: any) { recordSyncError(`"${task?.title || taskId}": ${err?.message || 'Schedule save failed'}`); }
+        } catch (err) { recordSyncError(`"${task?.title || taskId}": ${err instanceof Error ? err.message : 'Schedule save failed'}`); }
       }
 
       // Report dependency errors
@@ -185,8 +194,8 @@ export function useTasks(): UseTasksReturn {
 
       const data = await fetchTasks(); if (mountedRef.current) setTasks(data);
       return scheduledCount;
-    } catch (err: any) {
-      if (mountedRef.current) setError(err?.message || 'Failed to schedule tasks');
+    } catch (err) {
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to schedule tasks');
       return 0;
     } finally { if (mountedRef.current) setIsLoading(false); }
   }, []);
@@ -200,7 +209,7 @@ export function useTasks(): UseTasksReturn {
   const unschedule = useCallback(async (id: string): Promise<void> => {
     const task = tasks.find((t) => t.id === id);
     if (task && task.google_event_id) {
-      try { const sr = await removeTaskFromGoogle(task); if (!sr.success && sr.error) recordSyncError(`"${task.title}": ${sr.error}`); } catch (err: any) { recordSyncError(`"${task.title}": ${err?.message || 'Google delete failed'}`); }
+      try { const sr = await removeTaskFromGoogle(task); if (!sr.success && sr.error) recordSyncError(`"${task.title}": ${sr.error}`); } catch (err) { recordSyncError(`"${task.title}": ${err instanceof Error ? err.message : 'Google delete failed'}`); }
     }
     await unscheduleTaskApi(id);
     const data = await fetchTasks(); if (mountedRef.current) setTasks(data);
@@ -233,12 +242,12 @@ export function useTasks(): UseTasksReturn {
             if (!sr.success) recordSyncError(`"${result.taskTitle}": ${sr.error || 'Google sync failed'}`);
           }
           await updateTaskSchedule(result.taskId, newStart, newEnd, googleEventId ?? undefined);
-        } catch (err: any) { recordSyncError(`"${result.taskTitle}": ${err?.message || 'Reschedule failed'}`); }
+        } catch (err) { recordSyncError(`"${result.taskTitle}": ${err instanceof Error ? err.message : 'Reschedule failed'}`); }
       }
       const data = await fetchTasks(); if (mountedRef.current) setTasks(data);
       return results;
-    } catch (err: any) {
-      if (mountedRef.current) setError(err?.message || 'Failed to reschedule');
+    } catch (err) {
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to reschedule');
       return [];
     } finally { if (mountedRef.current) setIsLoading(false); }
   }, [tasks]);

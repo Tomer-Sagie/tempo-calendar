@@ -1,34 +1,41 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useGoogleCalendar } from './hooks/useGoogleCalendar';
 import { useTasks } from './hooks/useTasks';
+import { useAuth } from './hooks/useAuth';
 import { Header } from './components/Header';
 import { BigCalendar, type CalendarEventType } from './components/BigCalendar';
 import { TaskList } from './components/TaskList';
 import { TaskDialog } from './components/TaskDialog';
+import { AuthDialog } from './components/AuthDialog';
 import { Button } from './components/ui/button';
-import { AlertCircle, Link2, RefreshCw } from 'lucide-react';
+import { AlertCircle, Link2, RefreshCw, LogIn } from 'lucide-react';
+import { detectConflicts } from './lib/rescheduler';
 import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
-import type { RescheduleResult } from './lib/rescheduler';
+
 
 function App() {
+  const auth = useAuth();
   const calendar = useGoogleCalendar();
   const tasksHook = useTasks();
 
   const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [activeView, setActiveView] = useState<'calendar' | 'tasks'>('calendar');
-  const [conflictCount, setConflictCount] = useState(0);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  const didAuthTransitionRef = useRef(auth.isAuthenticated);
+
+  const { tasks: allTasks, refresh } = tasksHook;
 
   const unscheduledCount = useMemo(
-    () => tasksHook.tasks.filter((t) => !t.is_scheduled).length,
-    [tasksHook.tasks]
+    () => allTasks.filter((t) => !t.is_scheduled).length,
+    [allTasks]
   );
 
   const allEvents = useMemo(() => {
     const googleEvents = calendar.events || [];
-    const taskEvents = tasksHook.tasks
+    const taskEvents = allTasks
       .filter((t) => t.is_scheduled && t.scheduled_start && t.scheduled_end)
       .map((t) => ({
         id: `task-${t.id}`,
@@ -41,13 +48,13 @@ function App() {
         color: t.color,
       }));
     return [...googleEvents, ...taskEvents];
-  }, [calendar.events, tasksHook.tasks]);
+  }, [calendar.events, allTasks]);
 
   const bigCalendarEvents = useMemo<CalendarEventType[]>(() => {
     const now = new Date();
     return allEvents.map((ev) => {
       const originalTask = ev.source === 'task'
-        ? tasksHook.tasks.find(t => `task-${t.id}` === ev.id)
+        ? allTasks.find(t => `task-${t.id}` === ev.id)
         : null;
 
       return {
@@ -67,7 +74,7 @@ function App() {
         },
       };
     });
-  }, [allEvents, tasksHook.tasks]);
+  }, [allEvents, allTasks]);
 
   const handleSaveTask = async (input: TaskInput) => {
     if (editingTask) {
@@ -91,13 +98,19 @@ function App() {
     await tasksHook.unschedule(id);
   };
 
+  const conflictCount = useMemo(() => {
+    if (!calendar.isAuthenticated || allEvents.length === 0) return 0;
+    const scheduled = allTasks.filter((t) => t.is_scheduled);
+    return detectConflicts(scheduled, allEvents).length;
+  }, [allEvents, calendar.isAuthenticated, allTasks]);
+
+  // Refresh tasks when user transitions from unauthenticated to authenticated
   useEffect(() => {
-    if (!calendar.isAuthenticated || allEvents.length === 0) {
-      setConflictCount(0);
-      return;
+    if (auth.isAuthenticated && !didAuthTransitionRef.current) {
+      refresh();
     }
-    setConflictCount(tasksHook.detectConflicts(allEvents).length);
-  }, [allEvents, calendar.isAuthenticated, tasksHook.tasks]);
+    didAuthTransitionRef.current = auth.isAuthenticated;
+  }, [auth.isAuthenticated, refresh]);
 
   const handleReschedule = async () => {
     setRescheduleLoading(true);
@@ -108,7 +121,7 @@ function App() {
     }
   };
 
-  const handleSelectSlot = ({ start }: { start: Date }) => {
+  const handleSelectSlot = () => {
     setEditingTask(null);
     setShowTaskDialog(true);
   };
@@ -116,11 +129,62 @@ function App() {
   const handleSelectEvent = (event: CalendarEventType) => {
     if (!event.id.startsWith('task-')) return;
     const taskId = event.id.replace('task-', '');
-    const task = tasksHook.tasks.find((t) => t.id === taskId);
+    const task = allTasks.find((t) => t.id === taskId);
     if (task) handleEditTask(task);
   };
 
-  // Unauthenticated: clean setup screen
+  // Not signed in to Tempo: show auth prompt
+  if (!auth.isAuthenticated) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col app-gradient">
+        <Header
+          activeView={activeView}
+          onViewChange={setActiveView}
+          isAuthenticated={false}
+          isLoaded={calendar.isLoaded}
+          isLoading={calendar.isLoading}
+          error={calendar.error}
+          onConnect={calendar.connect}
+          onDisconnect={calendar.disconnect}
+          onRefresh={calendar.refreshEvents}
+          onScheduleAll={handleScheduleAll}
+          unscheduledCount={unscheduledCount}
+          user={auth.user}
+          onSignIn={() => setShowAuthDialog(true)}
+          onSignOut={auth.signOut}
+        />
+        <main className="flex-1 grid place-items-center px-6">
+          <div className="w-full max-w-[440px] rounded-xl bg-card p-8 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shrink-0">
+                <span className="text-base font-bold text-primary-foreground">T</span>
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-base font-semibold text-foreground">Tempo Calendar</h1>
+                <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                  Tasks find their own time. Sign in to connect your calendar and we'll handle the rest.
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => setShowAuthDialog(true)} className="mt-6 w-full gap-2 h-10">
+              <LogIn className="w-4 h-4" />
+              Sign in to Tempo
+            </Button>
+            <div className="mt-6 grid grid-cols-3 gap-3 text-center">
+              {['Auto-schedule', 'Calendar sync', 'Smart recalc'].map((label) => (
+                <div key={label} className="rounded-lg bg-muted/50 px-2 py-2.5 text-xs font-medium text-muted-foreground">
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
+        <AuthDialog open={showAuthDialog} onClose={() => setShowAuthDialog(false)} />
+      </div>
+    );
+  }
+
+  // Unauthenticated Google: clean setup screen
   if (!calendar.isAuthenticated) {
     if (!calendar.isLoaded || calendar.isLoading) {
       return (
@@ -147,15 +211,18 @@ function App() {
           onRefresh={calendar.refreshEvents}
           onScheduleAll={handleScheduleAll}
           unscheduledCount={unscheduledCount}
+          user={auth.user}
+          onSignIn={() => setShowAuthDialog(true)}
+          onSignOut={auth.signOut}
         />
         <main className="flex-1 grid place-items-center px-6">
           <div className="w-full max-w-[440px] rounded-xl bg-card p-8 shadow-sm">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shrink-0">
-                <span className="text-base font-bold text-primary-foreground">F</span>
+                <span className="text-base font-bold text-primary-foreground">T</span>
               </div>
               <div className="min-w-0">
-                <h1 className="text-base font-semibold text-foreground">FlowSavvy</h1>
+                <h1 className="text-base font-semibold text-foreground">Tempo Calendar</h1>
                 <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
                   Tasks find their own time. Connect your calendar and we’ll handle the rest.
                 </p>
@@ -199,6 +266,9 @@ function App() {
         onRefresh={calendar.refreshEvents}
         onScheduleAll={handleScheduleAll}
         unscheduledCount={unscheduledCount}
+        user={auth.user}
+        onSignIn={() => setShowAuthDialog(true)}
+        onSignOut={auth.signOut}
       />
 
       {/* Error banners */}
@@ -270,6 +340,9 @@ function App() {
           />
         </div>
       </div>
+
+      {/* Auth dialog */}
+      <AuthDialog open={showAuthDialog} onClose={() => setShowAuthDialog(false)} />
 
       {/* Task dialog */}
       {showTaskDialog && (

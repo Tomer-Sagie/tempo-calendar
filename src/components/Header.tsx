@@ -1,6 +1,7 @@
-import { Calendar, RefreshCw, Link2, Unlink, ChevronDown } from 'lucide-react';
+import { Calendar, RefreshCw, Link2, Unlink, ChevronDown, LogOut, User } from 'lucide-react';
 import { Button } from './ui/button';
 import { useState } from 'react';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface HeaderProps {
   activeView: 'calendar' | 'tasks';
@@ -14,11 +15,15 @@ interface HeaderProps {
   onRefresh: () => void;
   onScheduleAll: () => void;
   unscheduledCount: number;
+  user: SupabaseUser | null;
+  onSignIn: () => void;
+  onSignOut: () => Promise<void>;
 }
 
 export function Header({
   activeView, onViewChange, isAuthenticated, isLoaded, isLoading,
   error, onConnect, onDisconnect, onRefresh, onScheduleAll, unscheduledCount,
+  user, onSignIn, onSignOut,
 }: HeaderProps) {
   const [showAccount, setShowAccount] = useState(false);
 
@@ -29,7 +34,7 @@ export function Header({
         <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
           <Calendar className="w-3.5 h-3.5 text-primary-foreground" />
         </div>
-        <span className="text-sm font-semibold text-foreground tracking-tight hidden sm:inline">FlowSavvy</span>
+        <span className="text-sm font-semibold text-foreground tracking-tight hidden sm:inline">Tempo Calendar</span>
       </div>
 
       {/* Navigation - only when authenticated */}
@@ -89,7 +94,7 @@ export function Header({
               className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg hover:bg-accent transition-colors text-xs text-muted-foreground"
             >
               <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-[10px] font-medium text-primary">G</span>
+                <span className="text-[10px] font-medium text-primary">{user?.email?.charAt(0).toUpperCase() || 'U'}</span>
               </div>
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
@@ -97,16 +102,23 @@ export function Header({
             {showAccount && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowAccount(false)} />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down">
-                  <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border">
-                    Google Calendar
+                <div className="absolute right-0 top-full mt-1 w-52 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down">
+                  <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border truncate">
+                    {user?.email || 'Account'}
                   </div>
                   <button
                     onClick={() => { onDisconnect(); setShowAccount(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"
                   >
                     <Unlink className="w-3.5 h-3.5" />
-                    Disconnect
+                    Disconnect Google Calendar
+                  </button>
+                  <button
+                    onClick={() => { onSignOut(); setShowAccount(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/5 transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    Sign out of Tempo
                   </button>
                 </div>
               </>
@@ -115,8 +127,8 @@ export function Header({
         </div>
       )}
 
-      {/* Not authenticated */}
-      {!isAuthenticated && isLoaded && !error && (
+      {/* Not authenticated Google — but signed in to Tempo */}
+      {user && !isAuthenticated && isLoaded && !error && (
         <Button
           size="sm"
           onClick={onConnect}
@@ -125,6 +137,19 @@ export function Header({
         >
           <Link2 className="w-3.5 h-3.5" />
           {isLoading ? 'Connecting...' : 'Connect Google'}
+        </Button>
+      )}
+
+      {/* Not signed in to Tempo */}
+      {!user && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onSignIn}
+          className="h-8 px-3 text-xs gap-2"
+        >
+          <User className="w-3.5 h-3.5" />
+          Sign in
         </Button>
       )}
     </header>
