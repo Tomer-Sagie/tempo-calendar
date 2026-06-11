@@ -8,7 +8,7 @@ import { TaskList } from './components/TaskList';
 import { TaskDialog } from './components/TaskDialog';
 import { AuthDialog } from './components/AuthDialog';
 import { Button } from './components/ui/button';
-import { AlertCircle, Link2, RefreshCw, LogIn } from 'lucide-react';
+import { AlertCircle, Link2, RefreshCw, LogIn, Zap } from 'lucide-react';
 import { detectConflicts } from './lib/rescheduler';
 import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
@@ -29,7 +29,7 @@ function App() {
   const { tasks: allTasks, refresh } = tasksHook;
 
   const unscheduledCount = useMemo(
-    () => allTasks.filter((t) => !t.is_scheduled).length,
+    () => allTasks.filter((t) => t.status === 'active' && !t.is_scheduled).length,
     [allTasks]
   );
 
@@ -71,6 +71,7 @@ function App() {
           is_missed: originalTask?.status === 'missed' ||
             (originalTask?.is_scheduled && originalTask?.scheduled_end && new Date(originalTask.scheduled_end) < now),
           is_flexible: originalTask?.is_scheduled && !originalTask?.is_locked,
+          is_completed: originalTask?.status === 'completed',
         },
       };
     });
@@ -286,20 +287,28 @@ function App() {
         </div>
       )}
 
+      {/* Smart recalc banner */}
+      {conflictCount > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-warning/5 border-b border-warning/20">
+          <Zap className="w-4 h-4 text-warning shrink-0" />
+          <span className="text-sm text-warning font-medium">
+            {conflictCount} scheduling {conflictCount === 1 ? 'conflict' : 'conflicts'} detected
+          </span>
+          <button
+            onClick={handleReschedule}
+            disabled={rescheduleLoading}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning hover:bg-warning/20 disabled:opacity-60 transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${rescheduleLoading ? 'animate-spin' : ''}`} />
+            Recalculate
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-4 border-b border-border bg-card/70 px-4 py-2.5 text-sm text-muted-foreground">
         <span><strong className="font-semibold text-foreground">{unscheduledCount}</strong> unscheduled</span>
         <span><strong className="font-semibold text-foreground">{tasksHook.tasks.filter((t) => t.is_scheduled).length}</strong> scheduled</span>
         <span><strong className="font-semibold text-foreground">{calendar.events.length}</strong> calendar events</span>
-        {conflictCount > 0 && (
-          <button
-            onClick={handleReschedule}
-            disabled={rescheduleLoading}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-card px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60 transition-colors"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${rescheduleLoading ? 'animate-spin' : ''}`} />
-            Recalculate {conflictCount}
-          </button>
-        )}
       </div>
 
       <div className="flex-1 flex overflow-hidden">
@@ -337,6 +346,9 @@ function App() {
             onDeleteTask={tasksHook.remove}
             onScheduleAll={handleScheduleAll}
             onUnschedule={handleUnschedule}
+            onCompleteTask={tasksHook.complete}
+            onReopenTask={tasksHook.reopen}
+            taskLists={tasksHook.taskLists}
           />
         </div>
       </div>
@@ -374,8 +386,12 @@ function App() {
             auto_schedule: editingTask.auto_schedule,
             scheduling_cutoff_weeks: editingTask.scheduling_cutoff_weeks,
             preferred_time_windows: editingTask.preferred_time_windows || undefined,
+            list_id: editingTask.list_id || undefined,
+            scheduling_profile_id: editingTask.scheduling_profile_id || undefined,
           } : undefined}
           title={editingTask ? 'Edit task' : 'New task'}
+          taskLists={tasksHook.taskLists}
+          schedulingProfiles={tasksHook.schedulingProfiles}
         />
       )}
     </div>

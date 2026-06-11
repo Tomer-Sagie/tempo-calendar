@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from './ui/button';
 import type { TaskInput } from '../lib/tasks';
-import type { TaskPriority, TaskFrequency } from '../lib/types';
+import type { TaskPriority, TaskFrequency, TaskList, SchedulingProfile } from '../lib/types';
 
 interface TaskDialogProps {
   open: boolean;
@@ -11,6 +11,8 @@ interface TaskDialogProps {
   onSave: (input: TaskInput) => Promise<void>;
   initial?: Partial<TaskInput>;
   title?: string;
+  taskLists?: TaskList[];
+  schedulingProfiles?: SchedulingProfile[];
 }
 
 const PRIORITIES: { value: TaskPriority; label: string }[] = [
@@ -42,7 +44,7 @@ const DURATION_PRESETS = [
   { label: '4h', value: 240 },
 ];
 
-export function TaskDialog({ open, onClose, onSave, initial, title }: TaskDialogProps) {
+export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = [], schedulingProfiles = [] }: TaskDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
   const [form, setForm] = useState({
@@ -75,6 +77,8 @@ export function TaskDialog({ open, onClose, onSave, initial, title }: TaskDialog
       try { return initial?.preferred_time_windows?.[0] ? JSON.parse(initial.preferred_time_windows[0]).end : ''; }
       catch { return ''; }
     })(),
+    list_id: initial?.list_id || '',
+    scheduling_profile_id: initial?.scheduling_profile_id || '',
   });
 
   const [saving, setSaving] = useState(false);
@@ -112,10 +116,12 @@ export function TaskDialog({ open, onClose, onSave, initial, title }: TaskDialog
         preferred_time_windows: form.preferred_time_start && form.preferred_time_end
           ? [JSON.stringify({ start: form.preferred_time_start, end: form.preferred_time_end })]
           : undefined,
+        list_id: form.list_id || undefined,
+        scheduling_profile_id: form.scheduling_profile_id || undefined,
       });
       onClose();
-    } catch (err: any) {
-      setSaveError(err?.message || 'Failed to save task');
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save task');
     } finally {
       setSaving(false);
     }
@@ -224,22 +230,54 @@ export function TaskDialog({ open, onClose, onSave, initial, title }: TaskDialog
                   className="w-full px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background"
                 />
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Repeat</label>
-                <select
-                  value={form.frequency}
-                  onChange={(e) => setForm((p) => ({ ...p, frequency: e.target.value as TaskFrequency }))}
-                  className="w-full px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background"
-                >
-                  {FREQUENCIES.map((f) => (
-                    <option key={f.value} value={f.value}>{f.label}</option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Repeat</label>
+              <select
+                value={form.frequency}
+                onChange={(e) => setForm((p) => ({ ...p, frequency: e.target.value as TaskFrequency }))}
+                className="w-full px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+              >
+                {FREQUENCIES.map((f) => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </select>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* Priority */}
+        {/* Task List & Scheduling Profile */}
+        <section>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">List</label>
+              <select
+                value={form.list_id}
+                onChange={(e) => setForm((p) => ({ ...p, list_id: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+              >
+                <option value="">No list</option>
+                {taskLists.map((list) => (
+                  <option key={list.id} value={list.id}>{list.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Schedule profile</label>
+              <select
+                value={form.scheduling_profile_id}
+                onChange={(e) => setForm((p) => ({ ...p, scheduling_profile_id: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+              >
+                <option value="">Default</option>
+                {schedulingProfiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>{profile.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Priority */}
           <section>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Priority</label>
             <div className="flex gap-1 p-1 bg-muted rounded-lg">
@@ -339,7 +377,7 @@ export function TaskDialog({ open, onClose, onSave, initial, title }: TaskDialog
                   <label key={key} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={(form as any)[key]}
+                      checked={(form as unknown as Record<string, boolean>)[key]}
                       onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.checked }))}
                       className="rounded border-border text-primary focus:ring-ring w-4 h-4"
                     />

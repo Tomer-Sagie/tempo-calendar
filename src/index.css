@@ -455,6 +455,18 @@ html {
   border-left-color: var(--event-overdue-border) !important;
 }
 
+.big-calendar-wrapper .rbc-event.event-completed {
+  background: transparent !important;
+  border-left-style: dashed !important;
+  border-left-color: var(--muted-foreground) !important;
+  opacity: 0.5;
+}
+
+.big-calendar-wrapper .rbc-event.event-completed .rbc-event-content {
+  text-decoration: line-through;
+  color: var(--muted-foreground);
+}
+
 .big-calendar-wrapper .rbc-event.event-flexible {
   border-left-style: dashed !important;
 }

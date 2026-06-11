@@ -83,26 +83,29 @@ export function BigCalendar({
       const isLocked = calEvent.data?.is_locked;
       const isMissed = calEvent.data?.is_missed;
       const isFlexible = calEvent.data?.is_flexible;
+      const isCompleted = calEvent.data?.is_completed;
       const color = calEvent.data?.color as string | undefined;
 
-      let className = '';
+      const classes: string[] = [];
       if (source === 'task') {
-        className = 'event-task';
-        if (isLocked) className += ' event-locked';
-        if (isMissed) className += ' event-missed';
-        if (isFlexible) className += ' event-flexible';
+        classes.push('event-task');
+        if (isCompleted) classes.push('event-completed');
+        if (isLocked && !isCompleted) classes.push('event-locked');
+        if (isMissed && !isCompleted) classes.push('event-missed');
+        if (isFlexible && !isCompleted) classes.push('event-flexible');
       } else {
-        className = 'event-google';
+        classes.push('event-google');
       }
+      const eventClass = classes.join(' ');
 
       const style: CSSProperties = {};
-      if (source === 'task' && color) {
-        style.backgroundColor = color + '22'; // 13% opacity
+      if (source === 'task' && color && !isCompleted) {
+        style.backgroundColor = color + '22';
         style.borderLeftColor = color;
         style.color = color;
       }
 
-      return { className, style };
+      return { className: eventClass, style };
     },
     []
   );
@@ -115,7 +118,7 @@ export function BigCalendar({
         startAccessor="start"
         endAccessor="end"
         style={{ height }}
-        defaultView={defaultView as any}
+        defaultView={defaultView as View}
         views={views}
         formats={formats}
         scrollToTime={new Date(1970, 1, 1, 6)}

@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Task } from '../lib/types';
+import type { Task, TaskList, SchedulingProfile } from '../lib/types';
 import type { CalendarEvent } from '../lib/google';
 import {
   fetchTasks, fetchUnscheduledTasks,
   createTask as createTaskApi, updateTask as updateTaskApi,
   deleteTask as deleteTaskApi, updateTaskSchedule, unscheduleTask as unscheduleTaskApi,
+  markTaskComplete,
+  fetchTaskLists, fetchSchedulingProfiles,
 } from '../lib/tasks';
 import { scheduleMultipleTasks, pickBestSlot, findSlotsForTask } from '../lib/scheduler';
 import { batchReschedule, detectConflicts, type RescheduleResult } from '../lib/rescheduler';
@@ -21,6 +23,8 @@ interface UseTasksReturn {
   isLoading: boolean;
   error: string | null;
   syncErrors: string[];
+  taskLists: TaskList[];
+  schedulingProfiles: SchedulingProfile[];
   create: (input: TaskInput) => Promise<Task>;
   update: (id: string, updates: TaskUpdate) => Promise<Task>;
   remove: (id: string) => Promise<void>;
@@ -32,10 +36,14 @@ interface UseTasksReturn {
   clearSyncErrors: () => void;
   detectConflicts: (googleEvents: CalendarEvent[]) => { task: Task; event: CalendarEvent; overlapMinutes: number }[];
   reschedule: (googleEvents: CalendarEvent[], config?: SchedulerConfig) => Promise<RescheduleResult[]>;
+  complete: (id: string) => Promise<void>;
+  reopen: (id: string) => Promise<void>;
 }
 
 export function useTasks(): UseTasksReturn {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskLists, setTaskLists] = useState<TaskList[]>([]);
+  const [schedulingProfiles, setSchedulingProfiles] = useState<SchedulingProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncErrors, setSyncErrors] = useState<string[]>([]);
@@ -49,13 +57,24 @@ export function useTasks(): UseTasksReturn {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setTasks([]);
+        setTaskLists([]);
+        setSchedulingProfiles([]);
         setIsLoading(false);
         return;
       }
       setIsLoading(true);
       try {
-        const data = await fetchTasks();
-        if (!cancelled) { setTasks(data); setIsLoading(false); }
+        const [data, lists, profiles] = await Promise.all([
+          fetchTasks(),
+          fetchTaskLists(),
+          fetchSchedulingProfiles(),
+        ]);
+        if (!cancelled) {
+          setTasks(data);
+          setTaskLists(lists);
+          setSchedulingProfiles(profiles);
+          setIsLoading(false);
+        }
       } catch (err) {
         if (!cancelled) { setError(err instanceof Error ? err.message : 'Failed to load tasks'); setIsLoading(false); }
       }
@@ -69,8 +88,17 @@ export function useTasks(): UseTasksReturn {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await fetchTasks();
-      if (mountedRef.current) { setTasks(data); setIsLoading(false); }
+      const [data, lists, profiles] = await Promise.all([
+        fetchTasks(),
+        fetchTaskLists(),
+        fetchSchedulingProfiles(),
+      ]);
+      if (mountedRef.current) {
+        setTasks(data);
+        setTaskLists(lists);
+        setSchedulingProfiles(profiles);
+        setIsLoading(false);
+      }
     } catch (err) {
       if (mountedRef.current) { setError(err instanceof Error ? err.message : 'Failed to load tasks'); setIsLoading(false); }
     }
@@ -252,12 +280,47 @@ export function useTasks(): UseTasksReturn {
     } finally { if (mountedRef.current) setIsLoading(false); }
   }, [tasks]);
 
+  const complete = useCallback(async (id: string): Promise<void> => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    setError(null);
+    try {
+      // Remove from Google Calendar if synced
+      if (task.google_event_id) {
+        try {
+          const sr = await removeTaskFromGoogle(task);
+          if (!sr.success && sr.error) recordSyncError(`"${task.title}": ${sr.error}`);
+        } catch (err) {
+          recordSyncError(`"${task.title}": ${err instanceof Error ? err.message : 'Google delete failed'}`);
+        }
+      }
+      await markTaskComplete(id);
+      const data = await fetchTasks();
+      if (mountedRef.current) setTasks(data);
+    } catch (err) {
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to complete task');
+    }
+  }, [tasks]);
+
+  const reopen = useCallback(async (id: string): Promise<void> => {
+    setError(null);
+    try {
+      await updateTaskApi(id, { status: 'active', completed_at: null, is_scheduled: false, scheduled_start: null, scheduled_end: null, google_event_id: null });
+      const data = await fetchTasks();
+      if (mountedRef.current) setTasks(data);
+    } catch (err) {
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to reopen task');
+    }
+  }, []);
+
   const clearSyncErrors = useCallback(() => setSyncErrors([]), []);
 
   return {
     tasks, isLoading, error, syncErrors,
+    taskLists, schedulingProfiles,
     create, update, remove, refresh,
     scheduleAll, scheduleOne, findSlots, unschedule,
     clearSyncErrors, detectConflicts: getConflicts, reschedule,
+    complete, reopen,
   };
 }
