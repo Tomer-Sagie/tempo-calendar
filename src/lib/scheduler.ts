@@ -611,7 +611,7 @@ export function recalculateSchedule(
   // Find tasks that need recalculation:
   // - Missed tasks
   // - Unscheduled active tasks with auto_schedule=true
-  // - Flexible scheduled tasks (not locked) — these can be moved
+  // - Flexible scheduled tasks (not locked): these can be moved
   const now = new Date();
   const needsRecalc = tasks.filter(t =>
     t.status === 'active' &&

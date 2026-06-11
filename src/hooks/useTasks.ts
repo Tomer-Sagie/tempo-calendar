@@ -94,7 +94,7 @@ export function useTasks(): UseTasksReturn {
     const task = await updateTaskApi(id, updates);
     if (mountedRef.current) setTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
     // Only sync to Google if the task is scheduled and has explicit times
-    // Skip sync for unscheduled tasks — they should not create placeholder Google events
+    // Skip sync for unscheduled tasks. They should not create placeholder Google events.
     if (task.is_scheduled && task.scheduled_start && task.scheduled_end) {
       try {
         const result = await updateTaskInGoogle(task, task.scheduled_start, task.scheduled_end);

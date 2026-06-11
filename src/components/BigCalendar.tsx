@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, type CSSProperties } from 'react';
 import { Calendar, dateFnsLocalizer, Views, type View, type Event } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -48,13 +48,13 @@ export function BigCalendar({
         monthHeaderFormat: 'MMMM yyyy',
         dayHeaderFormat: 'EEEE, MMM d',
         dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
-          `${format(start, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`,
+          `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`,
         agendaDateFormat: 'MMM d',
         agendaTimeFormat: 'h:mm a',
         agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
-          `${format(start, 'h:mm a')} – ${format(end, 'h:mm a')}`,
+          `${format(start, 'h:mm a')} - ${format(end, 'h:mm a')}`,
         eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
-          `${format(start, 'h:mm a')} – ${format(end, 'h:mm a')}`,
+          `${format(start, 'h:mm a')} - ${format(end, 'h:mm a')}`,
         timeGutterFormat: 'h a',
       },
       views: [Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA],
@@ -83,6 +83,7 @@ export function BigCalendar({
       const isLocked = calEvent.data?.is_locked;
       const isMissed = calEvent.data?.is_missed;
       const isFlexible = calEvent.data?.is_flexible;
+      const color = calEvent.data?.color as string | undefined;
 
       let className = '';
       if (source === 'task') {
@@ -94,7 +95,14 @@ export function BigCalendar({
         className = 'event-google';
       }
 
-      return { className };
+      const style: CSSProperties = {};
+      if (source === 'task' && color) {
+        style.backgroundColor = color + '22'; // 13% opacity
+        style.borderLeftColor = color;
+        style.color = color;
+      }
+
+      return { className, style };
     },
     []
   );

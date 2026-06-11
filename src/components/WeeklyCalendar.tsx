@@ -35,37 +35,37 @@ export function WeeklyCalendar({ events, isLoading }: WeeklyCalendarProps) {
   }
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
-      <div className="px-3 py-2 border-b border-border">
-        <span className="text-[11px] font-semibold text-foreground">This week</span>
+    <div className="border border-border rounded-xl overflow-hidden bg-card">
+      <div className="px-4 py-3 border-b border-border">
+        <span className="text-sm font-semibold text-foreground">This week</span>
       </div>
-      <div className="divide-y divide-border/50">
+      <div className="divide-y divide-border/40">
         {days.map(({ date, events: dayEvents }) => {
           const isToday = isSameDay(date, today);
           return (
-            <div key={date.toISOString()} className={`px-3 py-1.5 ${isToday ? 'bg-primary/5' : ''}`}>
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className={`text-[10px] font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+            <div key={date.toISOString()} className={`px-4 py-2.5 ${isToday ? 'bg-primary/5' : ''}`}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`text-xs font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
                   {format(date, 'EEE')}
                 </span>
-                <span className={`text-[10px] ${isToday ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+                <span className={`text-xs ${isToday ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
                   {format(date, 'd')}
                 </span>
               </div>
               {dayEvents.length > 0 ? (
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   {dayEvents.slice(0, 3).map((e) => (
-                    <div key={e.id} className="text-[9px] text-muted-foreground truncate">
-                      <span className="text-foreground/70">{format(parseISO(e.startTime), 'h:mm a')}</span>
+                    <div key={e.id} className="text-xs text-muted-foreground truncate">
+                      <span className="text-foreground/80">{format(parseISO(e.startTime), 'h:mm a')}</span>
                       {' '}{e.title}
                     </div>
                   ))}
                   {dayEvents.length > 3 && (
-                    <div className="text-[9px] text-muted-foreground">+{dayEvents.length - 3} more</div>
+                    <div className="text-xs text-muted-foreground">+{dayEvents.length - 3} more</div>
                   )}
                 </div>
               ) : (
-                <div className="text-[9px] text-muted-foreground/50">—</div>
+                <div className="text-xs text-muted-foreground/50">-</div>
               )}
             </div>
           );

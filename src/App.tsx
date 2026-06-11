@@ -6,7 +6,7 @@ import { BigCalendar, type CalendarEventType } from './components/BigCalendar';
 import { TaskList } from './components/TaskList';
 import { TaskDialog } from './components/TaskDialog';
 import { Button } from './components/ui/button';
-import { AlertCircle, Link2 } from 'lucide-react';
+import { AlertCircle, Link2, RefreshCw } from 'lucide-react';
 import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
 import type { RescheduleResult } from './lib/rescheduler';
@@ -18,6 +18,8 @@ function App() {
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [activeView, setActiveView] = useState<'calendar' | 'tasks'>('calendar');
+  const [conflictCount, setConflictCount] = useState(0);
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
 
   const unscheduledCount = useMemo(
     () => tasksHook.tasks.filter((t) => !t.is_scheduled).length,
@@ -89,6 +91,23 @@ function App() {
     await tasksHook.unschedule(id);
   };
 
+  useEffect(() => {
+    if (!calendar.isAuthenticated || allEvents.length === 0) {
+      setConflictCount(0);
+      return;
+    }
+    setConflictCount(tasksHook.detectConflicts(allEvents).length);
+  }, [allEvents, calendar.isAuthenticated, tasksHook.tasks]);
+
+  const handleReschedule = async () => {
+    setRescheduleLoading(true);
+    try {
+      await tasksHook.reschedule(calendar.events);
+    } finally {
+      setRescheduleLoading(false);
+    }
+  };
+
   const handleSelectSlot = ({ start }: { start: Date }) => {
     setEditingTask(null);
     setShowTaskDialog(true);
@@ -105,17 +124,17 @@ function App() {
   if (!calendar.isAuthenticated) {
     if (!calendar.isLoaded || calendar.isLoading) {
       return (
-        <div className="h-screen flex items-center justify-center bg-background">
+        <div className="min-h-[100dvh] flex items-center justify-center app-gradient">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <div className="w-3.5 h-3.5 border-2 border-border border-t-primary rounded-full animate-spin" />
-            <span className="text-xs">Loading...</span>
+            <div className="w-4 h-4 border-2 border-border border-t-primary rounded-full animate-spin" />
+            <span className="text-sm">Loading</span>
           </div>
         </div>
       );
     }
 
     return (
-      <div className="h-screen flex flex-col bg-background">
+      <div className="min-h-[100dvh] flex flex-col app-gradient">
         <Header
           activeView={activeView}
           onViewChange={setActiveView}
@@ -129,23 +148,34 @@ function App() {
           onScheduleAll={handleScheduleAll}
           unscheduledCount={unscheduledCount}
         />
-        <main className="flex-1 flex items-center justify-center px-6">
-          <div className="max-w-sm text-center">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center mx-auto mb-4">
-              <span className="text-sm font-bold text-primary-foreground">F</span>
+        <main className="flex-1 grid place-items-center px-6">
+          <div className="w-full max-w-[440px] rounded-xl bg-card p-8 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shrink-0">
+                <span className="text-base font-bold text-primary-foreground">F</span>
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-base font-semibold text-foreground">FlowSavvy</h1>
+                <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                  Tasks find their own time. Connect your calendar and we’ll handle the rest.
+                </p>
+              </div>
             </div>
-            <h1 className="text-lg font-semibold text-foreground mb-1.5">FlowSavvy</h1>
-            <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
-              Auto-schedule your tasks into open time slots on your Google Calendar.
-            </p>
-            <Button onClick={calendar.connect} disabled={calendar.isLoading} className="gap-1.5">
-              <Link2 className="w-3.5 h-3.5" />
+            <Button onClick={calendar.connect} disabled={calendar.isLoading} className="mt-6 w-full gap-2 h-10">
+              <Link2 className="w-4 h-4" />
               {calendar.isLoading ? 'Connecting...' : 'Connect Google Calendar'}
             </Button>
+            <div className="mt-6 grid grid-cols-3 gap-3 text-center">
+              {['Import events', 'Find space', 'Sync tasks'].map((label) => (
+                <div key={label} className="rounded-lg bg-muted/50 px-2 py-2.5 text-xs font-medium text-muted-foreground">
+                  {label}
+                </div>
+              ))}
+            </div>
             {calendar.error && (
-              <div className="mt-4 p-3 bg-destructive/5 border border-destructive/20 rounded-md flex items-start gap-2">
-                <AlertCircle className="w-3.5 h-3.5 text-destructive mt-0.5 shrink-0" />
-                <p className="text-[11px] text-destructive text-left">{calendar.error}</p>
+              <div className="mt-5 p-3 bg-destructive/5 border border-destructive/20 rounded-lg flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                <p className="text-sm text-destructive text-left">{calendar.error}</p>
               </div>
             )}
           </div>
@@ -156,7 +186,7 @@ function App() {
 
   // Authenticated: calendar workspace + task sidebar
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-[100dvh] flex flex-col app-gradient">
       <Header
         activeView={activeView}
         onViewChange={setActiveView}
@@ -186,6 +216,22 @@ function App() {
         </div>
       )}
 
+      <div className="flex items-center gap-4 border-b border-border bg-card/70 px-4 py-2.5 text-sm text-muted-foreground">
+        <span><strong className="font-semibold text-foreground">{unscheduledCount}</strong> unscheduled</span>
+        <span><strong className="font-semibold text-foreground">{tasksHook.tasks.filter((t) => t.is_scheduled).length}</strong> scheduled</span>
+        <span><strong className="font-semibold text-foreground">{calendar.events.length}</strong> calendar events</span>
+        {conflictCount > 0 && (
+          <button
+            onClick={handleReschedule}
+            disabled={rescheduleLoading}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-card px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-60 transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${rescheduleLoading ? 'animate-spin' : ''}`} />
+            Recalculate {conflictCount}
+          </button>
+        )}
+      </div>
+
       <div className="flex-1 flex overflow-hidden">
         {/* Calendar workspace */}
         <div className={`flex-1 flex flex-col min-w-0 ${activeView === 'calendar' ? '' : 'hidden lg:flex'}`}>
@@ -212,7 +258,7 @@ function App() {
         </div>
 
         {/* Task sidebar */}
-        <div className={`w-72 lg:w-80 border-l border-border flex flex-col shrink-0 ${activeView === 'tasks' ? '' : 'hidden lg:flex'}`}>
+        <div className={`w-80 lg:w-96 border-l border-border flex flex-col shrink-0 ${activeView === 'tasks' ? '' : 'hidden lg:flex'}`}>
           <TaskList
             tasks={tasksHook.tasks}
             isLoading={tasksHook.isLoading}
@@ -264,3 +310,4 @@ function App() {
 }
 
 export default App;
+

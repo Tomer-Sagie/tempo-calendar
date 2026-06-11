@@ -24,8 +24,17 @@ const PRIORITY_DOTS: Record<string, string> = {
 export function TaskList({
   tasks, isLoading, onAddTask, onEditTask, onDeleteTask, onScheduleAll, onUnschedule,
 }: TaskListProps) {
-  const unscheduled = tasks.filter((t) => !t.is_scheduled);
-  const scheduled = tasks.filter((t) => t.is_scheduled);
+  const priorityRank: Record<string, number> = { ASAP: 0, HIGH: 1, NORMAL: 2, LOW: 3 };
+  const unscheduled = tasks
+    .filter((t) => !t.is_scheduled)
+    .sort((a, b) => {
+      const byPriority = (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9);
+      if (byPriority !== 0) return byPriority;
+      return (a.due_date || '9999-12-31').localeCompare(b.due_date || '9999-12-31');
+    });
+  const scheduled = tasks
+    .filter((t) => t.is_scheduled)
+    .sort((a, b) => (a.scheduled_start || '').localeCompare(b.scheduled_start || ''));
   const overdueCount = tasks.filter(t =>
     t.is_scheduled && t.scheduled_end && new Date(t.scheduled_end) < new Date() && t.status === 'active'
   ).length;
@@ -33,29 +42,29 @@ export function TaskList({
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xs font-semibold text-foreground">Tasks</h2>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-sm font-semibold text-foreground">Tasks</h2>
           {unscheduled.length > 0 && (
-            <span className="text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+            <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-md">
               {unscheduled.length}
             </span>
           )}
           {overdueCount > 0 && (
-            <span className="text-[10px] font-medium bg-overdue/10 text-overdue px-1.5 py-0.5 rounded flex items-center gap-0.5">
-              <AlertTriangle className="w-2.5 h-2.5" />
+            <span className="text-xs font-medium bg-overdue/10 text-overdue px-2 py-0.5 rounded-md flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" />
               {overdueCount}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
           {unscheduled.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={onScheduleAll} className="h-6 px-2 text-[11px]">
+            <Button variant="ghost" size="sm" onClick={onScheduleAll} className="h-8 px-3 text-xs">
               Schedule all
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={onAddTask} className="h-6 w-6" title="Add task">
-            <Plus className="w-3.5 h-3.5" />
+          <Button variant="ghost" size="icon" onClick={onAddTask} className="h-8 w-8" title="Add task">
+            <Plus className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -63,16 +72,16 @@ export function TaskList({
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {tasks.length === 0 && !isLoading && (
-          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center mb-3">
-              <Calendar className="w-5 h-5 text-muted-foreground/60" />
+          <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-4">
+              <Calendar className="w-6 h-6 text-muted-foreground/60" />
             </div>
-            <p className="text-xs font-medium text-foreground mb-1">No tasks yet</p>
-            <p className="text-[11px] text-muted-foreground mb-3">
-              Create a task to get started with auto-scheduling.
+            <p className="text-sm font-medium text-foreground mb-1">No tasks yet</p>
+            <p className="text-sm text-muted-foreground mb-5 max-w-[200px] leading-relaxed">
+              Add something you want to get done. We'll find the right time for it.
             </p>
-            <Button size="sm" onClick={onAddTask} className="h-7 gap-1.5">
-              <Plus className="w-3 h-3" />
+            <Button size="sm" onClick={onAddTask} className="h-9 gap-2 px-4">
+              <Plus className="w-4 h-4" />
               New task
             </Button>
           </div>
@@ -80,7 +89,7 @@ export function TaskList({
 
         {unscheduled.length > 0 && (
           <div>
-            <div className="px-4 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider bg-muted/50">
+            <div className="px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
               Unscheduled
             </div>
             {unscheduled.map((task) => (
@@ -91,7 +100,7 @@ export function TaskList({
 
         {scheduled.length > 0 && (
           <div>
-            <div className="px-4 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider bg-muted/50">
+            <div className="px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
               Scheduled
             </div>
             {scheduled.map((task) => (
@@ -120,6 +129,8 @@ interface TaskRowProps {
 
 function TaskRow({ task, onEdit, onDelete, onUnschedule, isScheduled }: TaskRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const [unscheduling, setUnscheduling] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -137,63 +148,103 @@ function TaskRow({ task, onEdit, onDelete, onUnschedule, isScheduled }: TaskRowP
   const isOverdue = task.is_scheduled && task.scheduled_end && new Date(task.scheduled_end) < new Date() && task.status === 'active';
 
   return (
-    <div
-      className="flex items-center gap-3 px-4 py-2 hover:bg-accent/50 transition-colors group cursor-pointer border-b border-border/50"
-      onClick={() => onEdit(task)}
-    >
+    <div className="flex items-center gap-3 px-4 py-3 hover:bg-accent/40 transition-colors group">
       {/* Priority indicator */}
       <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${PRIORITY_DOTS[task.priority] || 'bg-muted-foreground/20'}`} />
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
+      <button
+        type="button"
+        className="flex-1 min-w-0 text-left rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => onEdit(task)}
+      >
         <div className="flex items-center gap-1.5">
-          <span className={`text-xs font-medium truncate ${isOverdue ? 'text-overdue' : 'text-foreground'}`}>
+          <span className={`text-sm font-medium truncate ${isOverdue ? 'text-overdue' : 'text-foreground'}`}>
             {task.title}
           </span>
           {task.is_locked && (
-            <span className="text-[9px] font-medium text-success bg-success/10 px-1 py-px rounded shrink-0">locked</span>
+            <span className="text-[10px] font-medium text-success bg-success/10 px-1.5 py-0.5 rounded-md shrink-0">locked</span>
           )}
           {task.is_habit && (
-            <span className="text-[9px] font-medium text-muted-foreground bg-muted px-1 py-px rounded shrink-0">habit</span>
+            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md shrink-0">habit</span>
           )}
         </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-            <Clock className="w-2.5 h-2.5" />
+        <div className="flex items-center gap-2.5 mt-1">
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Clock className="w-3 h-3" />
             {task.duration_minutes}m
           </span>
           {task.due_date && (
-            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
               {format(parseISO(task.due_date), 'MMM d')}
             </span>
           )}
           {isScheduled && task.scheduled_start && (
-            <span className="text-[10px] text-success flex items-center gap-0.5">
+            <span className="text-xs text-success flex items-center gap-1">
               {format(parseISO(task.scheduled_start), 'MMM d, h:mm a')}
             </span>
           )}
         </div>
-      </div>
+      </button>
 
       {/* Actions */}
-      <div className="relative shrink-0" ref={menuRef}>
-        <button
-          onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-          className="p-1 rounded hover:bg-accent text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-          aria-label="More actions"
-        >
-          <MoreHorizontal className="w-3.5 h-3.5" />
-        </button>
+      <div className="relative shrink-0" ref={menuRef}>          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              setMenuPosition({
+                top: rect.bottom + 4,
+                right: window.innerWidth - rect.right,
+              });
+              setConfirmDelete(false);
+              setMenuOpen(!menuOpen);
+            }}
+            className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors sm:opacity-60 sm:group-hover:opacity-100"
+            aria-label="More actions"
+            aria-expanded={menuOpen}
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
         {menuOpen && (
-          <div className="absolute right-0 top-full mt-1 w-36 bg-popover border border-border rounded-md shadow-md z-30 py-0.5 animate-slide-down">
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(task); setMenuOpen(false); }}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-accent transition-colors"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Edit
-            </button>
-            {isScheduled && (
+          <div
+            className="fixed w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down"
+            style={{ top: menuPosition.top, right: menuPosition.right }}
+          >
+            {confirmDelete ? (
+              <div className="p-3">
+                <p className="mb-3 text-sm leading-snug text-foreground">Delete this task?</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(task.id);
+                      setConfirmDelete(false);
+                      setMenuOpen(false);
+                    }}
+                    className="flex-1 rounded-lg bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
+                    className="flex-1 rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-foreground"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEdit(task); setMenuOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Edit
+                </button>
+                {isScheduled && (
               <button
                 onClick={async (e) => {
                   e.stopPropagation();
@@ -203,20 +254,22 @@ function TaskRow({ task, onEdit, onDelete, onUnschedule, isScheduled }: TaskRowP
                   setMenuOpen(false);
                 }}
                 disabled={unscheduling}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors disabled:opacity-50"
               >
-                <XCircle className="w-3 h-3" />
+                <XCircle className="w-4 h-4" />
                 Unschedule
               </button>
+                )}
+                <div className="border-t border-border my-1" />
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              </>
             )}
-            <div className="border-t border-border my-0.5" />
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(task.id); setMenuOpen(false); }}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/5 transition-colors"
-            >
-              <Trash2 className="w-3 h-3" />
-              Delete
-            </button>
           </div>
         )}
       </div>
