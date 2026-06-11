@@ -8,7 +8,6 @@ interface SettingsPanelProps {
   open: boolean;
   onClose: () => void;
   theme: 'light' | 'dark';
-  onToggleTheme: () => void;
   onSetTheme: (theme: 'light' | 'dark') => void;
   onUseSystemTheme: () => void;
   user: SupabaseUser | null;
@@ -25,7 +24,6 @@ export function SettingsPanel({
   open,
   onClose,
   theme,
-  onToggleTheme,
   onSetTheme,
   onUseSystemTheme,
   user,

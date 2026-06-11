@@ -169,14 +169,13 @@ function DayView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot
     return () => clearInterval(id);
   }, [date, startHour]);
 
-  // Now line
-  const nowOffset = useMemo(() => {
-    if (!isToday(date)) return null;
+  // Now line (computed inline — cheap, no need to memoize)
+  const nowOffset = isToday(date) ? (() => {
     const now = new Date();
     const minutesFromTop = (now.getHours() - startHour) * 60 + now.getMinutes();
     if (minutesFromTop < 0 || minutesFromTop > (endHour - startHour) * 60) return null;
     return (minutesFromTop / 60) * HOUR_HEIGHT;
-  }, [date, startHour, endHour, tick]);
+  })() : null;
 
   const hours = useMemo(() => {
     const arr: number[] = [];
@@ -351,14 +350,14 @@ function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlo
     return () => clearInterval(id);
   }, [days, startHour]);
 
-  // Now line position (% of week view)
-  const nowOffset = useMemo(() => {
+  // Now line position (computed inline — cheap, no need to memoize)
+  const nowOffset = (() => {
     const now = new Date();
     if (!days.some((d) => isSameDay(d, now))) return null;
     const minutesFromTop = (now.getHours() - startHour) * 60 + now.getMinutes();
     if (minutesFromTop < 0 || minutesFromTop > (endHour - startHour) * 60) return null;
     return (minutesFromTop / 60) * HOUR_HEIGHT;
-  }, [days, startHour, endHour, tick]);
+  })();
 
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>, day: Date) => {
     if (!onSelectSlot) return;
