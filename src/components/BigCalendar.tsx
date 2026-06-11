@@ -31,7 +31,6 @@ interface BigCalendarProps {
   defaultView?: View;
   onSelectEvent?: (event: CalendarEventType) => void;
   onSelectSlot?: (slotInfo: { start: Date; end: Date }) => void;
-  onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
   className?: string;
   height?: number | string;
 }

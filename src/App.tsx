@@ -484,6 +484,6 @@ export default App;
 
 // Version banner — inconspicuous, bottom-right
 // Increment on each phase completion
-const TEMPO_VERSION = 'v0.2.2';
+const TEMPO_VERSION = 'v0.2.3';
 export { TEMPO_VERSION };
 
