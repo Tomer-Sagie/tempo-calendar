@@ -7,7 +7,7 @@ import { BigCalendar, type CalendarEventType } from './components/BigCalendar';
 import { TaskList } from './components/TaskList';
 import { TaskDialog } from './components/TaskDialog';
 import { AuthDialog } from './components/AuthDialog';
-import { Button } from './components/ui/button';
+import { ShimmerButton } from './components/ui/shimmer-button';
 import { AlertCircle, Link2, RefreshCw, LogIn, Zap } from 'lucide-react';
 import { detectConflicts } from './lib/rescheduler';
 import type { Task } from './lib/types';
@@ -202,10 +202,10 @@ function App() {
                 </p>
               </div>
             </div>
-            <Button onClick={() => setShowAuthDialog(true)} className="mt-6 w-full gap-2 h-10">
+            <ShimmerButton onClick={() => setShowAuthDialog(true)} className="mt-6 w-full gap-2 h-10" background="var(--primary)" shimmerColor="var(--primary-foreground)" shimmerSize="0.03em">
               <LogIn className="w-4 h-4" />
               Sign in to Tempo
-            </Button>
+            </ShimmerButton>
             <div className="mt-6 grid grid-cols-3 gap-3 text-center">
               {['Auto-schedule', 'Calendar sync', 'Smart recalc'].map((label) => (
                 <div key={label} className="rounded-lg bg-muted/50 px-2 py-2.5 text-xs font-medium text-muted-foreground">
@@ -266,10 +266,10 @@ function App() {
                 </p>
               </div>
             </div>
-            <Button onClick={calendar.connect} disabled={calendar.isLoading} className="mt-6 w-full gap-2 h-10">
+            <ShimmerButton onClick={calendar.connect} disabled={calendar.isLoading} className="mt-6 w-full gap-2 h-10" background="var(--primary)" shimmerColor="var(--primary-foreground)" shimmerSize="0.03em">
               <Link2 className="w-4 h-4" />
               {calendar.isLoading ? 'Connecting...' : 'Connect Google Calendar'}
-            </Button>
+            </ShimmerButton>
             <div className="mt-6 grid grid-cols-3 gap-3 text-center">
               {['Import events', 'Find space', 'Sync tasks'].map((label) => (
                 <div key={label} className="rounded-lg bg-muted/50 px-2 py-2.5 text-xs font-medium text-muted-foreground">
@@ -448,6 +448,6 @@ export default App;
 
 // Version banner — inconspicuous, bottom-right
 // Increment on each phase completion
-const TEMPO_VERSION = 'v0.1.0';
+const TEMPO_VERSION = 'v0.2.0';
 export { TEMPO_VERSION };
 

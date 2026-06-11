@@ -201,13 +201,14 @@ html {
   background: none;
 }
 
-.big-calendar-wrapper .rbc-toolbar-label {
+.big-calendar-wrapper .rbc-toolbar .rbc-toolbar-label {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--foreground);
   margin: 0;
   flex: 1;
   text-align: left;
+  letter-spacing: -0.01em;
 }
 
 .big-calendar-wrapper .rbc-btn-group {
@@ -218,11 +219,11 @@ html {
   overflow: hidden;
 }
 
-.big-calendar-wrapper .rbc-btn-group button {
+.big-calendar-wrapper .rbc-toolbar button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 5px 12px;
+  padding: 6px 14px;
   font-size: 12px;
   font-weight: 500;
   border: none;
@@ -230,32 +231,49 @@ html {
   background: var(--card);
   color: var(--muted-foreground);
   cursor: pointer;
-  transition: background 120ms ease-out, color 120ms ease-out;
+  transition: background 120ms ease-out, color 120ms ease-out, box-shadow 120ms ease-out;
   font-family: inherit;
   white-space: nowrap;
   line-height: 1;
 }
 
-.big-calendar-wrapper .rbc-btn-group button:last-child {
-  border-right: none;
-}
-
-.big-calendar-wrapper .rbc-btn-group button.rbc-active {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-
-.big-calendar-wrapper .rbc-btn-group button:hover:not(.rbc-active) {
+.big-calendar-wrapper .rbc-toolbar button:hover:not(.rbc-active) {
   background: var(--accent);
   color: var(--foreground);
 }
 
+.big-calendar-wrapper .rbc-toolbar button.rbc-active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.1);
+}
+
+/* View transition sugar */
+.big-calendar-wrapper .rbc-month-view,
+.big-calendar-wrapper .rbc-time-view,
+.big-calendar-wrapper .rbc-agenda-view {
+  animation: fade-in 180ms ease-out;
+}
+
+/* Calendar background — subtle warmth */
 .big-calendar-wrapper .rbc-calendar {
   background: var(--card);
   border: none;
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+.big-calendar-wrapper .rbc-calendar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 50% 0%, var(--primary) 0%, transparent 70%);
+  opacity: 0.03;
 }
 
 .big-calendar-wrapper .rbc-header {
@@ -389,6 +407,15 @@ html {
   background: transparent;
   font-family: inherit;
   border-left: 3px solid transparent;
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out, filter 120ms ease-out;
+  cursor: pointer;
+}
+
+.big-calendar-wrapper .rbc-event:hover {
+  transform: scale(1.02);
+  filter: brightness(1.05);
+  box-shadow: 0 2px 8px oklch(0 0 0 / 0.12);
+  z-index: 10;
 }
 
 .big-calendar-wrapper .rbc-event-content {
