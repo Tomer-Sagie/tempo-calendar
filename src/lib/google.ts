@@ -200,10 +200,33 @@ export function requestAccessToken(): Promise<string> {
       },
       error_callback: (err) => {
         console.warn('[Google] Popup error callback fired:', err);
-        const message =
-          err?.message?.includes('popup_closed') || err?.message?.includes('closed')
-            ? 'Google sign-in was cancelled.'
-            : err?.message || 'Google sign-in failed. Please try again.';
+        // GIS error types: 'popup_closed' | 'popup_failed_to_open' |
+        // 'unknown_risk_level' | 'access_denied' | 'immediate_failed'
+        // The `type` field is the most reliable signal; `message` varies
+        // across browsers and is sometimes empty.
+        const errType = (err as { type?: string })?.type || '';
+        const errMsg = (err as { message?: string })?.message || '';
+
+        let message: string;
+        if (
+          errType === 'popup_failed_to_open' ||
+          /failed to open/i.test(errMsg)
+        ) {
+          // Most common dev cause: the Google OAuth Client ID doesn't list
+          // this origin under "Authorized JavaScript origins" in Google
+          // Cloud Console. Browser popup blockers are the other common cause.
+          message = 'Couldn\'t open the Google sign-in window. Your browser may be blocking popups, or your Google Client ID isn\'t authorized for this origin. Allow popups, then add the origin to your Client ID\'s authorized JavaScript origins in Google Cloud Console.';
+        } else if (errType === 'popup_closed' || /closed|cancelled|canceled/i.test(errMsg)) {
+          message = 'Google sign-in was cancelled.';
+        } else if (errType === 'access_denied' || /access_denied|denied/i.test(errMsg)) {
+          message = 'Google sign-in was denied. Please try again and grant the requested permissions.';
+        } else if (errType === 'unknown_risk_level') {
+          message = 'Google blocked the sign-in for security reasons. Try again from a normal browser window (not an iframe or embedded view).';
+        } else if (errMsg) {
+          message = `Google sign-in failed: ${errMsg}`;
+        } else {
+          message = 'Google sign-in failed. Please try again.';
+        }
         settle(() => reject(new Error(message)));
       },
     });
