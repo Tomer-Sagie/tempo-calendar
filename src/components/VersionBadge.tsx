@@ -32,8 +32,9 @@ export function VersionBadge() {
   // Close + restore focus to the trigger
   const closeAndFocusTrigger = useCallback(() => {
     setOpen(false);
-    // Restore focus on the next tick so the popover has unmounted first
-    requestAnimationFrame(() => triggerRef.current?.focus());
+    // Synchronous focus works: the trigger button stays mounted while
+    // the popover unmounts on the next React render.
+    triggerRef.current?.focus();
   }, []);
 
   // Close on outside click or Escape
@@ -99,7 +100,7 @@ export function VersionBadge() {
         <div
           ref={popoverRef}
           role="dialog"
-          aria-label="Changelog"
+          aria-labelledby="version-badge-title"
           aria-modal="false"
           className="absolute bottom-full right-0 mb-2 w-[min(calc(100vw-2rem),340px)] rounded-xl border border-border bg-card shadow-lg overflow-hidden animate-scale-in"
         >
@@ -107,7 +108,7 @@ export function VersionBadge() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
             <div className="flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
-              <span className="text-xs font-semibold text-foreground">
+              <span id="version-badge-title" className="text-xs font-semibold text-foreground">
                 What's new
               </span>
             </div>
@@ -135,7 +136,7 @@ export function VersionBadge() {
                     <span className="text-xs font-semibold text-foreground font-mono">
                       {entry.version}
                     </span>
-                    {idx === 0 && (
+                    {entry.version === TEMPO_VERSION && (
                       <span className="text-[9px] font-semibold uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                         Latest
                       </span>
