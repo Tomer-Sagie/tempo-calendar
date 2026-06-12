@@ -38,6 +38,12 @@ interface TempoCalendarProps {
   height?: number | string;
 }
 
+/**
+ * Shared ref type for the WeekView to report its day-column width to the
+ * parent drag handler. Using a ref (not state) avoids re-renders on resize.
+ */
+type DayColumnWidthRef = { current: number };
+
 // ============================================================
 // Helpers
 // ============================================================
@@ -297,13 +303,35 @@ interface WeekViewProps {
   onSelectEvent?: (event: CalendarEventType) => void;
   onSelectSlot?: (slot: { start: Date; end: Date }) => void;
   onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
+  /** Ref the parent reads to compute horizontal drag → day offset. */
+  dayColumnWidthRef?: DayColumnWidthRef;
 }
 
-function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot }: WeekViewProps) {
+function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot, dayColumnWidthRef }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
   const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn: 1 }), [date]);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+
+  // Measure the day-column width on mount + on resize so the parent drag
+  // handler can convert horizontal pixel deltas into day offsets.
+  useEffect(() => {
+    if (!dayColumnWidthRef || !gridRef.current) return;
+    const update = () => {
+      const total = gridRef.current?.clientWidth ?? 0;
+      // Grid is `64px_repeat(7,1fr)`; subtract the 64px gutter for accuracy.
+      dayColumnWidthRef.current = total > 0 ? Math.max(1, (total - 64) / 7) : 0;
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(gridRef.current);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [dayColumnWidthRef, weekStart]);
 
   const hours = useMemo(() => {
     const arr: number[] = [];
@@ -412,7 +440,7 @@ function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlo
 
       {/* Scrollable time grid */}
       <div ref={containerRef} className="flex-1 overflow-y-auto tempo-scrollbar">
-        <div className="relative grid grid-cols-[64px_repeat(7,1fr)]" style={{ height: (endHour - startHour) * HOUR_HEIGHT }}>
+        <div ref={gridRef} className="relative grid grid-cols-[64px_repeat(7,1fr)]" style={{ height: (endHour - startHour) * HOUR_HEIGHT }}>
           {/* Hour gutter */}
           <div className="border-r border-border">
             {hours.map((h) => (
@@ -622,6 +650,9 @@ export function TempoCalendar({
   const [date, setDate] = useState<Date>(new Date());
 
   const today = useMemo(() => new Date(), []);
+  // Mutable ref the WeekView writes to on mount/resize; the drag handler
+  // reads from it to convert horizontal pixel deltas into day offsets.
+  const dayColumnWidthRef = useRef<number>(0);
 
   const handlePrev = useCallback(() => {
     if (view === 'day') setDate((d) => subDays(d, 1));
@@ -649,16 +680,23 @@ export function TempoCalendar({
     if (!onEventDrop) return;
     const id = String(event.active.id);
     const deltaY = event.delta.y;
-    // 56px = 60min, so 1px ≈ 1.07min; round to 15-min slots
+    const deltaX = event.delta.x;
+    // Vertical: 56px = 60min, so 1px ≈ 1.07min; round to 15-min slots
     const minutes = Math.round((deltaY / HOUR_HEIGHT) * 60 / 15) * 15;
-    if (minutes === 0) return;
+    // Horizontal (week only): dayColumnWidth px = 1 day, round to whole days
+    const dayOffset =
+      view === 'week' && dayColumnWidthRef.current > 0
+        ? Math.round(deltaX / dayColumnWidthRef.current)
+        : 0;
+    if (minutes === 0 && dayOffset === 0) return;
     const ev = events.find((e) => e.id === id);
     if (!ev) return;
     const duration = ev.end.getTime() - ev.start.getTime();
-    const newStart = new Date(ev.start.getTime() + minutes * 60_000);
+    const totalMinutes = minutes + dayOffset * 24 * 60;
+    const newStart = new Date(ev.start.getTime() + totalMinutes * 60_000);
     const newEnd = new Date(newStart.getTime() + duration);
     onEventDrop(id, newStart, newEnd);
-  }, [events, onEventDrop]);
+  }, [events, onEventDrop, view]);
 
   const title = useMemo(() => {
     if (view === 'day') return format(date, 'EEEE, MMMM d');
@@ -751,6 +789,7 @@ export function TempoCalendar({
             endHour={endHour}
             onSelectEvent={onSelectEvent}
             onSelectSlot={onSelectSlot}
+            dayColumnWidthRef={dayColumnWidthRef}
           />
         )}
         {view === 'month' && (
