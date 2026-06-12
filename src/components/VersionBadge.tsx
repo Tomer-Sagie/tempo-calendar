@@ -1,50 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles, X, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { TEMPO_VERSION, CHANGELOG } from '../lib/version';
 
-interface ChangelogEntry {
-  version: string;
-  date: string;
-  changes: string[];
-}
-
-const CHANGELOG: ChangelogEntry[] = [
-  {
-    version: 'v1.2.0',
-    date: '2026-06-11',
-    changes: [
-      'NowCard: live "what\'s happening this hour" with progress bar',
-      'StreakCard: consecutive completion days counter',
-      'TomorrowPreview: next day\'s scheduled tasks',
-    ],
-  },
-  {
-    version: 'v1.1.1',
-    date: '2026-06-11',
-    changes: [
-      'Vitest + 64 unit tests for scheduler & rescheduler',
-      'Time-of-day determinism via vi.setSystemTime + TZ=UTC',
-    ],
-  },
-  {
-    version: 'v1.1.0',
-    date: '2026-06-10',
-    changes: [
-      'Editorial font pairing: Fraunces, Instrument Sans, IBM Plex Mono',
-      'CommandPalette (Cmd/Ctrl+K) with natural-language date parsing',
-      'Sonner toasts for scheduling feedback',
-      'Drag-and-drop event move on the calendar',
-    ],
-  },
-];
-
-const CURRENT_VERSION = 'v1.2.0';
 const LAST_SEEN_KEY = 'tempo-last-seen-version';
 
 /**
  * Tiny version badge that lives in the bottom-right corner.
  * Shows a "new" dot if the user hasn't seen the current version yet.
  * Click to open a popover with the full changelog.
+ * Focus is restored to the trigger on close (Escape, click-outside, X).
  */
 export function VersionBadge() {
   const [open, setOpen] = useState(false);
@@ -56,7 +21,7 @@ export function VersionBadge() {
   useEffect(() => {
     try {
       const lastSeen = localStorage.getItem(LAST_SEEN_KEY);
-      if (lastSeen !== CURRENT_VERSION) {
+      if (lastSeen !== TEMPO_VERSION) {
         setHasNew(true);
       }
     } catch {
@@ -64,7 +29,14 @@ export function VersionBadge() {
     }
   }, []);
 
-  // Close on outside click
+  // Close + restore focus to the trigger
+  const closeAndFocusTrigger = useCallback(() => {
+    setOpen(false);
+    // Restore focus on the next tick so the popover has unmounted first
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
+
+  // Close on outside click or Escape
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -75,10 +47,10 @@ export function VersionBadge() {
       ) {
         return;
       }
-      setOpen(false);
+      closeAndFocusTrigger();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') closeAndFocusTrigger();
     };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
@@ -86,14 +58,15 @@ export function VersionBadge() {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, closeAndFocusTrigger]);
 
   const handleOpen = () => {
-    setOpen((v) => !v);
-    if (!open) {
+    const willOpen = !open;
+    setOpen(willOpen);
+    if (willOpen) {
       // Mark as seen
       try {
-        localStorage.setItem(LAST_SEEN_KEY, CURRENT_VERSION);
+        localStorage.setItem(LAST_SEEN_KEY, TEMPO_VERSION);
         setHasNew(false);
       } catch {
         // ignore
@@ -109,12 +82,13 @@ export function VersionBadge() {
         className={cn(
           'group relative inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-2.5 py-1 font-mono text-[10px] font-medium text-muted-foreground backdrop-blur-sm transition-colors hover:border-border hover:bg-card hover:text-foreground',
         )}
-        aria-label={`Tempo ${CURRENT_VERSION}. Click to see what's new.`}
+        aria-label={`Tempo ${TEMPO_VERSION}. Click to see what's new.`}
         aria-expanded={open}
+        aria-haspopup="dialog"
       >
-        <span className="text-foreground/70">{CURRENT_VERSION}</span>
+        <span className="text-foreground/70">{TEMPO_VERSION}</span>
         {hasNew && (
-          <span className="relative flex h-1.5 w-1.5">
+          <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
           </span>
@@ -126,6 +100,7 @@ export function VersionBadge() {
           ref={popoverRef}
           role="dialog"
           aria-label="Changelog"
+          aria-modal="false"
           className="absolute bottom-full right-0 mb-2 w-[min(calc(100vw-2rem),340px)] rounded-xl border border-border bg-card shadow-lg overflow-hidden animate-scale-in"
         >
           {/* Header */}
@@ -137,9 +112,9 @@ export function VersionBadge() {
               </span>
             </div>
             <button
-              onClick={() => setOpen(false)}
+              onClick={closeAndFocusTrigger}
               className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-              aria-label="Close"
+              aria-label="Close changelog"
             >
               <X className="h-3 w-3" />
             </button>

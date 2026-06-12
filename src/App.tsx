@@ -18,10 +18,9 @@ import { Toaster, toast } from 'sonner';
 import { format } from 'date-fns';
 import { detectConflicts } from './lib/rescheduler';
 import { isSupabaseReady } from './lib/supabase';
+import { TEMPO_VERSION } from './lib/version';
 import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
-
-const TEMPO_VERSION = 'v1.2.0';
 
 function useTheme() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -657,4 +656,3 @@ function App() {
 }
 
 export default App;
-export { TEMPO_VERSION };
