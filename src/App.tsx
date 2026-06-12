@@ -775,9 +775,11 @@ function OriginNotAuthorizedHelp({ onRecheck }: { onRecheck?: () => void }) {
 
   const handleCopyDiag = () => {
     const attemptedAt = attemptedAtRef.current;
+    const minutesAgo = Math.max(0, Math.floor((Date.now() - attemptedAt) / 60000));
     const diag = [
       `Error code: ORIGIN_NOT_AUTHORIZED (GIS popup_failed_to_open)`,
       `Last attempted at: ${new Date(attemptedAt).toISOString()} (${new Date(attemptedAt).toLocaleString()})`,
+      `Minutes since last attempt: ${minutesAgo}`,
       `Origin: ${origin}`,
       `Client ID: ${clientId || '(not set)'}`,
       `URL: ${typeof window !== 'undefined' ? window.location.href : ''}`,
