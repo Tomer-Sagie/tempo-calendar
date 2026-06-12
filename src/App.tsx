@@ -790,6 +790,18 @@ function OriginNotAuthorizedHelp({ onRecheck }: { onRecheck?: () => void }) {
       `  2. Open it and confirm "Authorized JavaScript origins" includes EXACTLY: ${origin}`,
       `  3. Wait 5-60 min if you just added it (Google propagation delay)`,
       `  4. Hard-refresh this page (Ctrl/Cmd+Shift+R) and click Recheck`,
+      ``,
+      `If all of the above match and it's been >15 min:`,
+      `  5. Vercel env check: run \`vercel env ls\` in the project and confirm`,
+      `     VITE_GOOGLE_CLIENT_ID is set to the same Client ID above, with NO`,
+      `     leading/trailing whitespace, for the Production environment.`,
+      `  6. Vercel env pull: run \`vercel env pull .env.local\` and grep`,
+      `     VITE_GOOGLE_CLIENT_ID .env.local to see the exact deployed value.`,
+      `  7. If you JUST added the env var, you must trigger a redeploy`,
+      `     (Vite reads env vars at build time): \`vercel --prod --yes\``,
+      `     or push a commit / click "Redeploy" in Vercel dashboard.`,
+      `  8. Browser check: try a different browser / incognito window in case`,
+      `     a browser extension or corporate policy is blocking the popup.`,
     ].join('\n');
     // Drop the inline "Copied" state on this button — the console.log +
     // clipboard write is enough confirmation, and avoids confusing the user
