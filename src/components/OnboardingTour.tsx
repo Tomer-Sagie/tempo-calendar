@@ -58,6 +58,9 @@ export function OnboardingTour({ forceOpen, onComplete }: OnboardingTourProps) {
     }
   });
   const [stepIndex, setStepIndex] = useState(0);
+  // Measured bounding box of the spotlighted element. Lifted to the parent
+  // so the tooltip can anchor to it instead of always centering on the screen.
+  const [spotlightBox, setSpotlightBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
   // Sync open state when forceOpen changes after mount.
   // Canonical "external prop -> state" pattern.
@@ -87,22 +90,27 @@ export function OnboardingTour({ forceOpen, onComplete }: OnboardingTourProps) {
   if (!open) return null;
   const step = STEPS[stepIndex];
   const isLast = stepIndex === STEPS.length - 1;
+  const hasSpotlight = step.target !== 'body' && spotlightBox !== null;
+  const tooltipPosition = computeTooltipPosition(spotlightBox);
 
   return (
     <>
       {/* Dim layer with spotlight cutout */}
       <div className="fixed inset-0 z-[60] pointer-events-none">
         <div className="absolute inset-0 bg-foreground/40 backdrop-blur-[2px] animate-fade-in" />
-        {step.target !== 'body' && <Spotlight target={step.target} />}
+        {step.target !== 'body' && (
+          <Spotlight target={step.target} onMeasure={setSpotlightBox} />
+        )}
       </div>
 
-      {/* Tooltip card */}
+      {/* Tooltip card — anchored to the spotlighted element when possible */}
       <div
         className={cn(
-          'fixed z-[70] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-          'w-[min(calc(100vw-2rem),420px)] bg-card border border-border rounded-2xl shadow-2xl',
+          'fixed z-[70] bg-card border border-border rounded-2xl shadow-2xl',
           'animate-scale-in p-6',
+          hasSpotlight ? 'w-[min(calc(100vw-2rem),420px)]' : 'w-[min(calc(100vw-2rem),420px)] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
         )}
+        style={hasSpotlight ? tooltipPosition : undefined}
       >
         <button
           onClick={finish}
@@ -167,21 +175,29 @@ export function OnboardingTour({ forceOpen, onComplete }: OnboardingTourProps) {
   );
 }
 
-function Spotlight({ target }: { target: string }) {
+function Spotlight({
+  target,
+  onMeasure,
+}: {
+  target: string;
+  onMeasure: (box: { top: number; left: number; width: number; height: number } | null) => void;
+}) {
   const [box, setBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
   useEffect(() => {
     const update = () => {
       const el = document.querySelector(target);
-      if (!el) { setBox(null); return; }
+      if (!el) { setBox(null); onMeasure(null); return; }
       const rect = el.getBoundingClientRect();
       const pad = 8;
-      setBox({
+      const next = {
         top: rect.top - pad,
         left: rect.left - pad,
         width: rect.width + pad * 2,
         height: rect.height + pad * 2,
-      });
+      };
+      setBox(next);
+      onMeasure(next);
     };
     update();
 
@@ -199,7 +215,7 @@ function Spotlight({ target }: { target: string }) {
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
-  }, [target]);
+  }, [target, onMeasure]);
 
   if (!box) return null;
 
@@ -215,4 +231,45 @@ function Spotlight({ target }: { target: string }) {
       }}
     />
   );
+}
+
+/**
+ * Position the tooltip card relative to the spotlighted element. Prefers
+ * below the spotlight, centered horizontally. Falls back to above, and
+ * clamps to the viewport edges so the card never overflows.
+ *
+ * The "body" step has no spotlight — the caller should fall back to
+ * screen-center positioning in that case.
+ */
+function computeTooltipPosition(box: { top: number; left: number; width: number; height: number } | null): React.CSSProperties {
+  if (!box || typeof window === 'undefined') {
+    return {};
+  }
+  const TOOLTIP_MAX_W = 420;
+  const TOOLTIP_MAX_H = 280; // rough estimate for overflow detection
+  const GAP = 16;
+  const EDGE = 16;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Horizontal: center on the spotlight, clamp to viewport edges
+  const spotlightCenterX = box.left + box.width / 2;
+  const desiredLeft = spotlightCenterX - TOOLTIP_MAX_W / 2;
+  const clampedLeft = Math.max(EDGE, Math.min(vw - TOOLTIP_MAX_W - EDGE, desiredLeft));
+
+  // Vertical: prefer below the spotlight; fall back to above; clamp to viewport
+  const belowTop = box.top + box.height + GAP;
+  const aboveTop = box.top - TOOLTIP_MAX_H - GAP;
+  let top: number;
+  if (belowTop + TOOLTIP_MAX_H <= vh - EDGE) {
+    top = belowTop;
+  } else if (aboveTop >= EDGE) {
+    top = aboveTop;
+  } else {
+    // Neither fits perfectly — pick whichever is closer to its preferred edge
+    top = belowTop < vh / 2 ? belowTop : aboveTop;
+    top = Math.max(EDGE, Math.min(vh - TOOLTIP_MAX_H - EDGE, top));
+  }
+
+  return { top, left: clampedLeft };
 }

@@ -58,7 +58,7 @@ export function SettingsPanel({
       {/* Panel */}
       <aside
         className={cn(
-          'fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[420px] bg-card border-l border-border shadow-2xl',
+          'fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[480px] lg:w-[520px] bg-card border-l border-border shadow-2xl',
           'flex flex-col animate-slide-in-right',
         )}
       >
