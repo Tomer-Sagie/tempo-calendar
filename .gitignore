@@ -29,3 +29,4 @@ skills
 *.sw?
 
 .vercel
+.env*
