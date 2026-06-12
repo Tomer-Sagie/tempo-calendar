@@ -123,12 +123,12 @@ export function VersionBadge() {
 
           {/* Changelog list */}
           <div className="max-h-[60vh] overflow-y-auto tempo-scrollbar">
-            {CHANGELOG.map((entry, idx) => (
+            {CHANGELOG.map((entry) => (
               <div
                 key={entry.version}
                 className={cn(
                   'px-4 py-3 border-b border-border/60 last:border-b-0',
-                  idx === 0 && 'bg-primary/[0.03]',
+                  entry.version === TEMPO_VERSION && 'bg-primary/[0.03]',
                 )}
               >
                 <div className="flex items-baseline justify-between mb-1.5">
