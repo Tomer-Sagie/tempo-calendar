@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useGoogleCalendar } from './hooks/useGoogleCalendar';
 import { useTasks } from './hooks/useTasks';
 import { useAuth } from './hooks/useAuth';
+import { useSubtasks } from './hooks/useSubtasks';
+import { useSubtasksBatch } from './hooks/useSubtasksBatch';
 import { Header } from './components/Header';
 import { TempoCalendar, type CalendarEventType } from './components/TempoCalendar';
 import { BentoSidebar } from './components/BentoSidebar';
@@ -94,6 +96,13 @@ function App() {
   const didAuthTransitionRef = useRef(auth.isAuthenticated);
 
   const { tasks: allTasks, refresh } = tasksHook;
+
+  // Subtasks: batch loader for the list view (chip), single-task hook
+  // for the in-dialog editor. The dialog wrappers below also call
+  // `subtasksBatch.refresh()` so the list chip stays in sync.
+  const taskIds = useMemo(() => allTasks.map((t) => t.id), [allTasks]);
+  const subtasksBatch = useSubtasksBatch(taskIds);
+  const editingTaskSubtasks = useSubtasks(editingTask?.id ?? null);
 
   const unscheduledCount = useMemo(
     () => allTasks.filter((t) => t.status === 'active' && !t.is_scheduled).length,
@@ -199,6 +208,24 @@ function App() {
     const scheduled = allTasks.filter((t) => t.is_scheduled);
     return detectConflicts(scheduled, allEvents).length;
   }, [allEvents, calendar.isAuthenticated, allTasks]);
+
+  // Auto-complete the parent task when all its subtasks are done.
+  // Triggers only when the batch's subtask map or the editing task id
+  // changes. Reads the current task from `tasksHook.tasks` rather than
+  // the stale `editingTask` ref so the toast doesn't re-fire if the
+  // user toggles another subtask after auto-completion.
+  useEffect(() => {
+    if (!editingTask) return;
+    const current = tasksHook.tasks.find((t) => t.id === editingTask.id);
+    if (!current || current.status !== 'active') return;
+    const subs = subtasksBatch.byTaskId.get(editingTask.id) || [];
+    if (subs.length === 0) return;
+    if (subs.every((s) => s.completed)) {
+      tasksHook.complete(editingTask.id);
+      toast.success('All subtasks done — task auto-completed!');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtasksBatch.byTaskId, editingTask?.id]);
 
   useEffect(() => {
     if (auth.isAuthenticated && !didAuthTransitionRef.current) refresh();
@@ -637,6 +664,7 @@ function App() {
               onReopenTask={tasksHook.reopen}
               taskLists={tasksHook.taskLists}
               onBackToCalendar={() => setActiveView('calendar')}
+              subtasksByTaskId={subtasksBatch.byTaskId}
             />
           )}
         </div>
@@ -696,6 +724,28 @@ function App() {
           title={editingTask ? 'Edit task' : 'New task'}
           taskLists={tasksHook.taskLists}
           schedulingProfiles={tasksHook.schedulingProfiles}
+          taskId={editingTask?.id}
+          subtasksProps={editingTask ? {
+            subtasks: editingTaskSubtasks.subtasks,
+            onAdd: async (input) => {
+              const r = await editingTaskSubtasks.add(input);
+              await subtasksBatch.refresh();
+              return r;
+            },
+            onUpdate: async (id, updates) => {
+              const r = await editingTaskSubtasks.update(id, updates);
+              await subtasksBatch.refresh();
+              return r;
+            },
+            onRemove: async (id) => {
+              await editingTaskSubtasks.remove(id);
+              await subtasksBatch.refresh();
+            },
+            onReorder: async (orderedIds) => {
+              await editingTaskSubtasks.reorder(orderedIds);
+              await subtasksBatch.refresh();
+            },
+          } : undefined}
         />
       )}
 

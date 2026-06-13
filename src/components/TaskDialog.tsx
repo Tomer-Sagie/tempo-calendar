@@ -2,8 +2,9 @@ import { useId, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from './ui/button';
+import { SubtasksEditor } from './SubtasksEditor';
 import type { TaskInput } from '../lib/tasks';
-import type { TaskPriority, TaskFrequency, TaskList, SchedulingProfile } from '../lib/types';
+import type { TaskPriority, TaskFrequency, TaskList, SchedulingProfile, Subtask, SubtaskInput, SubtaskUpdate } from '../lib/types';
 
 interface TaskDialogProps {
   open: boolean;
@@ -13,6 +14,21 @@ interface TaskDialogProps {
   title?: string;
   taskLists?: TaskList[];
   schedulingProfiles?: SchedulingProfile[];
+  /** Task id (only set when editing an existing task). Used to anchor
+   *  the in-dialog subtasks editor. */
+  taskId?: string;
+  /**
+   * If provided, enables the in-dialog subtasks editor. Only meaningful
+   * when editing an existing task (which has an `id`). The host owns
+   * the cache and persistence; we render it.
+   */
+  subtasksProps?: {
+    subtasks: Subtask[];
+    onAdd: (input: SubtaskInput) => Promise<Subtask>;
+    onUpdate: (id: string, updates: SubtaskUpdate) => Promise<Subtask>;
+    onRemove: (id: string) => Promise<void>;
+    onReorder: (orderedIds: string[]) => Promise<void>;
+  };
 }
 
 const PRIORITIES: { value: TaskPriority; label: string }[] = [
@@ -44,7 +60,7 @@ const DURATION_PRESETS = [
   { label: '4h', value: 240 },
 ];
 
-export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = [], schedulingProfiles = [] }: TaskDialogProps) {
+export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = [], schedulingProfiles = [], subtasksProps, taskId }: TaskDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
   const [form, setForm] = useState({
@@ -297,6 +313,20 @@ export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = 
               ))}
             </div>
           </section>
+
+          {/* Subtasks (only when editing an existing task) */}
+          {subtasksProps && taskId && (
+            <div className="rounded-lg border border-border bg-muted/30 p-3 -mx-1">
+              <SubtasksEditor
+                taskId={taskId}
+                subtasks={subtasksProps.subtasks}
+                onAdd={subtasksProps.onAdd}
+                onUpdate={subtasksProps.onUpdate}
+                onRemove={subtasksProps.onRemove}
+                onReorder={subtasksProps.onReorder}
+              />
+            </div>
+          )}
 
           {/* Color */}
           <section>

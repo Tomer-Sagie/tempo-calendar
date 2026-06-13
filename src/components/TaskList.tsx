@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, Clock, Calendar, MoreHorizontal, Trash2, ExternalLink, XCircle, AlertTriangle, Check, RotateCcw, ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
-import type { Task } from '../lib/types';
+import { SubtaskProgressChip } from './SubtasksEditor';
+import type { Task, Subtask } from '../lib/types';
 import { format, parseISO, isToday, isTomorrow, differenceInDays } from 'date-fns';
 
 interface TaskListProps {
@@ -18,6 +19,8 @@ interface TaskListProps {
   /** Switch the workspace back to the calendar view (LeftRail owns nav,
    *  but this in-context affordance makes returning from tasks easier). */
   onBackToCalendar?: () => void;
+  /** Subtask map for the current task list. Keys are task IDs. */
+  subtasksByTaskId?: Map<string, Subtask[]>;
 }
 
 const PRIORITY_DOTS: Record<string, string> = {
@@ -47,7 +50,7 @@ function getUrgencyBadge(task: Task): { label: string; className: string } | nul
 
 export function TaskList({
   tasks, isLoading, onAddTask, onEditTask, onDeleteTask, onScheduleAll, onUnschedule,
-  onCompleteTask, onReopenTask, taskLists = [], onBackToCalendar,
+  onCompleteTask, onReopenTask, taskLists = [], onBackToCalendar, subtasksByTaskId,
 }: TaskListProps) {
   const priorityRank: Record<string, number> = { ASAP: 0, HIGH: 1, NORMAL: 2, LOW: 3 };
 
@@ -263,6 +266,7 @@ export function TaskList({
                 onUnschedule={onUnschedule}
                 onComplete={handleComplete}
                 isCompleting={completingIds.has(task.id)}
+                subtasks={subtasksByTaskId?.get(task.id)}
               />
             ))}
           </div>
@@ -283,6 +287,7 @@ export function TaskList({
                 onComplete={handleComplete}
                 isScheduled
                 isCompleting={completingIds.has(task.id)}
+                subtasks={subtasksByTaskId?.get(task.id)}
               />
             ))}
           </div>
@@ -322,9 +327,10 @@ interface TaskRowProps {
   onComplete: (id: string) => Promise<void>;
   isScheduled?: boolean;
   isCompleting?: boolean;
+  subtasks?: Subtask[];
 }
 
-function TaskRow({ task, onEdit, onDelete, onUnschedule, onComplete, isScheduled, isCompleting }: TaskRowProps) {
+function TaskRow({ task, onEdit, onDelete, onUnschedule, onComplete, isScheduled, isCompleting, subtasks }: TaskRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
@@ -387,6 +393,7 @@ function TaskRow({ task, onEdit, onDelete, onUnschedule, onComplete, isScheduled
           {task.is_habit && (
             <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md shrink-0">habit</span>
           )}
+          {subtasks && <SubtaskProgressChip subtasks={subtasks} />}
         </div>
         <div className="flex items-center gap-2.5 mt-1">
           <span className="text-xs text-muted-foreground flex items-center gap-1">
