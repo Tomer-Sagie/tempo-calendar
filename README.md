@@ -101,7 +101,35 @@ The app builds to a static `dist/` folder. Any static hosting (Netlify, Cloudfla
 | `npm run dev` | Start development server |
 | `npm run build` | Build for production |
 | `npm run lint` | Run ESLint |
+| `npm test` | Run unit tests (Vitest) |
+| `npm run test:watch` | Run unit tests in watch mode |
+| `npm run test:e2e:auth` | Capture a Playwright auth session (headed, one-time per hour) |
+| `npm run test:e2e` | Run end-to-end tests against the deployed app (headless) |
+| `npm run test:e2e:headed` | Run end-to-end tests in a visible browser |
+| `npm run test:e2e:ui` | Open Playwright's UI mode for time-travel debugging |
+| `npm run test:e2e:report` | Open the most recent HTML test report |
 | `npm run preview` | Preview production build |
+
+## End-to-end testing
+
+The `e2e/` directory contains Playwright tests that exercise the **deployed** app in a real Chromium browser. Tests reuse a single captured auth session so you don't have to sign in via Google on every run.
+
+**One-time setup:**
+
+```bash
+npx playwright install chromium      # ≈150 MB, only needed once
+npm run test:e2e:auth                # Sign in once in a headed browser
+```
+
+**Then run the suite any time:**
+
+```bash
+npm run test:e2e                     # Headless
+npm run test:e2e:headed              # Visible browser
+npm run test:e2e:ui                  # Time-travel debugger
+```
+
+The captured session expires after **1 hour**. If tests start failing with auth errors, re-run `npm run test:e2e:auth`. See [`e2e/README.md`](./e2e/README.md) for full docs (security notes, targeting a different URL, adding new tests).
 
 ## Project Structure
 

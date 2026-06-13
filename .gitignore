@@ -30,3 +30,12 @@ skills
 
 .vercel
 .env*
+
+# Playwright E2E
+# `e2e/.auth/user.json` contains a real Supabase + Google session
+# (access_token, refresh_token, provider_token) — must never be
+# committed. The .gitkeep placeholder keeps the directory tracked.
+e2e/.auth/user.json
+e2e/.auth/*-journal
+playwright-report/
+test-results/
