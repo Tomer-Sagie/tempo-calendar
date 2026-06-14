@@ -1,33 +1,38 @@
-import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { format, startOfWeek, endOfWeek, addDays, addWeeks, addMonths, subWeeks, subMonths, subDays, startOfDay, endOfDay, isSameDay, isSameMonth, isToday, differenceInMinutes, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragMoveEvent } from '@dnd-kit/core';
-import { DraggableEvent } from './CalendarEvent';
-import { cn } from '../lib/utils';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { addDays, addMonths, addWeeks, subDays, subMonths, subWeeks } from 'date-fns';
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragMoveEvent,
+} from '@dnd-kit/core';
 import { computeEventDrop } from '../lib/drag';
+import { cn } from '../lib/utils';
+import { TempoCalendarHeader } from './TempoCalendarHeader';
+import { TempoCalendarDayView } from './TempoCalendarDayView';
+import { TempoCalendarWeekView } from './TempoCalendarWeekView';
+import { TempoCalendarMonthView } from './TempoCalendarMonthView';
+import { HOUR_HEIGHT } from './TempoCalendarHelpers';
+import type {
+  CalendarEventType,
+  CalendarView,
+  DayColumnWidthRef,
+  DragGhostTarget,
+} from './TempoCalendarHelpers';
 
-export type CalendarEventVariant = 'primary' | 'secondary' | 'warning' | 'destructive' | 'success' | 'muted';
-export type CalendarView = 'day' | 'week' | 'month';
+// Re-export shared types so existing consumers (App.tsx, CalendarEvent.tsx)
+// don't need to change their imports.
+export type {
+  CalendarEventType,
+  CalendarEventVariant,
+  CalendarView,
+  DayColumnWidthRef,
+  DragGhostTarget,
+} from './TempoCalendarHelpers';
 
-export interface CalendarEventType {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  variant?: CalendarEventVariant;
-  allDay?: boolean;
-  data?: {
-    description?: string;
-    source?: 'google' | 'task';
-    color?: string;
-    is_locked?: boolean;
-    is_missed?: boolean;
-    is_flexible?: boolean;
-    is_completed?: boolean;
-  };
-}
-
-interface TempoCalendarProps {
+export interface TempoCalendarProps {
   events: CalendarEventType[];
   defaultView?: CalendarView;
   onSelectEvent?: (event: CalendarEventType) => void;
@@ -40,691 +45,20 @@ interface TempoCalendarProps {
 }
 
 /**
- * Shared ref type for the WeekView to report its day-column width to the
- * parent drag handler. Using a ref (not state) avoids re-renders on resize.
+ * TempoCalendar — a day/week/month calendar with drag-and-drop event moves.
+ *
+ * The orchestrator owns the cross-view state (date, view, drag ghost) and
+ * the DnD wiring. Sibling files own the per-view rendering:
+ *   - TempoCalendarHeader    — Today + prev/next + title + view tabs
+ *   - TempoCalendarDayView   — single-day grid
+ *   - TempoCalendarWeekView  — 7-day grid + drag-ghost preview
+ *   - TempoCalendarMonthView — month grid
+ *
+ * Shared types and helpers (HOUR_HEIGHT, getEventsForDay, positionEvents,
+ * CalendarEventType, etc.) live in TempoCalendarHelpers.ts and are
+ * re-exported here for backward-compat with `App.tsx` and
+ * `CalendarEvent.tsx`.
  */
-type DayColumnWidthRef = { current: number };
-
-// ============================================================
-// Helpers
-// ============================================================
-
-const HOUR_HEIGHT = 56; // px per hour — generous, readable
-
-function getEventsForDay(events: CalendarEventType[], day: Date): CalendarEventType[] {
-  const dayStart = startOfDay(day);
-  const dayEnd = endOfDay(day);
-  return events.filter((ev) => {
-    if (ev.allDay) {
-      return isSameDay(ev.start, day) || isSameDay(ev.end, day) || (ev.start <= dayEnd && ev.end >= dayStart);
-    }
-    return ev.start < dayEnd && ev.end > dayStart;
-  });
-}
-
-function getAllDayEvents(events: CalendarEventType[]): CalendarEventType[] {
-  return events.filter((e) => e.allDay);
-}
-
-interface PositionedEvent extends CalendarEventType {
-  top: number;
-  height: number;
-  column: number;
-  totalColumns: number;
-  isStart: boolean;
-  isEnd: boolean;
-}
-
-/**
- * Position events on a day, handling overlap with side-by-side columns.
- */
-function positionEvents(events: CalendarEventType[], day: Date, startHour: number): PositionedEvent[] {
-  const dayStart = startOfDay(day);
-  const visibleStart = setMilliseconds(setSeconds(setMinutes(setHours(dayStart, startHour), 0), 0), 0);
-  const dayEnd = endOfDay(day);
-
-  // Clip events to visible window
-  const clipped = events
-    .filter((e) => !e.allDay)
-    .map((e) => {
-      const start = e.start < visibleStart ? visibleStart : e.start;
-      const end = e.end > dayEnd ? dayEnd : e.end;
-      return { ...e, start, end };
-    })
-    .filter((e) => e.end > e.start)
-    .sort((a, b) => a.start.getTime() - b.start.getTime());
-
-  const positioned: PositionedEvent[] = [];
-  const columns: { end: Date }[][] = [[]];
-
-  for (const ev of clipped) {
-    // Find first column where this event fits (no overlap)
-    let placed = false;
-    for (let i = 0; i < columns.length; i++) {
-      const last = columns[i][columns[i].length - 1];
-      if (!last || last.end <= ev.start) {
-        columns[i].push({ end: ev.end });
-        const minutesFromTop = Math.max(0, differenceInMinutes(ev.start, visibleStart));
-        const minutes = Math.max(15, differenceInMinutes(ev.end, ev.start));
-        positioned.push({
-          ...ev,
-          top: (minutesFromTop / 60) * HOUR_HEIGHT,
-          height: (minutes / 60) * HOUR_HEIGHT,
-          column: i,
-          totalColumns: 0, // filled in below
-          isStart: true,
-          isEnd: true,
-        });
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) {
-      const newCol = [{ end: ev.end }];
-      columns.push(newCol);
-      const minutesFromTop = Math.max(0, differenceInMinutes(ev.start, visibleStart));
-      const minutes = Math.max(15, differenceInMinutes(ev.end, ev.start));
-      positioned.push({
-        ...ev,
-        top: (minutesFromTop / 60) * HOUR_HEIGHT,
-        height: (minutes / 60) * HOUR_HEIGHT,
-        column: columns.length - 1,
-        totalColumns: 0,
-        isStart: true,
-        isEnd: true,
-      });
-    }
-  }
-
-  // Determine totalColumns for clusters of overlapping events
-  // For simplicity, use total columns overall — good enough for daily layouts
-  const total = columns.length;
-  return positioned.map((p) => ({ ...p, totalColumns: total }));
-}
-
-// ============================================================
-// Sub-views
-// ============================================================
-
-interface DayViewProps {
-  date: Date;
-  events: CalendarEventType[];
-  startHour: number;
-  endHour: number;
-  onSelectEvent?: (event: CalendarEventType) => void;
-  onSelectSlot?: (slot: { start: Date; end: Date }) => void;
-  onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
-}
-
-function DayView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot }: DayViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [, setTick] = useState(0);
-  const dayEvents = useMemo(() => getEventsForDay(events, date), [events, date]);
-  const allDayEvents = useMemo(() => getAllDayEvents(dayEvents), [dayEvents]);
-  const timedEvents = useMemo(() => dayEvents.filter((e) => !e.allDay), [dayEvents]);
-  const positioned = useMemo(() => positionEvents(timedEvents, date, startHour), [timedEvents, date, startHour]);
-
-  // Scroll to current time on mount and tick every minute
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const now = new Date();
-    if (!isToday(date)) {
-      containerRef.current.scrollTop = 0;
-      return;
-    }
-    const minutesFromTop = Math.max(0, (now.getHours() - startHour) * 60 + now.getMinutes());
-    const target = (minutesFromTop / 60) * HOUR_HEIGHT - 80;
-    containerRef.current.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
-
-    const id = setInterval(() => setTick((n) => n + 1), 60_000);
-    return () => clearInterval(id);
-  }, [date, startHour]);
-
-  // Now line (computed inline — cheap, no need to memoize)
-  const nowOffset = isToday(date) ? (() => {
-    const now = new Date();
-    const minutesFromTop = (now.getHours() - startHour) * 60 + now.getMinutes();
-    if (minutesFromTop < 0 || minutesFromTop > (endHour - startHour) * 60) return null;
-    return (minutesFromTop / 60) * HOUR_HEIGHT;
-  })() : null;
-
-  const hours = useMemo(() => {
-    const arr: number[] = [];
-    for (let h = startHour; h <= endHour; h++) arr.push(h);
-    return arr;
-  }, [startHour, endHour]);
-
-  const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!onSelectSlot) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const y = e.clientY - rect.top + (containerRef.current?.scrollTop || 0);
-    const hour = Math.min(endHour - 1, Math.max(startHour, Math.floor(y / HOUR_HEIGHT) + startHour));
-    const minute = Math.round((y % HOUR_HEIGHT) / HOUR_HEIGHT * 60 / 15) * 15;
-    const start = setMilliseconds(setSeconds(setMinutes(setHours(date, hour), minute), 0), 0);
-    const end = new Date(start.getTime() + 60 * 60 * 1000);
-    onSelectSlot({ start, end });
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-      {/* All-day row */}
-      {allDayEvents.length > 0 && (
-        <div className="border-b border-border bg-muted/20 px-4 py-2 flex items-center gap-2 overflow-x-auto">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">All day</span>
-          <div className="flex gap-1.5">
-            {allDayEvents.map((ev) => (
-              <button
-                key={ev.id}
-                onClick={() => onSelectEvent?.(ev)}
-                className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent hover:bg-accent/70 text-foreground transition-colors truncate max-w-[200px]"
-              >
-                {ev.title}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Scrollable time grid */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto tempo-scrollbar">
-        <div className="relative grid grid-cols-[64px_1fr]" style={{ height: (endHour - startHour) * HOUR_HEIGHT }}>
-          {/* Hour gutter */}
-          <div className="border-r border-border bg-card">
-            {hours.map((h) => (
-              <div key={h} className="relative h-14 border-b border-border/40">
-                <span className="absolute top-0 right-3 -translate-y-1/2 text-[10px] font-medium text-muted-foreground bg-card px-1 tabular-nums">
-                  {format(setHours(date, h), 'h a')}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Event grid */}
-          <div className="relative" onClick={handleGridClick}>
-            {/* Hour lines */}
-            {hours.map((h) => (
-              <div key={h} className="h-14 border-b border-border/40" />
-            ))}
-
-            {/* Half-hour lines (subtle) */}
-            {hours.slice(0, -1).map((h) => (
-              <div
-                key={`half-${h}`}
-                className="absolute left-0 right-0 h-px bg-border/30 pointer-events-none"
-                style={{ top: (h - startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
-              />
-            ))}
-
-            {/* Now line */}
-            {nowOffset !== null && (
-              <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top: nowOffset }}>
-                <div className="flex items-center">
-                  <div className="w-2 h-2 rounded-full bg-primary -ml-1 shadow-[0_0_0_4px_oklch(1_0_0)]" />
-                  <div className="flex-1 h-px bg-primary/60" />
-                </div>
-              </div>
-            )}
-
-            {/* Events */}
-            {positioned.map((ev) => {
-              const width = ev.totalColumns > 0
-                ? `calc((100% - 8px) / ${ev.totalColumns})`
-                : 'calc(100% - 8px)';
-              const left = ev.totalColumns > 0
-                ? `calc(4px + (100% - 8px) * ${ev.column} / ${ev.totalColumns})`
-                : '4px';
-              return (
-                <DraggableEvent
-                  key={ev.id}
-                  event={ev}
-                  onClick={(e) => onSelectEvent?.(e)}
-                  draggable={ev.data?.source === 'task' && !ev.data?.is_locked}
-                  isLocked={ev.data?.is_locked}
-                  positionStyle={{
-                    top: ev.top,
-                    height: Math.max(24, ev.height - 2),
-                    left,
-                    width,
-                  }}
-                />
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface WeekViewProps {
-  date: Date;
-  events: CalendarEventType[];
-  startHour: number;
-  endHour: number;
-  onSelectEvent?: (event: CalendarEventType) => void;
-  onSelectSlot?: (slot: { start: Date; end: Date }) => void;
-  onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
-  /** Ref the parent reads to compute horizontal drag → day offset. */
-  dayColumnWidthRef?: DayColumnWidthRef;
-  /**
-   * Live target of the in-progress drag, used to render a translucent
-   * ghost rectangle at the day/time the event will land on. `null` when no
-   * drag is active or when the drag is sub-threshold.
-   */
-  dragGhost?: { eventId: string; newStart: Date; newEnd: Date; title: string; variant?: CalendarEventVariant } | null;
-}
-
-function WeekView({ date, events, startHour, endHour, onSelectEvent, onSelectSlot, dayColumnWidthRef, dragGhost }: WeekViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [, setTick] = useState(0);
-  const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn: 1 }), [date]);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
-
-  // Measure the day-column width on mount + on resize so the parent drag
-  // handler can convert horizontal pixel deltas into day offsets.
-  useEffect(() => {
-    if (!dayColumnWidthRef || !gridRef.current) return;
-    const update = () => {
-      const total = gridRef.current?.clientWidth ?? 0;
-      // Grid is `64px_repeat(7,1fr)`; subtract the 64px gutter for accuracy.
-      dayColumnWidthRef.current = total > 0 ? Math.max(1, (total - 64) / 7) : 0;
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(gridRef.current);
-    window.addEventListener('resize', update);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  }, [dayColumnWidthRef, weekStart]);
-
-  const hours = useMemo(() => {
-    const arr: number[] = [];
-    for (let h = startHour; h <= endHour; h++) arr.push(h);
-    return arr;
-  }, [startHour, endHour]);
-
-  // Pre-position events per day
-  const dayPositions = useMemo(() => {
-    return days.map((d) => positionEvents(getEventsForDay(events, d).filter((e) => !e.allDay), d, startHour));
-  }, [days, events, startHour]);
-
-  const allDayPerDay = useMemo(() => days.map((d) => getAllDayEvents(getEventsForDay(events, d))), [days, events]);
-  const hasAllDay = allDayPerDay.some((d) => d.length > 0);
-
-  // Scroll to current time on mount and tick every minute
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const now = new Date();
-    const isCurrentWeek = days.some((d) => isSameDay(d, now));
-    if (!isCurrentWeek) {
-      containerRef.current.scrollTop = 0;
-      return;
-    }
-    const minutesFromTop = Math.max(0, (now.getHours() - startHour) * 60 + now.getMinutes());
-    const target = (minutesFromTop / 60) * HOUR_HEIGHT - 80;
-    containerRef.current.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
-
-    const id = setInterval(() => setTick((n) => n + 1), 60_000);
-    return () => clearInterval(id);
-  }, [days, startHour]);
-
-  // Now line position (computed inline — cheap, no need to memoize)
-  const nowOffset = (() => {
-    const now = new Date();
-    if (!days.some((d) => isSameDay(d, now))) return null;
-    const minutesFromTop = (now.getHours() - startHour) * 60 + now.getMinutes();
-    if (minutesFromTop < 0 || minutesFromTop > (endHour - startHour) * 60) return null;
-    return (minutesFromTop / 60) * HOUR_HEIGHT;
-  })();
-
-  const handleGridClick = (e: React.MouseEvent<HTMLDivElement>, day: Date) => {
-    if (!onSelectSlot) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const y = e.clientY - rect.top + (containerRef.current?.scrollTop || 0);
-    const hour = Math.min(endHour - 1, Math.max(startHour, Math.floor(y / HOUR_HEIGHT) + startHour));
-    const minute = Math.round((y % HOUR_HEIGHT) / HOUR_HEIGHT * 60 / 15) * 15;
-    const start = setMilliseconds(setSeconds(setMinutes(setHours(day, hour), minute), 0), 0);
-    const end = new Date(start.getTime() + 60 * 60 * 1000);
-    onSelectSlot({ start, end });
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-      {/* Day header row */}
-      <div className={cn('grid border-b border-border bg-card/50', 'grid-cols-[64px_repeat(7,1fr)]')}>
-        <div className="border-r border-border" />
-        {days.map((d) => {
-          const t = isToday(d);
-          return (
-            <div
-              key={d.toISOString()}
-              className={cn(
-                'flex flex-col items-center py-3 border-r border-border/40 last:border-r-0 transition-colors',
-                t && 'bg-primary/5',
-              )}
-            >
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {format(d, 'EEE')}
-              </span>
-              <span
-                className={cn(
-                  'mt-0.5 text-base font-semibold tabular-nums w-7 h-7 flex items-center justify-center rounded-full transition-colors',
-                  t ? 'bg-primary text-primary-foreground' : 'text-foreground',
-                )}
-              >
-                {format(d, 'd')}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* All-day row */}
-      {hasAllDay && (
-        <div className="grid border-b border-border bg-muted/10 grid-cols-[64px_repeat(7,1fr)]">
-          <div className="border-r border-border" />
-          {days.map((d, i) => (
-            <div key={d.toISOString()} className="border-r border-border/40 last:border-r-0 p-1.5 space-y-1 min-h-[40px]">
-              {allDayPerDay[i].slice(0, 3).map((ev) => (
-                <button
-                  key={ev.id}
-                  onClick={() => onSelectEvent?.(ev)}
-                  className="w-full text-left px-1.5 py-0.5 text-[10px] font-medium rounded bg-accent hover:bg-accent/70 text-foreground truncate transition-colors"
-                >
-                  {ev.title}
-                </button>
-              ))}
-              {allDayPerDay[i].length > 3 && (
-                <span className="text-[10px] text-muted-foreground px-1.5">+{allDayPerDay[i].length - 3} more</span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Scrollable time grid */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto tempo-scrollbar">
-        <div ref={gridRef} className="relative grid grid-cols-[64px_repeat(7,1fr)]" style={{ height: (endHour - startHour) * HOUR_HEIGHT }}>
-          {/* Hour gutter */}
-          <div className="border-r border-border">
-            {hours.map((h) => (
-              <div key={h} className="relative h-14 border-b border-border/40">
-                <span className="absolute top-0 right-3 -translate-y-1/2 text-[10px] font-medium text-muted-foreground bg-card px-1 tabular-nums">
-                  {format(setHours(date, h), 'h a')}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Day columns */}
-          {days.map((d, dayIdx) => {
-            const t = isToday(d);
-            const positioned = dayPositions[dayIdx];
-            return (
-              <div
-                key={d.toISOString()}
-                className={cn(
-                  'relative border-r border-border/40 last:border-r-0',
-                  t && 'bg-primary/[0.025]',
-                )}
-                onClick={(e) => handleGridClick(e, d)}
-              >
-                {hours.map((h) => (
-                  <div key={h} className="h-14 border-b border-border/30" />
-                ))}
-                {hours.slice(0, -1).map((h) => (
-                  <div
-                    key={`half-${h}`}
-                    className="absolute left-0 right-0 h-px bg-border/20 pointer-events-none"
-                    style={{ top: (h - startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
-                  />
-                ))}
-
-                {positioned.map((ev) => {
-                  const width = ev.totalColumns > 0
-                    ? `calc((100% - 6px) / ${ev.totalColumns})`
-                    : 'calc(100% - 6px)';
-                  const left = ev.totalColumns > 0
-                    ? `calc(3px + (100% - 6px) * ${ev.column} / ${ev.totalColumns})`
-                    : '3px';
-                  return (
-                    <DraggableEvent
-                      key={ev.id}
-                      event={ev}
-                      onClick={(e) => onSelectEvent?.(e)}
-                      draggable={ev.data?.source === 'task' && !ev.data?.is_locked}
-                      isLocked={ev.data?.is_locked}
-                      small
-                      positionStyle={{
-                        top: ev.top,
-                        height: Math.max(22, ev.height - 2),
-                        left,
-                        width,
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
-
-          {/* Drag ghost — translucent preview at the target day/time */}
-          {dragGhost && (() => {
-            const weekStartMidnight = startOfDay(weekStart);
-            const ghostStartMidnight = startOfDay(dragGhost.newStart);
-            const rawDayIdx = Math.round(
-              (ghostStartMidnight.getTime() - weekStartMidnight.getTime()) / (24 * 60 * 60_000),
-            );
-            // Clamp to visible week (0..6) so the ghost stays on-screen
-            // even if the user drags past the edge.
-            const dayIdx = Math.max(0, Math.min(6, rawDayIdx));
-            const dayDate = addDays(weekStart, dayIdx);
-            const visibleStart = setMilliseconds(setSeconds(setMinutes(setHours(dayDate, startHour), 0), 0), 0);
-            const minutesFromTop = differenceInMinutes(dragGhost.newStart, visibleStart);
-            const durationMin = differenceInMinutes(dragGhost.newEnd, dragGhost.newStart);
-            // Top is clamped to the visible window; the ghost extends out
-            // of the top/bottom as needed so the user sees "this won't fit".
-            const top = Math.max(0, (minutesFromTop / 60) * HOUR_HEIGHT);
-            const visibleMaxTop = (endHour - startHour) * HOUR_HEIGHT;
-            const height = Math.max(22, Math.min(visibleMaxTop - top, (durationMin / 60) * HOUR_HEIGHT));
-            // Position the ghost inside the target day column, just like DraggableEvent.
-            const left = `calc(64px + 3px + (100% - 64px - 6px) * ${dayIdx} / 7)`;
-            const width = `calc((100% - 64px - 6px) / 7)`;
-            const variantClass =
-              dragGhost.variant === 'warning' ? 'bg-warning/20 border-warning text-foreground' :
-              dragGhost.variant === 'destructive' ? 'bg-destructive/20 border-destructive text-foreground' :
-              dragGhost.variant === 'success' ? 'bg-success/20 border-success text-foreground' :
-              dragGhost.variant === 'secondary' ? 'bg-event-task/30 border-event-task-border text-foreground' :
-              dragGhost.variant === 'muted' ? 'bg-muted border-muted-foreground/30 text-foreground' :
-              'bg-primary/20 border-primary text-foreground';
-            // Highlight the target column header
-            const targetDay = days[dayIdx];
-            const isOffWeek = rawDayIdx !== dayIdx;
-            return (
-              <>
-                {/* Column header highlight */}
-                <div
-                  className="pointer-events-none absolute z-10 transition-colors"
-                  style={{
-                    // Header is `64px_repeat(7,1fr)`, height matches header
-                    left: `calc(64px + (100% - 64px) * ${dayIdx} / 7)`,
-                    width: `calc((100% - 64px) / 7)`,
-                    top: -48,
-                    height: 48,
-                    background: 'oklch(var(--primary) / 0.08)',
-                    borderTop: '2px solid oklch(var(--primary))',
-                  }}
-                  aria-hidden
-                >
-                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                    Drop on {format(targetDay, 'EEE d')}
-                  </div>
-                </div>
-                {/* Ghost rectangle */}
-                <div
-                  className={cn(
-                    'absolute z-30 rounded-md border-2 border-dashed pointer-events-none flex flex-col px-1.5 py-1 overflow-hidden',
-                    variantClass,
-                    'backdrop-blur-[1px] shadow-lg',
-                  )}
-                  style={{ top, height, left, width }}
-                  aria-hidden
-                >
-                  <div className="flex items-center gap-1">
-                    <span className="font-semibold truncate text-[10px]">{dragGhost.title}</span>
-                  </div>
-                  <div className="text-[9px] opacity-75 num">
-                    {format(dragGhost.newStart, 'h:mma')} – {format(dragGhost.newEnd, 'h:mma')}
-                  </div>
-                </div>
-                {/* Edge indicator: ghost is clamped (drag went past visible week) */}
-                {isOffWeek && (
-                  <div
-                    className="absolute z-30 top-1 right-2 px-1.5 py-0.5 rounded bg-primary text-primary-foreground text-[9px] font-semibold pointer-events-none"
-                    aria-hidden
-                  >
-                    {rawDayIdx < 0 ? '← past week' : 'past week →'}
-                  </div>
-                )}
-              </>
-            );
-          })()}
-
-          {/* Now line (spans full week width) */}
-          {nowOffset !== null && (
-            <div
-              className="absolute left-16 right-0 z-20 pointer-events-none flex items-center"
-              style={{ top: nowOffset }}
-            >
-              <div className="w-2 h-2 rounded-full bg-primary -ml-1 shadow-[0_0_0_4px_oklch(1_0_0)]" />
-              <div className="flex-1 h-px bg-primary/60" />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface MonthViewProps {
-  date: Date;
-  events: CalendarEventType[];
-  onSelectEvent?: (event: CalendarEventType) => void;
-  onSelectSlot?: (slot: { start: Date; end: Date }) => void;
-  onSelectDay?: (day: Date) => void;
-}
-
-function MonthView({ date, events, onSelectEvent, onSelectDay }: MonthViewProps) {
-  const monthStart = useMemo(() => startOfWeek(new Date(date.getFullYear(), date.getMonth(), 1), { weekStartsOn: 1 }), [date]);
-  const monthEnd = useMemo(() => endOfWeek(new Date(date.getFullYear(), date.getMonth() + 1, 0), { weekStartsOn: 1 }), [date]);
-  const days = useMemo(() => {
-    const arr: Date[] = [];
-    let cur = monthStart;
-    while (cur <= monthEnd) {
-      arr.push(cur);
-      cur = addDays(cur, 1);
-    }
-    return arr;
-  }, [monthStart, monthEnd]);
-
-  const eventsByDay = useMemo(() => {
-    const map = new Map<string, CalendarEventType[]>();
-    for (const d of days) {
-      map.set(d.toDateString(), getEventsForDay(events, d));
-    }
-    return map;
-  }, [days, events]);
-
-  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-  return (
-    <div className="flex flex-col h-full bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-      {/* Day name header */}
-      <div className="grid grid-cols-7 border-b border-border bg-card/50">
-        {dayNames.map((n) => (
-          <div key={n} className="py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {n}
-          </div>
-        ))}
-      </div>
-
-      {/* Day grid */}
-      <div className="flex-1 grid grid-cols-7 grid-rows-6">
-        {days.map((d) => {
-          const dayEvents = eventsByDay.get(d.toDateString()) || [];
-          const inMonth = isSameMonth(d, date);
-          const t = isToday(d);
-          const visible = dayEvents.slice(0, 3);
-          const more = dayEvents.length - visible.length;
-
-          return (
-            <button
-              key={d.toISOString()}
-              onClick={() => onSelectDay?.(d)}
-              className={cn(
-                'flex flex-col items-stretch p-1.5 border-r border-b border-border/40 last:border-r-0 text-left transition-colors hover:bg-accent/30 min-h-0 group',
-                !inMonth && 'bg-muted/30 text-muted-foreground',
-                t && 'bg-primary/[0.04]',
-              )}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span
-                  className={cn(
-                    'text-xs font-semibold tabular-nums w-6 h-6 flex items-center justify-center rounded-full transition-colors',
-                    t ? 'bg-primary text-primary-foreground' : 'text-foreground',
-                  )}
-                >
-                  {format(d, 'd')}
-                </span>
-                {dayEvents.length > 0 && (
-                  <span className="text-[9px] font-medium text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                    {dayEvents.length}
-                  </span>
-                )}
-              </div>
-              <div className="space-y-0.5 overflow-hidden flex-1">
-                {visible.map((ev) => (
-                  <div
-                    key={ev.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectEvent?.(ev);
-                    }}
-                    className={cn(
-                      'px-1.5 py-0.5 text-[10px] font-medium rounded truncate cursor-pointer transition-colors border-l-2',
-                      ev.variant === 'primary' && 'bg-primary/15 border-primary text-foreground',
-                      ev.variant === 'secondary' && 'bg-event-task/40 border-event-task-border text-foreground',
-                      ev.variant === 'warning' && 'bg-warning/15 border-warning text-foreground',
-                      ev.variant === 'destructive' && 'bg-destructive/15 border-destructive text-foreground',
-                      ev.variant === 'success' && 'bg-success/15 border-success text-foreground',
-                      ev.variant === 'muted' && 'bg-muted border-muted-foreground/30 text-foreground',
-                      (!ev.variant || ev.variant === 'primary') && 'bg-primary/15 border-primary text-foreground',
-                    )}
-                  >
-                    {ev.title}
-                  </div>
-                ))}
-                {more > 0 && (
-                  <div className="text-[10px] font-medium text-muted-foreground px-1.5">
-                    +{more} more
-                  </div>
-                )}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// Main component
-// ============================================================
-
 export function TempoCalendar({
   events,
   defaultView = 'week',
@@ -741,7 +75,7 @@ export function TempoCalendar({
   const today = useMemo(() => new Date(), []);
   // Mutable ref the WeekView writes to on mount/resize; the drag handler
   // reads from it to convert horizontal pixel deltas into day offsets.
-  const dayColumnWidthRef = useRef<number>(0);
+  const dayColumnWidthRef = useRef<number>(0) as DayColumnWidthRef;
 
   const handlePrev = useCallback(() => {
     if (view === 'day') setDate((d) => subDays(d, 1));
@@ -769,167 +103,116 @@ export function TempoCalendar({
    * Live ghost target computed on every drag-move. `null` when sub-threshold
    * or when the event is unknown — the WeekView hides the overlay accordingly.
    */
-  const [dragGhost, setDragGhost] = useState<{
-    eventId: string;
-    newStart: Date;
-    newEnd: Date;
-    title: string;
-    variant?: CalendarEventVariant;
-  } | null>(null);
+  const [dragGhost, setDragGhost] = useState<DragGhostTarget | null>(null);
 
-  const handleDragMove = useCallback((event: DragMoveEvent) => {
-    const ev = event.active.data?.current?.event ?? events.find((e) => e.id === String(event.active.id));
-    if (!ev) {
-      setDragGhost(null);
-      return;
-    }
-    const result = computeEventDrop({
-      start: ev.start,
-      end: ev.end,
-      deltaX: event.delta.x,
-      deltaY: event.delta.y,
-      hourHeight: HOUR_HEIGHT,
-      dayColumnWidth: dayColumnWidthRef.current,
-      view,
-    });
-    if (!result) {
-      setDragGhost(null);
-      return;
-    }
-    setDragGhost({
-      eventId: ev.id,
-      newStart: result.newStart,
-      newEnd: result.newEnd,
-      title: ev.title,
-      variant: ev.variant,
-    });
-  }, [events, view]);
+  const handleDragMove = useCallback(
+    (event: DragMoveEvent) => {
+      const ev =
+        event.active.data?.current?.event ??
+        events.find((e) => e.id === String(event.active.id));
+      if (!ev) {
+        setDragGhost(null);
+        return;
+      }
+      const result = computeEventDrop({
+        start: ev.start,
+        end: ev.end,
+        deltaX: event.delta.x,
+        deltaY: event.delta.y,
+        hourHeight: HOUR_HEIGHT,
+        dayColumnWidth: dayColumnWidthRef.current,
+        view,
+      });
+      if (!result) {
+        setDragGhost(null);
+        return;
+      }
+      setDragGhost({
+        eventId: ev.id,
+        newStart: result.newStart,
+        newEnd: result.newEnd,
+        title: ev.title,
+        variant: ev.variant,
+      });
+    },
+    [events, view],
+  );
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setDragGhost(null);
-    if (!onEventDrop) return;
-    const id = String(event.active.id);
-    const ev = events.find((e) => e.id === id);
-    if (!ev) return;
-    // Pure-function drag math; see src/lib/drag.ts for snapping rules.
-    const result = computeEventDrop({
-      start: ev.start,
-      end: ev.end,
-      deltaX: event.delta.x,
-      deltaY: event.delta.y,
-      hourHeight: HOUR_HEIGHT,
-      dayColumnWidth: dayColumnWidthRef.current,
-      view,
-    });
-    if (!result) return;
-    onEventDrop(id, result.newStart, result.newEnd);
-  }, [events, onEventDrop, view]);
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setDragGhost(null);
+      if (!onEventDrop) return;
+      const id = String(event.active.id);
+      const ev = events.find((e) => e.id === id);
+      if (!ev) return;
+      // Pure-function drag math; see src/lib/drag.ts for snapping rules.
+      const result = computeEventDrop({
+        start: ev.start,
+        end: ev.end,
+        deltaX: event.delta.x,
+        deltaY: event.delta.y,
+        hourHeight: HOUR_HEIGHT,
+        dayColumnWidth: dayColumnWidthRef.current,
+        view,
+      });
+      if (!result) return;
+      onEventDrop(id, result.newStart, result.newEnd);
+    },
+    [events, onEventDrop, view],
+  );
 
   const handleDragCancel = useCallback(() => setDragGhost(null), []);
 
-  const title = useMemo(() => {
-    if (view === 'day') return format(date, 'EEEE, MMMM d');
-    if (view === 'week') {
-      const ws = startOfWeek(date, { weekStartsOn: 1 });
-      const we = endOfWeek(date, { weekStartsOn: 1 });
-      if (ws.getMonth() === we.getMonth()) {
-        return `${format(ws, 'MMMM d')} - ${format(we, 'd, yyyy')}`;
-      }
-      return `${format(ws, 'MMM d')} - ${format(we, 'MMM d, yyyy')}`;
-    }
-    return format(date, 'MMMM yyyy');
-  }, [view, date]);
-
   return (
     <div className={cn('flex flex-col h-full gap-3', className)}>
-      {/* Header */}
-      <div className="flex items-center gap-2 px-1">
-        <button
-          onClick={handleToday}
-          className={cn(
-            'h-9 px-3.5 text-xs font-semibold rounded-lg border transition-colors',
-            isSameDay(date, today)
-              ? 'bg-primary text-primary-foreground border-primary'
-              : 'bg-card border-border text-foreground hover:bg-accent',
-          )}
-        >
-          Today
-        </button>
-
-        <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={handlePrev}
-            className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            aria-label="Previous"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleNext}
-            className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors border-l border-border"
-            aria-label="Next"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <h2 className="text-base font-semibold text-foreground ml-1 tracking-tight">
-          {title}
-        </h2>
-
-        <div className="flex-1" />
-
-        <div className="flex items-center bg-card border border-border rounded-lg p-0.5">
-          {(['day', 'week', 'month'] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={cn(
-                'h-8 px-3.5 text-xs font-medium rounded-md transition-colors capitalize',
-                view === v
-                  ? 'bg-foreground text-background'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-      </div>
+      <TempoCalendarHeader
+        date={date}
+        view={view}
+        today={today}
+        onViewChange={setView}
+        onPrev={handlePrev}
+        onNext={handleNext}
+        onToday={handleToday}
+      />
 
       {/* View */}
-      <DndContext sensors={sensors} onDragMove={handleDragMove} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+      <DndContext
+        sensors={sensors}
+        onDragMove={handleDragMove}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
         <div className="flex-1 min-h-0 animate-fade-in">
-        {view === 'day' && (
-          <DayView
-            date={date}
-            events={events}
-            startHour={startHour}
-            endHour={endHour}
-            onSelectEvent={onSelectEvent}
-            onSelectSlot={onSelectSlot}
-          />
-        )}
-        {view === 'week' && (
-          <WeekView
-            date={date}
-            events={events}
-            startHour={startHour}
-            endHour={endHour}
-            onSelectEvent={onSelectEvent}
-            onSelectSlot={onSelectSlot}
-            dayColumnWidthRef={dayColumnWidthRef}
-            dragGhost={dragGhost}
-          />
-        )}
-        {view === 'month' && (
-          <MonthView
-            date={date}
-            events={events}
-            onSelectEvent={onSelectEvent}
-            onSelectDay={handleMonthDayClick}
-          />
-        )}
+          {view === 'day' && (
+            <TempoCalendarDayView
+              date={date}
+              events={events}
+              startHour={startHour}
+              endHour={endHour}
+              onSelectEvent={onSelectEvent}
+              onSelectSlot={onSelectSlot}
+            />
+          )}
+          {view === 'week' && (
+            <TempoCalendarWeekView
+              date={date}
+              events={events}
+              startHour={startHour}
+              endHour={endHour}
+              onSelectEvent={onSelectEvent}
+              onSelectSlot={onSelectSlot}
+              dayColumnWidthRef={dayColumnWidthRef}
+              dragGhost={dragGhost}
+            />
+          )}
+          {view === 'month' && (
+            <TempoCalendarMonthView
+              date={date}
+              events={events}
+              onSelectEvent={onSelectEvent}
+              onSelectDay={handleMonthDayClick}
+            />
+          )}
         </div>
       </DndContext>
     </div>
