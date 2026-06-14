@@ -1,4 +1,4 @@
-import type { TaskFormSetter, TaskFormState } from './TaskDialogBasics';
+import type { TaskFormSetter, TaskFormState } from './TaskDialogTypes';
 
 interface TaskDialogAdvancedProps {
   form: TaskFormState;

@@ -3,8 +3,9 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from './ui/button';
 import { SubtasksEditor } from './SubtasksEditor';
-import { TaskDialogBasics, type TaskFormState } from './TaskDialogBasics';
+import { TaskDialogBasics } from './TaskDialogBasics';
 import { TaskDialogAdvanced } from './TaskDialogAdvanced';
+import type { TaskFormState } from './TaskDialogTypes';
 import type { TaskInput } from '../lib/tasks';
 import type { TaskList, SchedulingProfile, Subtask, SubtaskInput, SubtaskUpdate } from '../lib/types';
 

@@ -1,36 +1,5 @@
 import type { TaskPriority, TaskFrequency, TaskList, SchedulingProfile } from '../lib/types';
-
-export interface TaskFormState {
-  title: string;
-  description: string;
-  duration_minutes: number;
-  priority: TaskPriority;
-  frequency: TaskFrequency;
-  due_date: string;
-  color: string;
-  tags: string;
-  preferred_days: number[];
-  is_habit: boolean;
-  can_split: boolean;
-  is_busy_block: boolean;
-  ignore_if_cannot_schedule: boolean;
-  can_balance_across_days: boolean;
-  buffer_before_minutes: number;
-  buffer_after_minutes: number;
-  notes: string;
-  deadline: string;
-  is_locked: boolean;
-  auto_schedule: boolean;
-  scheduling_cutoff_weeks: number;
-  preferred_time_start: string;
-  preferred_time_end: string;
-  list_id: string;
-  scheduling_profile_id: string;
-}
-
-export type TaskFormSetter = (
-  updater: (prev: TaskFormState) => TaskFormState
-) => void;
+import type { TaskFormSetter, TaskFormState } from './TaskDialogTypes';
 
 interface TaskDialogBasicsProps {
   form: TaskFormState;
