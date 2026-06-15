@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Command } from 'cmdk';
 import { Calendar, Plus, Settings, Sun, Moon, Inbox, Sparkles, Zap, Check, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
@@ -106,6 +106,28 @@ export function CommandPalette({
   }
   /* eslint-enable react-hooks/refs */
 
+  // Track closing state for exit animation — must be declared before actions useMemo
+  const [closing, setClosing] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleClose = useCallback(() => {
+    if (closeTimerRef.current) return; // Already closing — ignore repeat calls
+    setClosing(true);
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
+      setClosing(false);
+      if (openRef.current) onOpenChange(false);
+    }, 200);
+  }, [onOpenChange]);
+
+  // Sync the open-ref for the timer callback and clean up on unmount.
+  /* eslint-disable react-hooks/refs, react-hooks/immutability -- intentional ref mutation to track prop for timer callback */
+  const openRef = useRef(open);
+  if (open !== openRef.current) openRef.current = open;
+  /* eslint-enable react-hooks/refs, react-hooks/immutability */
+  useEffect(() => () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+  }, []);
+
   const handleSubmit = async () => {
     const trimmed = value.trim();
     if (!trimmed) return;
@@ -127,7 +149,7 @@ export function CommandPalette({
       toast.success('Task added', { description: 'In your inbox. Auto-schedule when ready.' });
     }
 
-    onOpenChange(false);
+    handleClose();
   };
 
   const actions = useMemo<PaletteGroup[]>(() => [
@@ -138,23 +160,29 @@ export function CommandPalette({
     ]},
     { group: 'Actions', items: [
       { id: 'schedule-all', label: 'Schedule everything in inbox', icon: Zap, shortcut: 'S', action: async () => { await onScheduleAll(); toast.success('Inbox planned', { description: 'Tasks placed into open slots.' }); } },
-      { id: 'settings', label: 'Open settings', icon: Settings, shortcut: ',', action: () => { onOpenSettings(); onOpenChange(false); } },
+      { id: 'settings', label: 'Open settings', icon: Settings, shortcut: ',', action: () => { onOpenSettings(); handleClose(); } },
     ]},
     { group: 'Appearance', items: [
-      { id: 'theme', label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', icon: theme === 'dark' ? Sun : Moon, shortcut: 'T', action: () => { onToggleTheme(); onOpenChange(false); } },
+      { id: 'theme', label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', icon: theme === 'dark' ? Sun : Moon, shortcut: 'T', action: () => { onToggleTheme(); handleClose(); } },
     ]},
-  ], [currentView, theme, onNavigate, onScheduleAll, onOpenSettings, onToggleTheme, onOpenChange]);
+  ], [currentView, theme, onNavigate, onScheduleAll, onOpenSettings, onToggleTheme, handleClose]);
 
-  if (!open) return null;
+  if (!open && !closing) return null;
+
+  const animState = closing ? 'closed' : 'open';
 
   return (
     <>
       <div
-        className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[99] animate-fade-in"
-        onClick={() => onOpenChange(false)}
+        className="dialog-overlay"
+        data-state={animState}
+        onClick={handleClose}
+        style={{ zIndex: 99 }}
       />
       <div
-        className="fixed left-1/2 top-[20vh] -translate-x-1/2 z-[100] w-[min(calc(100vw-2rem),580px)] bg-card border border-border rounded-2xl shadow-xl overflow-hidden animate-scale-in"
+        className="fixed left-1/2 top-[20vh] z-[100] w-[min(calc(100vw-2rem),580px)] bg-card border border-border rounded-2xl shadow-xl overflow-hidden"
+        data-state={animState}
+        style={{ animation: closing ? 'content-hide 200ms var(--ease-in-out-smooth) forwards' : 'content-show 300ms var(--ease-spring)' }}
       >
         <Command label="Command palette" loop>
           <Command.Input
@@ -210,6 +238,7 @@ export function CommandPalette({
               </Command.Group>
             )}
 
+            {/* eslint-disable-next-line react-hooks/refs -- actions' callbacks only access refs when invoked in event handlers, not during render */}
             {actions.map((group) => (
               <Command.Group key={group.group} heading={group.group}>
                 {group.items.map((item) => (
@@ -218,7 +247,7 @@ export function CommandPalette({
                     value={item.id}
                     onSelect={() => {
                       item.action();
-                      if (item.id !== 'schedule-all') onOpenChange(false);
+                      if (item.id !== 'schedule-all') handleClose();
                     }}
                   >
                     <item.icon className="w-3.5 h-3.5" />

@@ -91,7 +91,7 @@ export function TaskRow({
     task.status === 'active';
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-accent/40 transition-colors group">
+    <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-accent/40 transition-colors group animate-slide-up">
       {/* Completion checkbox */}
       <button
         type="button"
@@ -183,7 +183,7 @@ export function TaskRow({
         {menuOpen && (
           <div
             className="fixed w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down"
-            style={{ top: menuPosition.top, right: menuPosition.right }}
+            style={{ top: menuPosition.top, right: menuPosition.right, transformOrigin: 'top right' }}
           >
             {confirmDelete ? (
               <div className="p-3">
@@ -281,7 +281,7 @@ export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowP
   }, [menuOpen]);
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-accent/40 transition-colors group">
+    <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-accent/40 transition-colors group animate-slide-up">
       {/* Completed checkmark */}
       <div className="shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
         <Check className="w-3 h-3 text-primary-foreground" />
@@ -332,7 +332,7 @@ export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowP
         {menuOpen && (
           <div
             className="fixed w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down"
-            style={{ top: menuPosition.top, right: menuPosition.right }}
+            style={{ top: menuPosition.top, right: menuPosition.right, transformOrigin: 'top right' }}
           >
             {confirmDelete ? (
               <div className="p-3">

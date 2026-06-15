@@ -222,6 +222,7 @@ export function TaskList({
             <div className="px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
               Unscheduled
             </div>
+            <div className="stagger-children">
             {unscheduled.map((task) => (
               <TaskRow
                 key={task.id}
@@ -234,6 +235,7 @@ export function TaskList({
                 subtasks={subtasksByTaskId?.get(task.id)}
               />
             ))}
+            </div>
           </div>
         )}
 
@@ -242,6 +244,7 @@ export function TaskList({
             <div className="px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
               Scheduled
             </div>
+            <div className="stagger-children">
             {scheduled.map((task) => (
               <TaskRow
                 key={task.id}
@@ -255,6 +258,7 @@ export function TaskList({
                 subtasks={subtasksByTaskId?.get(task.id)}
               />
             ))}
+            </div>
           </div>
         )}
 

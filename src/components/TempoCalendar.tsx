@@ -296,40 +296,46 @@ export function TempoCalendar({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex-1 min-h-0 animate-fade-in">
+        <div className="flex-1 min-h-0">
           {view === 'day' && (
-            <TempoCalendarDayView
-              date={date}
-              events={events}
-              startHour={startHour}
-              endHour={endHour}
-              onSelectEvent={onSelectEvent}
-              onSelectSlot={onSelectSlot}
-              resizeGhost={resizeGhost}
-              onResizeStart={handleResizeStart}
-            />
+            <div className="h-full animate-fade-in" key="day">
+              <TempoCalendarDayView
+                date={date}
+                events={events}
+                startHour={startHour}
+                endHour={endHour}
+                onSelectEvent={onSelectEvent}
+                onSelectSlot={onSelectSlot}
+                resizeGhost={resizeGhost}
+                onResizeStart={handleResizeStart}
+              />
+            </div>
           )}
           {view === 'week' && (
-            <TempoCalendarWeekView
-              date={date}
-              events={events}
-              startHour={startHour}
-              endHour={endHour}
-              onSelectEvent={onSelectEvent}
-              onSelectSlot={onSelectSlot}
-              dayColumnWidthRef={dayColumnWidthRef}
-              dragGhost={dragGhost}
-              resizeGhost={resizeGhost}
-              onResizeStart={handleResizeStart}
-            />
+            <div className="h-full animate-fade-in" key="week">
+              <TempoCalendarWeekView
+                date={date}
+                events={events}
+                startHour={startHour}
+                endHour={endHour}
+                onSelectEvent={onSelectEvent}
+                onSelectSlot={onSelectSlot}
+                dayColumnWidthRef={dayColumnWidthRef}
+                dragGhost={dragGhost}
+                resizeGhost={resizeGhost}
+                onResizeStart={handleResizeStart}
+              />
+            </div>
           )}
           {view === 'month' && (
-            <TempoCalendarMonthView
-              date={date}
-              events={events}
-              onSelectEvent={onSelectEvent}
-              onSelectDay={handleMonthDayClick}
-            />
+            <div className="h-full animate-fade-in" key="month">
+              <TempoCalendarMonthView
+                date={date}
+                events={events}
+                onSelectEvent={onSelectEvent}
+                onSelectDay={handleMonthDayClick}
+              />
+            </div>
           )}
         </div>
       </DndContext>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Sun, Moon, Monitor, Bell, LogOut, Unlink, User, Calendar, Info, ExternalLink, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from './ui/button';
@@ -59,32 +59,58 @@ export function SettingsPanel({
 }: SettingsPanelProps) {
   const [section, setSection] = useState<Section>('appearance');
 
-  // Lock scroll while open
+  // Track closing state so exit animations can play before unmount
+  const [closing, setClosing] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleClose = useCallback(() => {
+    if (closeTimerRef.current) return; // Already closing
+    setClosing(true);
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
+      setClosing(false);
+      if (openRef.current) onClose();
+    }, 300);
+  }, [onClose]);
+
+  // Sync the open-ref for the timer callback and clean up on unmount.
+  /* eslint-disable react-hooks/refs, react-hooks/immutability -- intentional ref mutation to track prop for timer callback */
+  const openRef = useRef(open);
+  if (open !== openRef.current) openRef.current = open;
+  /* eslint-enable react-hooks/refs, react-hooks/immutability */
+  useEffect(() => () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+  }, []);
+
+  // Lock scroll while open or closing (so exit animation doesn't cause scroll jump)
   useEffect(() => {
-    if (open) {
+    if (open || closing) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
-  }, [open]);
+  }, [open, closing]);
 
-  if (!open) return null;
+  if (!open && !closing) return null;
+
+  const animState = closing ? 'closed' : 'open';
 
   return (
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-40 animate-fade-in"
-        onClick={onClose}
+        className="panel-overlay"
+        data-state={animState}
+        onClick={handleClose}
       />
 
       {/* Panel */}
       <aside
         className={cn(
-          'fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[480px] lg:w-[520px] bg-card border-l border-border shadow-2xl',
-          'flex flex-col animate-slide-in-right',
+          'panel-slide w-full sm:w-[480px] lg:w-[520px] bg-card border-l border-border shadow-2xl',
+          'flex flex-col',
         )}
+        data-state={animState}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -93,7 +119,7 @@ export function SettingsPanel({
             <p className="text-[11px] text-muted-foreground mt-0.5">Make Tempo feel like yours</p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
             aria-label="Close settings"
           >
