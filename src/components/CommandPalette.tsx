@@ -2,8 +2,8 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Command } from 'cmdk';
 import { Calendar, Plus, Settings, Sun, Moon, Inbox, Sparkles, Zap, Check, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import * as chrono from 'chrono-node';
 import { format, isToday, isTomorrow } from 'date-fns';
+import { parseEnhancedTask, type ParsedTask } from '../lib/enhancedParser';
 
 interface PaletteAction {
   id: string;
@@ -22,7 +22,15 @@ type PaletteGroup = {
 interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onQuickAdd: (input: { title: string; date?: string; time?: string }) => Promise<void> | void;
+  onQuickAdd: (input: {
+    title: string;
+    date?: string;
+    time?: string;
+    priority?: 'ASAP' | 'HIGH' | 'NORMAL' | 'LOW';
+    tags?: string[];
+    duration_minutes?: number;
+    frequency?: 'daily' | 'weekly';
+  }) => Promise<void> | void;
   onNavigate: (view: 'day' | 'week' | 'month') => void;
   onOpenSettings: () => void;
   onToggleTheme: () => void;
@@ -31,44 +39,8 @@ interface CommandPaletteProps {
   theme: 'light' | 'dark';
 }
 
-/**
- * Parse natural language date/time from a title like
- *   "Call dentist tomorrow at 3pm"
- *   "Review PRs friday"
- *   "Team standup monday 9:30am"
- * Returns { title, date?, time? } with the date/time stripped.
- */
-function parseNaturalDate(input: string): { title: string; date?: string; time?: string } {
-  const trimmed = input.trim();
-  if (!trimmed) return { title: '' };
-
-  const results = chrono.parse(trimmed, new Date(), { forwardDate: true });
-  if (results.length === 0) return { title: trimmed };
-
-  // Take the first parsed date; strip its text from the title
-  const first = results[0];
-  const date = first.start.date();
-
-  // Build ISO date
-  const isoDate = format(date, 'yyyy-MM-dd');
-
-  // Extract time if present
-  let time: string | undefined;
-  if (first.start.isCertain('hour')) {
-    time = format(date, 'HH:mm');
-  }
-
-  // Strip the matched text from the original input
-  const before = trimmed.slice(0, first.index);
-  const after = trimmed.slice(first.index + first.text.length);
-  const title = `${before} ${after}`.replace(/\s+/g, ' ').trim();
-
-  return {
-    title: title || trimmed,
-    date: isoDate,
-    time,
-  };
-}
+// Re-export the enhanced parser for backward compatibility
+const parseNaturalDate = (input: string): ParsedTask => parseEnhancedTask(input);
 
 export function CommandPalette({
   open,
@@ -87,7 +59,10 @@ export function CommandPalette({
   const parsedPreview = useMemo(() => {
     if (!value.trim()) return null;
     const parsed = parseNaturalDate(value);
-    return parsed.date || parsed.time ? parsed : null;
+    // Show preview when any NL metadata is detected
+    return parsed.date || parsed.time || parsed.priority || parsed.tags?.length || parsed.duration_minutes
+      ? parsed
+      : null;
   }, [value]);
 
   // Reset on close via ref-during-render (canonical external-prop-to-state pattern).
@@ -137,6 +112,10 @@ export function CommandPalette({
       title: parsed.title,
       date: parsed.date,
       time: parsed.time,
+      ...(parsed.priority ? { priority: parsed.priority } : {}),
+      ...(parsed.tags ? { tags: parsed.tags } : {}),
+      ...(parsed.duration_minutes ? { duration_minutes: parsed.duration_minutes } : {}),
+      ...(parsed.frequency ? { frequency: parsed.frequency } : {}),
     });
 
     // Friendly toast
@@ -197,9 +176,7 @@ export function CommandPalette({
                 }
               }
             }}
-          />
-
-          {parsedPreview && value.trim() && (
+          />            {parsedPreview && value.trim() && (
             <div className="px-4 py-2.5 border-b border-border bg-accent/40 flex items-center gap-2.5 text-[12px]">
               <Sparkles className="w-3.5 h-3.5 text-accent-foreground shrink-0" />
               <div className="min-w-0 flex-1">
@@ -212,6 +189,20 @@ export function CommandPalette({
                 )}
                 {parsedPreview.time && (
                   <span className="text-muted-foreground"> at {format(new Date(`2000-01-01T${parsedPreview.time}`), 'h:mm a')}</span>
+                )}
+                {parsedPreview.priority && (
+                  <span className={`ml-1.5 font-semibold ${
+                    parsedPreview.priority === 'ASAP' ? 'text-destructive' :
+                    parsedPreview.priority === 'HIGH' ? 'text-warning' :
+                    parsedPreview.priority === 'LOW' ? 'text-muted-foreground' :
+                    'text-foreground'
+                  }`}>!{parsedPreview.priority.toLowerCase()}</span>
+                )}
+                {parsedPreview.tags?.map((tag) => (
+                  <span key={tag} className="ml-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">#{tag}</span>
+                ))}
+                {parsedPreview.duration_minutes && (
+                  <span className="ml-1.5 text-[10px] text-muted-foreground">~{parsedPreview.duration_minutes}m</span>
                 )}
               </div>
               <kbd className="text-[10px] font-mono text-muted-foreground bg-card px-1.5 py-0.5 rounded border border-border">↵</kbd>
@@ -261,7 +252,7 @@ export function CommandPalette({
 
             <Command.Group heading="Tips">
               <Command.Item disabled value="tip-1">
-                <span className="text-muted-foreground text-[12px]">Try <span className="font-mono text-foreground">"call dentist tomorrow at 3pm"</span></span>
+                <span className="text-muted-foreground text-[12px]">Try <span className="font-mono text-foreground">"call dentist tomorrow !high #work ~30m"</span></span>
               </Command.Item>
             </Command.Group>
           </Command.List>

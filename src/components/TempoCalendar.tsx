@@ -47,6 +47,8 @@ export interface TempoCalendarProps {
    * hardcoded global range.
    */
   onViewRangeChange?: (range: { start: Date; end: Date }) => void;
+  /** When this date reference changes, the calendar navigates to it. */
+  navigateToDate?: Date;
   className?: string;
   startHour?: number;
   endHour?: number;
@@ -76,12 +78,22 @@ export function TempoCalendar({
   onEventDrop,
   onEventResize,
   onViewRangeChange,
+  navigateToDate,
   className,
   startHour = 6,
   endHour = 22,
 }: TempoCalendarProps) {
   const [view, setView] = useState<CalendarView>(defaultView);
   const [date, setDate] = useState<Date>(new Date());
+
+  // Navigate to an externally-requested date (e.g. keyboard shortcut "T" for today)
+  const prevNavigateRef = useRef(navigateToDate);
+  useEffect(() => {
+    if (navigateToDate && navigateToDate !== prevNavigateRef.current) {
+      setDate(navigateToDate);
+    }
+    prevNavigateRef.current = navigateToDate;
+  }, [navigateToDate]);
 
   // today is read fresh each render so the "Today" button stays accurate
   // if the app is open across midnight. Cheap enough to not memoize.

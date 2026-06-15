@@ -15,6 +15,8 @@ import { OnboardingTour } from './components/OnboardingTour';
 import { CommandPalette } from './components/CommandPalette';
 import { VersionBadge } from './components/VersionBadge';
 import { FocusMode } from './components/FocusMode';
+import { KeyboardHelpDialog } from './components/KeyboardHelpDialog';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { Button } from './components/ui/button';
 import { LeftRail } from './components/LeftRail';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
@@ -25,6 +27,7 @@ import { format } from 'date-fns';
 import { detectConflicts } from './lib/rescheduler';
 import { isSupabaseReady } from './lib/supabase';
 import { generateRecurringOccurrences } from './lib/recurring';
+import { parseEnhancedTask } from './lib/enhancedParser';
 import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
 import { OccurrenceEditDialog, type OccurrenceEditScope } from './components/OccurrenceEditDialog';
@@ -149,6 +152,8 @@ function App() {
     return { start: oneWeekAgo, end: threeMonthsAhead };
   });
   const [focusMode, setFocusMode] = useState<{ open: boolean; taskId: string | null }>({ open: false, taskId: null });
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+  const [navigateToDate, setNavigateToDate] = useState<Date>(new Date());
   // Keep the ref in sync so the deletion handler can read it without
   // being rebuilt on every focus-mode open/close.
   useEffect(() => {
@@ -284,17 +289,26 @@ function App() {
     }
   };
 
-  const handleQuickAdd = async (input: string | { title: string; date?: string; time?: string }) => {
-    if (typeof input === 'string') {
-      await tasksHook.create({ title: input, duration_minutes: 30, priority: 'NORMAL' });
-      return;
-    }
+  const handleQuickAdd = async (input: string | {
+    title: string;
+    date?: string;
+    time?: string;
+    priority?: 'ASAP' | 'HIGH' | 'NORMAL' | 'LOW';
+    tags?: string[];
+    duration_minutes?: number;
+    frequency?: 'daily' | 'weekly';
+  }) => {
+    // If input is a raw string (from BentoSidebar), run enhanced parser
+    const parsed = typeof input === 'string' ? parseEnhancedTask(input) : input;
+
     await tasksHook.create({
-      title: input.title,
-      duration_minutes: 30,
-      priority: 'NORMAL',
-      ...(input.date ? { due_date: input.date } : {}),
-      ...(input.time ? { due_time: input.time } : {}),
+      title: parsed.title,
+      duration_minutes: parsed.duration_minutes || 30,
+      priority: parsed.priority || 'NORMAL',
+      ...('date' in parsed && parsed.date ? { due_date: parsed.date } : {}),
+      ...('time' in parsed && parsed.time ? { due_time: parsed.time } : {}),
+      ...(parsed.tags ? { tags: parsed.tags } : {}),
+      ...(parsed.frequency ? { frequency: parsed.frequency, is_recurring: true } : {}),
     });
   };
 
@@ -386,30 +400,18 @@ function App() {
     }
   }, [visibleRange.start.toISOString(), visibleRange.end.toISOString()]);
 
-  // Cmd/Ctrl+K opens command palette
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setCommandOpen((v) => !v);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
-  // F8 opens focus mode (the Pomodoro workspace). F8 is rarely bound in
-  // browsers, unlike Cmd+Shift+F which is "Find" in every major browser.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'F8' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
-        e.preventDefault();
-        handleOpenFocus();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [handleOpenFocus]);
+  // Global keyboard shortcuts
+  useKeyboardShortcuts({
+    onOpenPalette: () => setCommandOpen((v) => !v),
+    onQuickAdd: () => setCommandOpen(true),
+    onNavigateDay: () => setTempoView('day'),
+    onNavigateWeek: () => setTempoView('week'),
+    onNavigateMonth: () => setTempoView('month'),
+    onToday: () => setNavigateToDate(new Date()),
+    onScheduleAll: handleScheduleAll,
+    onOpenFocus: handleOpenFocus,
+    onShowHelp: () => setShowKeyboardHelp(true),
+  });
 
   const handleReschedule = async () => {
     setRescheduleLoading(true);
@@ -917,6 +919,7 @@ function App() {
             onEventDrop={handleEventDrop}
             onEventResize={handleEventResize}
             onViewRangeChange={setVisibleRange}
+            navigateToDate={navigateToDate}
             startHour={parseInt(workingHours.start.split(':')[0], 10)}
             endHour={parseInt(workingHours.end.split(':')[0], 10) + 2}
             className="min-h-0"
@@ -1251,6 +1254,11 @@ function App() {
         onScheduleAll={handleScheduleAll}
         currentView={tempoView}
         theme={theme}
+      />
+
+      <KeyboardHelpDialog
+        open={showKeyboardHelp}
+        onClose={() => setShowKeyboardHelp(false)}
       />
 
       <Toaster
