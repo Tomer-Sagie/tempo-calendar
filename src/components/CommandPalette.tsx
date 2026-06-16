@@ -30,6 +30,8 @@ interface CommandPaletteProps {
     tags?: string[];
     duration_minutes?: number;
     frequency?: 'daily' | 'weekly';
+    recurrence_end?: string;
+    preferred_days?: number[];
   }) => Promise<void> | void;
   onNavigate: (view: 'day' | 'week' | 'month') => void;
   onOpenSettings: () => void;
@@ -116,6 +118,8 @@ export function CommandPalette({
       ...(parsed.tags ? { tags: parsed.tags } : {}),
       ...(parsed.duration_minutes ? { duration_minutes: parsed.duration_minutes } : {}),
       ...(parsed.frequency ? { frequency: parsed.frequency } : {}),
+      ...(parsed.recurrence_end ? { recurrence_end: parsed.recurrence_end } : {}),
+      ...(parsed.preferred_days ? { preferred_days: parsed.preferred_days } : {}),
     });
 
     // Friendly toast
@@ -203,6 +207,16 @@ export function CommandPalette({
                 ))}
                 {parsedPreview.duration_minutes && (
                   <span className="ml-1.5 text-[10px] text-muted-foreground">~{parsedPreview.duration_minutes}m</span>
+                )}
+                {parsedPreview.frequency && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded bg-success/10 text-success text-[10px] font-medium">{parsedPreview.frequency}</span>
+                )}
+                {parsedPreview.preferred_days && parsedPreview.preferred_days.length > 0 && (
+                  <span className="ml-1 text-[10px] text-muted-foreground">
+                    {parsedPreview.preferred_days.map((d) => ['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d]).join(', ')}</span>
+                )}
+                {parsedPreview.recurrence_end && (
+                  <span className="ml-1 text-[10px] text-muted-foreground">until {format(new Date(parsedPreview.recurrence_end), 'MMM d')}</span>
                 )}
               </div>
               <kbd className="text-[10px] font-mono text-muted-foreground bg-card px-1.5 py-0.5 rounded border border-border">↵</kbd>

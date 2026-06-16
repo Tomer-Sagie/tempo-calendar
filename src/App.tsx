@@ -297,6 +297,8 @@ function App() {
     tags?: string[];
     duration_minutes?: number;
     frequency?: 'daily' | 'weekly';
+    recurrence_end?: string;
+    preferred_days?: number[];
   }) => {
     // If input is a raw string (from BentoSidebar), run enhanced parser
     const parsed = typeof input === 'string' ? parseEnhancedTask(input) : input;
@@ -309,6 +311,8 @@ function App() {
       ...('time' in parsed && parsed.time ? { due_time: parsed.time } : {}),
       ...(parsed.tags ? { tags: parsed.tags } : {}),
       ...(parsed.frequency ? { frequency: parsed.frequency, is_recurring: true } : {}),
+      ...(parsed.recurrence_end ? { recurrence_end: parsed.recurrence_end } : {}),
+      ...(parsed.preferred_days ? { preferred_days: parsed.preferred_days } : {}),
     });
   };
 
