@@ -285,7 +285,14 @@ function App() {
       await tasksHook.update(editingTask.id, input);
       setEditingTask(null);
     } else {
-      await tasksHook.create(input);
+      const task = await tasksHook.create(input);
+      // Auto-schedule on creation if task is flexible and auto_schedule is enabled
+      if (task.auto_schedule !== false && !task.is_scheduled && task.status === 'active' && calendar.isAuthenticated) {
+        const slot = await tasksHook.scheduleOne(task, calendar.events);
+        if (slot) {
+          toast.success('Scheduled', { description: `${task.title} placed into an open slot.` });
+        }
+      }
     }
   };
 
@@ -350,6 +357,57 @@ function App() {
     await tasksHook.unschedule(id);
   };
 
+  // Auto-schedule on task completion: fill the vacated slot
+  const handleCompleteTask = useCallback(async (id: string) => {
+    const task = allTasksRef.current.find((t) => t.id === id);
+    await tasksHookRef.current.complete(id);
+    // After completing, try to schedule remaining unscheduled tasks
+    if (task && calendar.isAuthenticated) {
+      const count = await tasksHookRef.current.scheduleAll(calendar.events);
+      if (count > 0) {
+        toast.success('Rescheduled', { description: `${count} task${count === 1 ? '' : 's'} placed into open slots.` });
+      }
+    }
+  }, [calendar.isAuthenticated, calendar.events]);
+
+  // Auto-schedule on calendar changes: detect new Google events and reschedule
+  const prevCalendarEventsRef = useRef<typeof calendar.events>([]);
+  // Mirror frequently-changing values into refs so callbacks and effects
+  // can read the latest without listing them in dependency arrays.
+  const allTasksRef = useRef(tasksHook.tasks);
+  /* eslint-disable react-hooks/immutability -- intentional ref mutation to cache latest values for event handlers */
+  useEffect(() => { allTasksRef.current = tasksHook.tasks; }, [tasksHook.tasks]);
+  const tasksHookRef = useRef(tasksHook);
+  useEffect(() => { tasksHookRef.current = tasksHook; }, [tasksHook]);
+  /* eslint-enable react-hooks/immutability */
+  useEffect(() => {
+    if (!calendar.isAuthenticated) return;
+    const prev = prevCalendarEventsRef.current;
+    const curr = calendar.events;
+    prevCalendarEventsRef.current = curr;
+    // Skip first render
+    if (prev.length === 0 && curr.length > 0) return;
+    // Detect if Google events changed (count differs or IDs differ)
+    const prevGoogleIds = new Set(prev.filter((e) => e.source === 'google').map((e) => e.id));
+    const currGoogleIds = new Set(curr.filter((e) => e.source === 'google').map((e) => e.id));
+    const changed = prevGoogleIds.size !== currGoogleIds.size ||
+      [...currGoogleIds].some((id) => !prevGoogleIds.has(id));
+    if (changed) {
+      const currentTasks = allTasksRef.current;
+      if (currentTasks.some((t) => t.is_scheduled)) {
+        const conflicts = detectConflicts(
+          currentTasks.filter((t) => t.is_scheduled),
+          curr,
+        );
+        if (conflicts.length > 0) {
+          toast.warning(`${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'} detected`, {
+            description: 'Google Calendar changed. Check the banner to reschedule.',
+          });
+        }
+      }
+    }
+  }, [calendar.events, calendar.isAuthenticated]);
+
   const conflictCount = useMemo(() => {
     if (!calendar.isAuthenticated || allEvents.length === 0) return 0;
     const scheduled = allTasks.filter((t) => t.is_scheduled);
@@ -366,8 +424,6 @@ function App() {
   // subtask on/off, we wait for a stable "all done" state before firing
   // the auto-complete. This avoids two concurrent requests racing to
   // flip the parent's status.
-  const tasksHookRef = useRef(tasksHook);
-  useEffect(() => { tasksHookRef.current = tasksHook; }, [tasksHook]);
 
   useEffect(() => {
     if (!editingTask) return;
@@ -477,8 +533,9 @@ function App() {
         is_scheduled: true,
         scheduled_start: newStart.toISOString(),
         scheduled_end: newEnd.toISOString(),
+        is_locked: true, // Lock-on-drag: prevent auto-scheduler from moving it back
       });
-      toast.success('Moved', { description: `Rescheduled to ${format(newStart, 'EEE h:mm a')}` });
+      toast.success('Moved & locked', { description: `Rescheduled to ${format(newStart, 'EEE h:mm a')} — locked in place` });
     } catch (err) {
       toast.error('Could not reschedule', { description: err instanceof Error ? err.message : 'Unknown error' });
     }
@@ -956,7 +1013,7 @@ function App() {
               onDeleteTask={tasksHook.remove}
               onScheduleAll={handleScheduleAll}
               onUnschedule={handleUnschedule}
-              onCompleteTask={tasksHook.complete}
+              onCompleteTask={handleCompleteTask}
               onReopenTask={tasksHook.reopen}
               taskLists={tasksHook.taskLists}
               onBackToCalendar={() => setActiveView('calendar')}
@@ -1300,7 +1357,7 @@ function App() {
           queue={focusQueue}
           onClose={() => setFocusMode({ open: false, taskId: null })}
           onCompleteTask={async (id) => {
-            await tasksHook.complete(id);
+            await handleCompleteTask(id);
             const next = focusQueue[0];
             if (next) setFocusMode({ open: true, taskId: next.id });
             else setFocusMode({ open: false, taskId: null });

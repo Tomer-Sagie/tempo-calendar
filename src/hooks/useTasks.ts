@@ -5,7 +5,6 @@ import {
   fetchTasks, fetchUnscheduledTasks,
   createTask as createTaskApi, updateTask as updateTaskApi,
   deleteTask as deleteTaskApi, updateTaskSchedule, unscheduleTask as unscheduleTaskApi,
-  markTaskComplete,
   fetchTaskLists, fetchSchedulingProfiles,
   unlinkTasksFromGoogleEvents,
   createTaskList as createTaskListApi,
@@ -15,6 +14,7 @@ import {
 import { scheduleMultipleTasks, pickBestSlot, findSlotsForTask } from '../lib/scheduler';
 import { batchReschedule, detectConflicts, type RescheduleResult } from '../lib/rescheduler';
 import type { TaskInput, TaskUpdate } from '../lib/tasks';
+import { format } from 'date-fns';
 import type { SchedulingSlot } from '../lib/types';
 import type { SchedulerConfig } from '../lib/scheduler';
 import {
@@ -313,7 +313,54 @@ export function useTasks(): UseTasksReturn {
           recordSyncError(`"${task.title}": ${err instanceof Error ? err.message : 'Google delete failed'}`);
         }
       }
-      await markTaskComplete(id);
+
+      const todayKey = format(new Date(), 'yyyy-MM-dd');
+      const isRecurring = task.is_recurring && task.frequency !== 'once';
+
+      // Habit streak tracking: increment streak_count and append to completion_history
+      // Merge with recurring overrides into a single DB call
+      if (isRecurring) {
+        const updates: TaskUpdate = {};
+        if (task.is_habit) {
+          const history = task.completion_history || [];
+          if (!history.includes(todayKey)) {
+            updates.streak_count = (task.streak_count || 0) + 1;
+            updates.completion_history = [...history, todayKey];
+          }
+        }
+        // Occurrence override: mark today as completed, unschedule for next occurrence
+        const overrides = task.occurrence_overrides || {};
+        updates.occurrence_overrides = {
+          ...overrides,
+          [todayKey]: {
+            status: 'completed',
+            scheduled_start: task.scheduled_start ?? undefined,
+            scheduled_end: task.scheduled_end ?? undefined,
+          },
+        };
+        updates.is_scheduled = false;
+        updates.scheduled_start = null;
+        updates.scheduled_end = null;
+        await updateTaskApi(id, updates);
+      } else {
+        // Non-recurring task: mark complete with streak tracking merged into single call
+        const updates: TaskUpdate = {
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          is_scheduled: false,
+          scheduled_start: null,
+          scheduled_end: null,
+        };
+        if (task.is_habit) {
+          const history = task.completion_history || [];
+          if (!history.includes(todayKey)) {
+            updates.streak_count = (task.streak_count || 0) + 1;
+            updates.completion_history = [...history, todayKey];
+          }
+        }
+        await updateTaskApi(id, updates);
+      }
+
       const data = await fetchTasks();
       if (mountedRef.current) setTasks(data);
     } catch (err) {

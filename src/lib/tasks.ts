@@ -65,6 +65,7 @@ export type TaskUpdate = Omit<Partial<TaskInput>, 'google_event_id'> & {
   scheduled_end?: string | null;
   google_event_id?: string | null;
   completion_history?: string[] | null;
+  streak_count?: number;
   // New fields
   completed_at?: string | null;
   status?: TaskStatus;
