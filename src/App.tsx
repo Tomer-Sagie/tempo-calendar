@@ -384,7 +384,7 @@ function App() {
       }
     }, 400);
     return () => clearTimeout(timer);
-  }, [subtasksBatch.byTaskId, editingTask?.id]);
+  }, [subtasksBatch.byTaskId, editingTask]);
 
   useEffect(() => {
     if (auth.isAuthenticated && !didAuthTransitionRef.current) refresh();
@@ -399,10 +399,10 @@ function App() {
   useEffect(() => { calendarRef.current = calendar; }, [calendar]);
 
   useEffect(() => {
-    if (calendarRef.current.isAuthenticated && visibleRange) {
+    if (calendarRef.current.isAuthenticated) {
       void calendarRef.current.refreshEvents(visibleRange);
     }
-  }, [visibleRange.start.toISOString(), visibleRange.end.toISOString()]);
+  }, [visibleRange]);
 
   // Global keyboard shortcuts
   useKeyboardShortcuts({

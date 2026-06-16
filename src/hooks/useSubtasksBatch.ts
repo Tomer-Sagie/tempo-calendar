@@ -50,7 +50,7 @@ export function useSubtasksBatch(taskIds: string[]) {
     if (currentTaskIds.length === 0) return;
     const map = await fetchSubtasksForTasks(currentTaskIds);
     if (mountedRef.current) setByTaskId(map);
-  }, [key]);
+  }, []);
 
   /** Optimistic toggle used by the list-row chip. */
   const toggle = useCallback(async (taskId: string, subtaskId: string, completed: boolean) => {
