@@ -22,6 +22,12 @@ interface TaskListProps {
   onBackToCalendar?: () => void;
   /** Subtask map for the current task list. Keys are task IDs. */
   subtasksByTaskId?: Map<string, Subtask[]>;
+  /** Task list CRUD (from useTasks). */
+  onCreateList?: (name: string, color: string) => Promise<void>;
+  onUpdateList?: (id: string, updates: { name?: string; color?: string }) => Promise<void>;
+  onDeleteList?: (id: string) => Promise<void>;
+  /** Skip the next occurrence of a recurring task. */
+  onSkipNext?: (taskId: string) => void;
 }
 
 const NO_LIST_KEY = '__none__';
@@ -53,6 +59,10 @@ export function TaskList({
   taskLists = [],
   onBackToCalendar,
   subtasksByTaskId,
+  onCreateList,
+  onUpdateList,
+  onDeleteList,
+  onSkipNext,
 }: TaskListProps) {
   // Extract unique lists from tasks
   const listCounts = useMemo(() => {
@@ -196,6 +206,9 @@ export function TaskList({
           taskLists={taskLists}
           listCounts={listCounts}
           totalActiveCount={totalActiveCount}
+          onCreateList={onCreateList}
+          onUpdateList={onUpdateList}
+          onDeleteList={onDeleteList}
         />
       )}
 
@@ -233,6 +246,7 @@ export function TaskList({
                 onComplete={handleComplete}
                 isCompleting={completingIds.has(task.id)}
                 subtasks={subtasksByTaskId?.get(task.id)}
+                onSkipNext={onSkipNext}
               />
             ))}
             </div>
@@ -256,6 +270,7 @@ export function TaskList({
                 isScheduled
                 isCompleting={completingIds.has(task.id)}
                 subtasks={subtasksByTaskId?.get(task.id)}
+                onSkipNext={onSkipNext}
               />
             ))}
             </div>

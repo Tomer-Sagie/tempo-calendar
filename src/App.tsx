@@ -961,6 +961,20 @@ function App() {
               taskLists={tasksHook.taskLists}
               onBackToCalendar={() => setActiveView('calendar')}
               subtasksByTaskId={subtasksBatch.byTaskId}
+              onCreateList={async (name, color) => { await tasksHook.createList(name, color); }}
+              onUpdateList={async (id, updates) => { await tasksHook.updateList(id, updates); }}
+              onDeleteList={async (id) => { await tasksHook.deleteList(id); }}
+              onSkipNext={(taskId) => {
+                const task = allTasks.find((t) => t.id === taskId);
+                if (!task) return;
+                setOccurrenceEdit({
+                  open: true,
+                  taskId,
+                  occurrenceDate: new Date(),
+                  changeType: 'skip',
+                  pendingUpdate: null,
+                });
+              }}
             />
           ) : null}
         </div>

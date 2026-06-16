@@ -7,6 +7,9 @@ import {
   XCircle,
   Check,
   RotateCcw,
+  Flame,
+  Repeat,
+  SkipForward,
 } from 'lucide-react';
 import { SubtaskProgressChip } from './SubtasksEditor';
 import type { Task, Subtask } from '../lib/types';
@@ -55,6 +58,8 @@ export interface TaskRowProps {
   isScheduled?: boolean;
   isCompleting?: boolean;
   subtasks?: Subtask[];
+  /** Called when the user skips the next occurrence of a recurring task. */
+  onSkipNext?: (taskId: string) => void;
 }
 
 export function TaskRow({
@@ -66,6 +71,7 @@ export function TaskRow({
   isScheduled,
   isCompleting,
   subtasks,
+  onSkipNext,
 }: TaskRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -130,8 +136,17 @@ export function TaskRow({
           {task.is_locked && (
             <span className="text-[10px] font-medium text-success bg-success/10 px-1.5 py-0.5 rounded-md shrink-0">locked</span>
           )}
-          {task.is_habit && (
-            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md shrink-0">habit</span>
+          {task.is_recurring && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-md shrink-0">
+              <Repeat className="w-2.5 h-2.5" />
+              {task.frequency === 'daily' ? 'daily' : task.frequency === 'weekly' ? 'weekly' : 'recurring'}
+            </span>
+          )}
+          {task.is_habit && task.streak_count > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-warning bg-warning/10 px-1.5 py-0.5 rounded-md shrink-0">
+              <Flame className="w-2.5 h-2.5 fill-warning/40" />
+              {task.streak_count}d
+            </span>
           )}
           {subtasks && <SubtaskProgressChip subtasks={subtasks} />}
         </div>
@@ -140,9 +155,14 @@ export function TaskRow({
             <Clock className="w-3 h-3" />
             {task.duration_minutes}m
           </span>
-          {task.due_date && (
+          {task.due_date && !task.is_recurring && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               {format(parseISO(task.due_date), 'MMM d')}
+            </span>
+          )}
+          {task.is_recurring && task.recurrence_end && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              until {format(parseISO(task.recurrence_end), 'MMM d')}
             </span>
           )}
           {(() => {
@@ -233,6 +253,15 @@ export function TaskRow({
                   >
                     <XCircle className="w-4 h-4" />
                     Unschedule
+                  </button>
+                )}
+                {task.is_recurring && onSkipNext && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onSkipNext(task.id); setMenuOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                  >
+                    <SkipForward className="w-4 h-4" />
+                    Skip next
                   </button>
                 )}
                 <div className="border-t border-border my-1" />

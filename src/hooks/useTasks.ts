@@ -8,6 +8,9 @@ import {
   markTaskComplete,
   fetchTaskLists, fetchSchedulingProfiles,
   unlinkTasksFromGoogleEvents,
+  createTaskList as createTaskListApi,
+  updateTaskList as updateTaskListApi,
+  deleteTaskList as deleteTaskListApi,
 } from '../lib/tasks';
 import { scheduleMultipleTasks, pickBestSlot, findSlotsForTask } from '../lib/scheduler';
 import { batchReschedule, detectConflicts, type RescheduleResult } from '../lib/rescheduler';
@@ -39,6 +42,10 @@ interface UseTasksReturn {
   reschedule: (googleEvents: CalendarEvent[], config?: SchedulerConfig) => Promise<RescheduleResult[]>;
   complete: (id: string) => Promise<void>;
   reopen: (id: string) => Promise<void>;
+  /** Task list CRUD */
+  createList: (name: string, color: string) => Promise<TaskList>;
+  updateList: (id: string, updates: { name?: string; color?: string }) => Promise<TaskList>;
+  deleteList: (id: string) => Promise<void>;
   /**
    * Clear `google_event_id` on any task whose value appears in the
    * input list. Used by two-way sync to unlink tasks whose Google
@@ -340,6 +347,28 @@ export function useTasks(): UseTasksReturn {
     }
   }, []);
 
+  // Task list CRUD
+  const createList = useCallback(async (name: string, color: string): Promise<TaskList> => {
+    const list = await createTaskListApi({ name, color });
+    if (mountedRef.current) setTaskLists((prev) => [...prev, list]);
+    return list;
+  }, []);
+
+  const updateList = useCallback(async (id: string, updates: { name?: string; color?: string }): Promise<TaskList> => {
+    const list = await updateTaskListApi(id, updates);
+    if (mountedRef.current) setTaskLists((prev) => prev.map((l) => (l.id === id ? list : l)));
+    return list;
+  }, []);
+
+  const deleteList = useCallback(async (id: string): Promise<void> => {
+    await deleteTaskListApi(id);
+    if (mountedRef.current) {
+      setTaskLists((prev) => prev.filter((l) => l.id !== id));
+      // Clear list_id on any tasks that referenced this list
+      setTasks((prev) => prev.map((t) => (t.list_id === id ? { ...t, list_id: null } : t)));
+    }
+  }, []);
+
   const clearSyncErrors = useCallback(() => setSyncErrors([]), []);
 
   return {
@@ -349,6 +378,7 @@ export function useTasks(): UseTasksReturn {
     scheduleAll, scheduleOne, findSlots, unschedule,
     clearSyncErrors, detectConflicts: getConflicts, reschedule,
     complete, reopen,
+    createList, updateList, deleteList,
     unlinkFromGoogleEvents,
   };
 }
