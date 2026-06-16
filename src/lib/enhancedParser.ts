@@ -302,7 +302,7 @@ function extractMultiDayRecurrence(
     if (found.length > 0) {
       // Remove the entire matched phrase (not just individual day words)
       // to avoid leaving connectors like "and" behind.
-      let cleaned = s.replace(phrase, ' ');
+      const cleaned = s.replace(phrase, ' ');
 
       return {
         text: cleaned.replace(/\s+/g, ' ').trim(),
