@@ -435,14 +435,22 @@ export function TempoCalendarWeekView({
               );
             })()}
 
-          {/* Now line (spans full week width) */}
+          {/* Now line — Fantastical-style red line with prominent dot */}
           {nowOffset !== null && (
             <div
-              className="absolute left-16 right-0 z-[5] pointer-events-none flex items-center"
+              className="absolute left-16 right-0 z-[5] pointer-events-none"
               style={{ top: nowOffset }}
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-primary -ml-0.5" />
-              <div className="flex-1 h-[0.5px] bg-primary/40" />
+              <div className="relative flex items-center">
+                <div
+                  className="w-2.5 h-2.5 rounded-full bg-destructive border-2 border-destructive -ml-[5px]"
+                  style={{ boxShadow: '0 0 6px oklch(0.5 0.18 28 / 0.5)' }}
+                />
+                <div
+                  className="flex-1 h-[1.5px] bg-destructive"
+                  style={{ boxShadow: '0 0 4px oklch(0.5 0.18 28 / 0.3)' }}
+                />
+              </div>
             </div>
           )}
         </div>
