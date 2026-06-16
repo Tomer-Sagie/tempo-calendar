@@ -799,8 +799,7 @@ function App() {
   }
 
   // Not authenticated with Google: connect calendar screen
-  // TEMPORARY: bypass for UI/UX audit — revert after testing
-  if (false && !calendar.isAuthenticated) {
+  if (!calendar.isAuthenticated) {
     if (!calendar.isLoaded || calendar.isLoading) {
       return (
         <div className="min-h-[100dvh] flex items-center justify-center app-gradient">
