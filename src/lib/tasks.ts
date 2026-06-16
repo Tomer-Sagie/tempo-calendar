@@ -164,17 +164,6 @@ export async function updateTaskSchedule(
   return updateTask(id, updates);
 }
 
-export async function markTaskComplete(id: string): Promise<Task> {
-  return updateTask(id, {
-    status: 'completed',
-    completed_at: new Date().toISOString(),
-    is_scheduled: false,
-    scheduled_start: null,
-    scheduled_end: null,
-    completion_history: [],
-  });
-}
-
 export async function markTaskMissed(id: string): Promise<Task> {
   return updateTask(id, {
     status: 'missed',

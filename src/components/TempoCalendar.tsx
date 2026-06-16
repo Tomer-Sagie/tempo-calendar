@@ -53,6 +53,10 @@ export interface TempoCalendarProps {
   startHour?: number;
   endHour?: number;
   height?: number | string;
+  /** 0 = Sunday, 1 = Monday (default). Persisted in localStorage. */
+  weekStartsOn?: 0 | 1;
+  /** '12h' (default) or '24h'. Persisted in localStorage. */
+  timeFormat?: '12h' | '24h';
 }
 
 /**
@@ -82,6 +86,8 @@ export function TempoCalendar({
   className,
   startHour = 6,
   endHour = 22,
+  weekStartsOn = 1,
+  timeFormat = '12h',
 }: TempoCalendarProps) {
   const [view, setView] = useState<CalendarView>(defaultView);
   const [date, setDate] = useState<Date>(new Date());
@@ -112,14 +118,14 @@ export function TempoCalendar({
       start = startOfDay(date);
       end = endOfDay(date);
     } else if (view === 'week') {
-      start = startOfWeek(date, { weekStartsOn: 1 });
-      end = endOfWeek(date, { weekStartsOn: 1 });
+      start = startOfWeek(date, { weekStartsOn });
+      end = endOfWeek(date, { weekStartsOn });
     } else {
       start = startOfMonth(date);
       end = endOfMonth(date);
     }
     onViewRangeChange({ start, end });
-  }, [date, view, onViewRangeChange]);
+  }, [date, view, onViewRangeChange, weekStartsOn]);
 
   const handlePrev = useCallback(() => {
     if (view === 'day') setDate((d) => subDays(d, 1));
@@ -299,6 +305,7 @@ export function TempoCalendar({
         onPrev={handlePrev}
         onNext={handleNext}
         onToday={handleToday}
+        weekStartsOn={weekStartsOn}
       />
 
       {/* View */}
@@ -320,6 +327,7 @@ export function TempoCalendar({
                 onSelectSlot={onSelectSlot}
                 resizeGhost={resizeGhost}
                 onResizeStart={handleResizeStart}
+                timeFormat={timeFormat}
               />
             </div>
           )}
@@ -336,6 +344,8 @@ export function TempoCalendar({
                 dragGhost={dragGhost}
                 resizeGhost={resizeGhost}
                 onResizeStart={handleResizeStart}
+                weekStartsOn={weekStartsOn}
+                timeFormat={timeFormat}
               />
             </div>
           )}
@@ -346,6 +356,7 @@ export function TempoCalendar({
                 events={events}
                 onSelectEvent={onSelectEvent}
                 onSelectDay={handleMonthDayClick}
+                weekStartsOn={weekStartsOn}
               />
             </div>
           )}

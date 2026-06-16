@@ -1,11 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Sun, Moon, Monitor, Bell, LogOut, Unlink, User, Calendar, Info, ExternalLink, Check } from 'lucide-react';
+import {
+  X, Sun, Moon, Monitor, Bell, LogOut, Unlink, User, Calendar, Info,
+  ExternalLink, Check, Plus, Trash2, Palette, Clock, LayoutGrid,
+  ListTodo,
+} from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 import { TEMPO_VERSION } from '../lib/version';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { GoogleCalendar } from '../lib/google';
+import type { SchedulingProfile, TaskList } from '../lib/types';
+
+type CalendarDensity = 'compact' | 'standard' | 'comfortable';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -19,20 +26,29 @@ interface SettingsPanelProps {
   onSignOut: () => Promise<void>;
   workingHours: { start: string; end: string };
   onWorkingHoursChange: (hours: { start: string; end: string }) => void;
-  /** Timestamp of the most recent successful sync. */
   lastSyncAt: Date | null;
-  /** Number of calendar events synced. */
   syncedEventCount: number;
-  /** Current sync error message, if any. */
   syncError: string | null;
-  /** True if a sync is in progress. */
   isSyncing: boolean;
-  /** All available Google calendars. */
   calendars: GoogleCalendar[];
-  /** Which calendars are selected for syncing. */
   selectedCalendarIds: string[];
-  /** Toggle a calendar's selection. */
   onToggleCalendar: (calendarId: string) => void;
+  /** 0 = Sunday, 1 = Monday. */
+  weekStartsOn?: 0 | 1;
+  onWeekStartsOnChange?: (v: 0 | 1) => void;
+  /** '12h' (default) or '24h'. */
+  timeFormat?: '12h' | '24h';
+  onTimeFormatChange?: (v: '12h' | '24h') => void;
+  /** Calendar density. */
+  density?: CalendarDensity;
+  onDensityChange?: (v: CalendarDensity) => void;
+  /** Scheduling profiles from the hook. */
+  schedulingProfiles?: SchedulingProfile[];
+  /** Task lists from the hook. */
+  taskLists?: TaskList[];
+  onCreateList?: (name: string, color: string) => Promise<void>;
+  onUpdateList?: (id: string, updates: { name?: string; color?: string }) => Promise<void>;
+  onDeleteList?: (id: string) => Promise<void>;
 }
 
 type Section = 'appearance' | 'schedule' | 'account';
@@ -56,6 +72,17 @@ export function SettingsPanel({
   calendars,
   selectedCalendarIds,
   onToggleCalendar,
+  weekStartsOn = 1,
+  onWeekStartsOnChange,
+  timeFormat = '12h',
+  onTimeFormatChange,
+  density = 'standard',
+  onDensityChange,
+  schedulingProfiles = [],
+  taskLists = [],
+  onCreateList,
+  onUpdateList,
+  onDeleteList,
 }: SettingsPanelProps) {
   const [section, setSection] = useState<Section>('appearance');
 
@@ -111,6 +138,9 @@ export function SettingsPanel({
           'flex flex-col',
         )}
         data-state={animState}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -129,7 +159,7 @@ export function SettingsPanel({
 
         <div className="flex-1 flex min-h-0">
           {/* Section nav */}
-          <nav className="w-[140px] border-r border-border bg-muted/20 py-3 px-2 shrink-0">
+          <nav className="w-[140px] border-r border-border bg-muted/20 py-3 px-2 shrink-0" aria-label="Settings sections">
             {([
               { key: 'appearance', label: 'Appearance', icon: Sun },
               { key: 'schedule', label: 'Schedule', icon: Calendar },
@@ -138,6 +168,7 @@ export function SettingsPanel({
               <button
                 key={key}
                 onClick={() => setSection(key)}
+                aria-current={section === key ? 'page' : undefined}
                 className={cn(
                   'w-full flex items-center gap-2 px-2.5 py-2 text-xs font-medium rounded-md transition-colors mb-0.5 text-left',
                   section === key
@@ -154,269 +185,731 @@ export function SettingsPanel({
           {/* Section content */}
           <div className="flex-1 overflow-y-auto tempo-scrollbar p-5">
             {section === 'appearance' && (
-              <div className="space-y-6">
-                <section>
-                  <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-                    Theme
-                  </h3>
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { value: 'light', label: 'Light', icon: Sun, isSystem: false },
-                      { value: 'dark', label: 'Dark', icon: Moon, isSystem: false },
-                      { value: 'system', label: 'Auto', icon: Monitor, isSystem: true },
-                    ] as const).map(({ value, label, icon: Icon, isSystem }) => {
-                      const isActive = isSystem
-                        ? !localStorage.getItem('tempo-theme')
-                        : theme === value;
-                      return (
-                        <button
-                          key={value}
-                          onClick={() => {
-                            if (isSystem) {
-                              onUseSystemTheme();
-                            } else {
-                              onSetTheme(value as 'light' | 'dark');
-                            }
-                          }}
-                          className={cn(
-                            'flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-colors',
-                            isActive
-                              ? 'border-primary bg-primary/5 text-foreground'
-                              : 'border-border hover:border-muted-foreground/30 text-muted-foreground',
-                          )}
-                        >
-                          <Icon className="w-4 h-4" />
-                          <span className="text-xs font-medium">{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                <section>
-                  <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-                    About
-                  </h3>
-                  <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">App</span>
-                      <span className="font-medium text-foreground">Tempo Calendar</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Version</span>
-                      <span className="font-mono text-foreground">{TEMPO_VERSION}</span>
-                    </div>
-                    <a
-                      href="https://github.com/tomer-s/flowsavvy-personal-scheduler"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between text-xs hover:text-foreground transition-colors pt-1.5 border-t border-border mt-2"
-                    >
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Info className="w-3 h-3" />
-                        Source & docs
-                      </span>
-                      <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                    </a>
-                  </div>
-                </section>
-              </div>
+              <AppearanceSection
+                theme={theme}
+                onSetTheme={onSetTheme}
+                onUseSystemTheme={onUseSystemTheme}
+                timeFormat={timeFormat}
+                onTimeFormatChange={onTimeFormatChange}
+                density={density}
+                onDensityChange={onDensityChange}
+              />
             )}
 
             {section === 'schedule' && (
-              <div className="space-y-6">
-                <section>
-                  <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-                    Working hours
-                  </h3>
-                  <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                    Tasks are scheduled into open time within these hours. Defaults to 9 - 5.
-                  </p>
-                  <div className="flex items-center gap-2 p-3 rounded-lg border border-border bg-card">
-                    <input
-                      type="time"
-                      value={workingHours.start}
-                      onChange={(e) => onWorkingHoursChange({ ...workingHours, start: e.target.value })}
-                      className="px-2 py-1.5 text-sm font-medium bg-muted rounded-md focus:outline-none focus:ring-2 focus:ring-ring tabular-nums"
-                    />
-                    <span className="text-muted-foreground text-sm">to</span>
-                    <input
-                      type="time"
-                      value={workingHours.end}
-                      onChange={(e) => onWorkingHoursChange({ ...workingHours, end: e.target.value })}
-                      className="px-2 py-1.5 text-sm font-medium bg-muted rounded-md focus:outline-none focus:ring-2 focus:ring-ring tabular-nums"
-                    />
-                  </div>
-                </section>
-
-                <section>
-                  <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-                    Notifications
-                  </h3>
-                  <div className="w-full flex items-center justify-between p-3 rounded-lg border border-border bg-card opacity-60">
-                    <div className="flex items-center gap-2.5">
-                      <Bell className="w-4 h-4 text-muted-foreground" />
-                      <div className="text-left">
-                        <div className="text-sm font-medium text-foreground">Reminders</div>
-                        <div className="text-[11px] text-muted-foreground">In development</div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              </div>
+              <ScheduleSection
+                workingHours={workingHours}
+                onWorkingHoursChange={onWorkingHoursChange}
+                weekStartsOn={weekStartsOn}
+                onWeekStartsOnChange={onWeekStartsOnChange}
+                schedulingProfiles={schedulingProfiles}
+                taskLists={taskLists}
+                onCreateList={onCreateList}
+                onUpdateList={onUpdateList}
+                onDeleteList={onDeleteList}
+              />
             )}
 
             {section === 'account' && (
-              <div className="space-y-6">
-                {user && (
-                  <section>
-                    <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-                      Signed in
-                    </h3>
-                    <div className="p-3 rounded-lg border border-border bg-card flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="text-sm font-semibold text-primary">
-                          {user.email?.charAt(0).toUpperCase() || 'U'}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">{user.email}</div>
-                        <div className="text-[11px] text-muted-foreground">Tempo account</div>
-                      </div>
-                    </div>
-                  </section>
-                )}
-
-                <section>
-                  <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-                    Connections
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="p-3 rounded-lg border border-border bg-card flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-md bg-info/10 flex items-center justify-center shrink-0">
-                        <Calendar className="w-4 h-4 text-info" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground">Google Calendar</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {isGoogleConnected ? 'Connected' : 'Not connected'}
-                        </div>
-                      </div>
-                      {isGoogleConnected && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={onDisconnectGoogle}
-                          className="h-8 text-xs gap-1.5"
-                        >
-                          <Unlink className="w-3.5 h-3.5" />
-                          Disconnect
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </section>
-
-                {/* Calendar selection */}
-                {isGoogleConnected && calendars.length > 0 && (
-                  <section>
-                    <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-                      Calendars synced
-                    </h3>
-                    <div className="space-y-1">
-                      {calendars.map((cal) => {
-                        const isSelected = selectedCalendarIds.includes(cal.id);
-                        return (
-                          <button
-                            key={cal.id}
-                            onClick={() => onToggleCalendar(cal.id)}
-                            className={cn(
-                              'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-colors text-left',
-                              isSelected
-                                ? 'border-primary/30 bg-primary/5'
-                                : 'border-border bg-card hover:bg-accent/30',
-                            )}
-                          >
-                            <div
-                              className="w-4 h-4 rounded-sm shrink-0"
-                              style={{ backgroundColor: cal.backgroundColor || '#999' }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-medium text-foreground truncate">
-                                {cal.summary}
-                                {cal.primary && (
-                                  <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">(primary)</span>
-                                )}
-                              </div>
-                            </div>
-                            {isSelected && (
-                              <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
-                                <Check className="w-3 h-3 text-primary-foreground" />
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
-                      Selected calendars are imported as busy blocks. Tasks will never overlap events from these calendars.
-                    </p>
-                  </section>
-                )}
-
-                {/* Sync status */}
-                <section>
-                  <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-                    Sync status
-                  </h3>
-                  <div className="p-3 rounded-lg border border-border bg-card space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Status</span>
-                      <span className={cn(
-                        'font-medium',
-                        syncError ? 'text-destructive' : isSyncing ? 'text-primary' : 'text-success',
-                      )}>
-                        {syncError ? 'Error' : isSyncing ? 'Syncing...' : 'Up to date'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Last sync</span>
-                      <span className="font-medium text-foreground">
-                        {lastSyncAt ? formatDistanceToNow(lastSyncAt) + ' ago' : 'Never'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Events synced</span>
-                      <span className="font-medium text-foreground">{syncedEventCount}</span>
-                    </div>
-                    {syncError && (
-                      <div className="mt-2 p-2 rounded-md bg-destructive/5 border border-destructive/20 text-xs text-destructive">
-                        {syncError}
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                {user && (
-                  <section>
-                    <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-                      Sign out
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      onClick={onSignOut}
-                      className="w-full h-10 justify-center gap-2 text-destructive hover:bg-destructive/5 hover:text-destructive"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Sign out of Tempo
-                    </Button>
-                  </section>
-                )}
-              </div>
+              <AccountSection
+                user={user}
+                isGoogleConnected={isGoogleConnected}
+                onDisconnectGoogle={onDisconnectGoogle}
+                onSignOut={onSignOut}
+                lastSyncAt={lastSyncAt}
+                syncedEventCount={syncedEventCount}
+                syncError={syncError}
+                isSyncing={isSyncing}
+                calendars={calendars}
+                selectedCalendarIds={selectedCalendarIds}
+                onToggleCalendar={onToggleCalendar}
+              />
             )}
           </div>
         </div>
       </aside>
     </>
+  );
+}
+
+// ============================================================
+// Appearance Section
+// ============================================================
+
+function AppearanceSection({
+  theme,
+  onSetTheme,
+  onUseSystemTheme,
+  timeFormat,
+  onTimeFormatChange,
+  density,
+  onDensityChange,
+}: {
+  theme: 'light' | 'dark';
+  onSetTheme: (theme: 'light' | 'dark') => void;
+  onUseSystemTheme: () => void;
+  timeFormat: '12h' | '24h';
+  onTimeFormatChange?: (v: '12h' | '24h') => void;
+  density: 'compact' | 'standard' | 'comfortable';
+  onDensityChange?: (v: 'compact' | 'standard' | 'comfortable') => void;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Theme */}
+      <section>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+          Theme
+        </h3>
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { value: 'light', label: 'Light', icon: Sun, isSystem: false },
+            { value: 'dark', label: 'Dark', icon: Moon, isSystem: false },
+            { value: 'system', label: 'Auto', icon: Monitor, isSystem: true },
+          ] as const).map(({ value, label, icon: Icon, isSystem }) => {
+            const isActive = isSystem
+              ? !localStorage.getItem('tempo-theme')
+              : theme === value;
+            return (
+              <button
+                key={value}
+                onClick={() => {
+                  if (isSystem) {
+                    onUseSystemTheme();
+                  } else {
+                    onSetTheme(value as 'light' | 'dark');
+                  }
+                }}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-colors',
+                  isActive
+                    ? 'border-primary bg-primary/5 text-foreground'
+                    : 'border-border hover:border-muted-foreground/30 text-muted-foreground',
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-xs font-medium">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Time format */}
+      <section>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+          <Clock className="w-3 h-3 inline mr-1 -mt-px" />
+          Time format
+        </h3>
+        <div className="grid grid-cols-2 gap-2">
+          {(['12h', '24h'] as const).map((fmt) => (
+            <button
+              key={fmt}
+              onClick={() => onTimeFormatChange?.(fmt)}
+              className={cn(
+                'flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border text-xs font-medium transition-colors',
+                timeFormat === fmt
+                  ? 'border-primary bg-primary/5 text-foreground'
+                  : 'border-border hover:border-muted-foreground/30 text-muted-foreground',
+              )}
+            >
+              {fmt === '12h' ? '1:00 PM' : '13:00'}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Calendar density */}
+      <section>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+          <LayoutGrid className="w-3 h-3 inline mr-1 -mt-px" />
+          Calendar density
+        </h3>
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { value: 'compact', label: 'Compact' },
+            { value: 'standard', label: 'Standard' },
+            { value: 'comfortable', label: 'Comfortable' },
+          ] as const).map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => onDensityChange?.(value)}
+              className={cn(
+                'flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border text-xs font-medium transition-colors',
+                density === value
+                  ? 'border-primary bg-primary/5 text-foreground'
+                  : 'border-border hover:border-muted-foreground/30 text-muted-foreground',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* About */}
+      <section>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+          About
+        </h3>
+        <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">App</span>
+            <span className="font-medium text-foreground">Tempo Calendar</span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Version</span>
+            <span className="font-mono text-foreground">{TEMPO_VERSION}</span>
+          </div>
+          <a
+            href="https://github.com/tomer-s/flowsavvy-personal-scheduler"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between text-xs hover:text-foreground transition-colors pt-1.5 border-t border-border mt-2"
+          >
+            <span className="text-muted-foreground flex items-center gap-1">
+              <Info className="w-3 h-3" />
+              Source & docs
+            </span>
+            <ExternalLink className="w-3 h-3 text-muted-foreground" />
+          </a>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ============================================================
+// Schedule Section
+// ============================================================
+
+function ScheduleSection({
+  workingHours,
+  onWorkingHoursChange,
+  weekStartsOn,
+  onWeekStartsOnChange,
+  schedulingProfiles,
+  taskLists,
+  onCreateList,
+  onUpdateList,
+  onDeleteList,
+}: {
+  workingHours: { start: string; end: string };
+  onWorkingHoursChange: (hours: { start: string; end: string }) => void;
+  weekStartsOn: 0 | 1;
+  onWeekStartsOnChange?: (v: 0 | 1) => void;
+  schedulingProfiles: SchedulingProfile[];
+  taskLists: TaskList[];
+  onCreateList?: (name: string, color: string) => Promise<void>;
+  onUpdateList?: (id: string, updates: { name?: string; color?: string }) => Promise<void>;
+  onDeleteList?: (id: string) => Promise<void>;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Week start */}
+      <section>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+          Week starts on
+        </h3>
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            { value: 1, label: 'Monday' },
+            { value: 0, label: 'Sunday' },
+          ] as const).map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => onWeekStartsOnChange?.(value)}
+              className={cn(
+                'flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border text-xs font-medium transition-colors',
+                weekStartsOn === value
+                  ? 'border-primary bg-primary/5 text-foreground'
+                  : 'border-border hover:border-muted-foreground/30 text-muted-foreground',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Working hours */}
+      <section>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+          Working hours
+        </h3>
+        <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+          Tasks are scheduled into open time within these hours. Defaults to 9 - 5.
+        </p>
+        <div className="flex items-center gap-2 p-3 rounded-lg border border-border bg-card">
+          <input
+            type="time"
+            value={workingHours.start}
+            onChange={(e) => onWorkingHoursChange({ ...workingHours, start: e.target.value })}
+            className="px-2 py-1.5 text-sm font-medium bg-muted rounded-md focus:outline-none focus:ring-2 focus:ring-ring tabular-nums"
+          />
+          <span className="text-muted-foreground text-sm">to</span>
+          <input
+            type="time"
+            value={workingHours.end}
+            onChange={(e) => onWorkingHoursChange({ ...workingHours, end: e.target.value })}
+            className="px-2 py-1.5 text-sm font-medium bg-muted rounded-md focus:outline-none focus:ring-2 focus:ring-ring tabular-nums"
+          />
+        </div>
+      </section>
+
+      {/* Notifications placeholder */}
+      <section>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+          Notifications
+        </h3>
+        <div className="w-full flex items-center justify-between p-3 rounded-lg border border-border bg-card opacity-60">
+          <div className="flex items-center gap-2.5">
+            <Bell className="w-4 h-4 text-muted-foreground" />
+            <div className="text-left">
+              <div className="text-sm font-medium text-foreground">Reminders</div>
+              <div className="text-[11px] text-muted-foreground">In development</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Task lists */}
+      <TaskListsSection
+        taskLists={taskLists}
+        onCreateList={onCreateList}
+        onUpdateList={onUpdateList}
+        onDeleteList={onDeleteList}
+      />
+
+      {/* Scheduling profiles */}
+      <section>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+          <Palette className="w-3 h-3 inline mr-1 -mt-px" />
+          Scheduling profiles
+        </h3>
+        <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+          Assign different working-hour windows to specific tasks. Coming soon — profiles are read-only for now.
+        </p>
+        {schedulingProfiles.length === 0 ? (
+          <div className="p-3 rounded-lg border border-dashed border-border text-xs text-muted-foreground text-center">
+            No scheduling profiles yet
+          </div>
+        ) : (
+          <div className="space-y-1.5" role="list" aria-label="Scheduling profiles">
+            {schedulingProfiles.map((profile) => (
+              <div
+                key={profile.id}
+                role="listitem"
+                className="flex items-center gap-2.5 p-3 rounded-lg border border-border bg-card"
+              >
+                <div
+                  className="w-3.5 h-3.5 rounded-full shrink-0"
+                  style={{ backgroundColor: profile.color }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-foreground truncate">
+                    {profile.name}
+                    {profile.is_default && (
+                      <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">(default)</span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    {profile.windows.length} {profile.windows.length === 1 ? 'window' : 'windows'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+// ============================================================
+// Task Lists Sub-section
+// ============================================================
+
+const LIST_COLORS = ['#2563EB', '#0D9488', '#059669', '#7C3AED', '#DB2777', '#B45309', '#DC2626', '#D97706'];
+
+function TaskListsSection({
+  taskLists,
+  onCreateList,
+  onUpdateList,
+  onDeleteList,
+}: {
+  taskLists: TaskList[];
+  onCreateList?: (name: string, color: string) => Promise<void>;
+  onUpdateList?: (id: string, updates: { name?: string; color?: string }) => Promise<void>;
+  onDeleteList?: (id: string) => Promise<void>;
+}) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState(LIST_COLORS[0]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showCreate && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [showCreate]);
+
+  const handleCreate = async () => {
+    if (!newName.trim() || !onCreateList) return;
+    setCreating(true);
+    try {
+      await onCreateList(newName.trim(), newColor);
+      setNewName('');
+      setNewColor(LIST_COLORS[0]);
+      setShowCreate(false);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleRename = async (id: string) => {
+    const trimmed = editName.trim();
+    if (!trimmed || !onUpdateList) { setEditingId(null); return; }
+    const original = taskLists.find((l) => l.id === id);
+    if (original && trimmed === original.name) { setEditingId(null); return; }
+    try {
+      await onUpdateList(id, { name: trimmed });
+    } catch {
+      // Keep editing state on failure so user can retry
+      return;
+    }
+    setEditingId(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!onDeleteList) return;
+    try {
+      await onDeleteList(id);
+    } catch {
+      // Keep confirm state on failure so user can retry
+      return;
+    }
+    setConfirmDeleteId(null);
+  };
+
+  return (
+    <section>
+      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+        <ListTodo className="w-3 h-3 inline mr-1 -mt-px" />
+        Task lists
+      </h3>
+      <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+        Group tasks into lists for better organization.
+      </p>
+
+      {/* List items */}
+      <div className="space-y-1" role="list" aria-label="Task lists">
+        {taskLists.map((list) => (
+          <div
+            key={list.id}
+            role="listitem"
+            className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-card group"
+          >
+            {editingId === list.id ? (
+              <>
+                <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: list.color }} />
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRename(list.id);
+                    if (e.key === 'Escape') setEditingId(null);
+                  }}
+                  onBlur={() => handleRename(list.id)}
+                  className="flex-1 px-2 py-1 text-xs bg-muted rounded focus:outline-none focus:ring-2 focus:ring-ring"
+                  autoFocus
+                />
+              </>
+            ) : confirmDeleteId === list.id ? (
+              <>
+                <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: list.color }} />
+                <span className="flex-1 text-xs text-foreground truncate">{list.name}</span>
+                <button
+                  onClick={() => handleDelete(list.id)}
+                  className="px-2 py-1 rounded bg-destructive text-[10px] font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="px-2 py-1 rounded bg-muted text-[10px] font-medium text-foreground hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: list.color }} />
+                <button
+                  type="button"
+                  className="flex-1 text-left text-xs font-medium text-foreground truncate hover:text-primary transition-colors"
+                  onClick={() => {
+                    setEditingId(list.id);
+                    setEditName(list.name);
+                  }}
+                >
+                  {list.name}
+                </button>
+                {onDeleteList && (
+                  <button
+                    onClick={() => setConfirmDeleteId(list.id)}
+                    className="p-0.5 rounded text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
+                    aria-label={`Delete ${list.name}`}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Create new list */}
+      {showCreate ? (
+        <div className="mt-2 p-3 rounded-lg border border-border bg-card space-y-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleCreate();
+              if (e.key === 'Escape') setShowCreate(false);
+            }}
+            placeholder="List name"
+            className="w-full px-2.5 py-1.5 text-xs bg-muted rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <div className="flex items-center gap-1.5">
+            {LIST_COLORS.map((c) => (
+              <button
+                key={c}
+                onClick={() => setNewColor(c)}
+                className={cn(
+                  'w-5 h-5 rounded-full border-2 transition-colors',
+                  newColor === c ? 'border-foreground scale-110' : 'border-transparent',
+                )}
+                style={{ backgroundColor: c }}
+                aria-label={`Select color ${c}`}
+              />
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            <Button
+              size="sm"
+              onClick={handleCreate}
+              disabled={!newName.trim() || creating}
+              className="h-7 px-3 text-[11px]"
+            >
+              {creating ? 'Creating...' : 'Create'}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowCreate(false)}
+              className="h-7 px-3 text-[11px]"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowCreate(true)}
+          className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-muted-foreground/50 transition-colors"
+        >
+          <Plus className="w-3 h-3" />
+          Add list
+        </button>
+      )}
+    </section>
+  );
+}
+
+// ============================================================
+// Account Section
+// ============================================================
+
+function AccountSection({
+  user,
+  isGoogleConnected,
+  onDisconnectGoogle,
+  onSignOut,
+  lastSyncAt,
+  syncedEventCount,
+  syncError,
+  isSyncing,
+  calendars,
+  selectedCalendarIds,
+  onToggleCalendar,
+}: {
+  user: SupabaseUser | null;
+  isGoogleConnected: boolean;
+  onDisconnectGoogle: () => void;
+  onSignOut: () => Promise<void>;
+  lastSyncAt: Date | null;
+  syncedEventCount: number;
+  syncError: string | null;
+  isSyncing: boolean;
+  calendars: GoogleCalendar[];
+  selectedCalendarIds: string[];
+  onToggleCalendar: (calendarId: string) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      {user && (
+        <section>
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+            Signed in
+          </h3>
+          <div className="p-3 rounded-lg border border-border bg-card flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <span className="text-sm font-semibold text-primary">
+                {user.email?.charAt(0).toUpperCase() || 'U'}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-foreground truncate">{user.email}</div>
+              <div className="text-[11px] text-muted-foreground">Tempo account</div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+          Connections
+        </h3>
+        <div className="space-y-2">
+          <div className="p-3 rounded-lg border border-border bg-card flex items-center gap-3">
+            <div className="w-9 h-9 rounded-md bg-info/10 flex items-center justify-center shrink-0">
+              <Calendar className="w-4 h-4 text-info" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-foreground">Google Calendar</div>
+              <div className="text-[11px] text-muted-foreground">
+                {isGoogleConnected ? 'Connected' : 'Not connected'}
+              </div>
+            </div>
+            {isGoogleConnected && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDisconnectGoogle}
+                className="h-8 text-xs gap-1.5"
+              >
+                <Unlink className="w-3.5 h-3.5" />
+                Disconnect
+              </Button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Calendar selection */}
+      {isGoogleConnected && calendars.length > 0 && (
+        <section>
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+            Calendars synced
+          </h3>
+          <div className="space-y-1">
+            {calendars.map((cal) => {
+              const isSelected = selectedCalendarIds.includes(cal.id);
+              return (
+                <button
+                  key={cal.id}
+                  onClick={() => onToggleCalendar(cal.id)}
+                  className={cn(
+                    'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-colors text-left',
+                    isSelected
+                      ? 'border-primary/30 bg-primary/5'
+                      : 'border-border bg-card hover:bg-accent/30',
+                  )}
+                >
+                  <div
+                    className="w-4 h-4 rounded-sm shrink-0"
+                    style={{ backgroundColor: cal.backgroundColor || '#999' }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-foreground truncate">
+                      {cal.summary}
+                      {cal.primary && (
+                        <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">(primary)</span>
+                      )}
+                    </div>
+                  </div>
+                  {isSelected && (
+                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
+                      <Check className="w-3 h-3 text-primary-foreground" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
+            Selected calendars are imported as busy blocks. Tasks will never overlap events from these calendars.
+          </p>
+        </section>
+      )}
+
+      {/* Sync status */}
+      <section>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+          Sync status
+        </h3>
+        <div className="p-3 rounded-lg border border-border bg-card space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Status</span>
+            <span className={cn(
+              'font-medium',
+              syncError ? 'text-destructive' : isSyncing ? 'text-primary' : 'text-success',
+            )}>
+              {syncError ? 'Error' : isSyncing ? 'Syncing...' : 'Up to date'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Last sync</span>
+            <span className="font-medium text-foreground">
+              {lastSyncAt ? formatDistanceToNow(lastSyncAt) + ' ago' : 'Never'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Events synced</span>
+            <span className="font-medium text-foreground">{syncedEventCount}</span>
+          </div>
+          {syncError && (
+            <div className="mt-2 p-2 rounded-md bg-destructive/5 border border-destructive/20 text-xs text-destructive">
+              {syncError}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {user && (
+        <section>
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+            Sign out
+          </h3>
+          <Button
+            variant="ghost"
+            onClick={onSignOut}
+            className="w-full h-10 justify-center gap-2 text-destructive hover:bg-destructive/5 hover:text-destructive"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out of Tempo
+          </Button>
+        </section>
+      )}
+    </div>
   );
 }

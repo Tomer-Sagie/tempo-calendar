@@ -30,6 +30,8 @@ interface DayViewProps {
   resizeGhost?: import('./TempoCalendarHelpers').DragGhostTarget | null;
   /** Start a resize operation on a task event. */
   onResizeStart?: (eventId: string, direction: 'top' | 'bottom', clientY: number) => void;
+  /** '12h' (default) or '24h'. */
+  timeFormat?: '12h' | '24h';
 }
 
 /**
@@ -48,6 +50,7 @@ export function TempoCalendarDayView({
   onSelectSlot,
   resizeGhost,
   onResizeStart,
+  timeFormat = '12h',
 }: DayViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
@@ -145,7 +148,7 @@ export function TempoCalendarDayView({
             {hours.map((h) => (
               <div key={h} data-hour={h} className="relative h-14 border-b border-border/40">
                 <span className="absolute top-0 right-3 -translate-y-1/2 text-[10px] font-medium text-muted-foreground bg-card px-1 tabular-nums">
-                  {format(setHours(date, h), 'h a')}
+                  {format(setHours(date, h), timeFormat === '24h' ? 'HH:mm' : 'h a')}
                 </span>
               </div>
             ))}
@@ -251,7 +254,7 @@ export function TempoCalendarDayView({
                       <span className="font-semibold truncate text-[10px]">{resizeGhost.title}</span>
                     </div>
                     <div className="text-[9px] opacity-75 num">
-                      {format(resizeGhost.newStart, 'h:mma')} - {format(resizeGhost.newEnd, 'h:mma')}
+                      {format(resizeGhost.newStart, timeFormat === '24h' ? 'HH:mm' : 'h:mma')} - {format(resizeGhost.newEnd, timeFormat === '24h' ? 'HH:mm' : 'h:mma')}
                     </div>
                   </div>
                 );

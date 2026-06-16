@@ -44,6 +44,10 @@ interface WeekViewProps {
   resizeGhost?: DragGhostTarget | null;
   /** Start a resize operation on a task event. */
   onResizeStart?: (eventId: string, direction: 'top' | 'bottom', clientY: number) => void;
+  /** 0 = Sunday, 1 = Monday. */
+  weekStartsOn?: 0 | 1;
+  /** '12h' (default) or '24h'. */
+  timeFormat?: '12h' | '24h';
 }
 
 /**
@@ -62,11 +66,13 @@ export function TempoCalendarWeekView({
   dragGhost,
   resizeGhost,
   onResizeStart,
+  weekStartsOn = 1,
+  timeFormat = '12h',
 }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
-  const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn: 1 }), [date]);
+  const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn }), [date, weekStartsOn]);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
   // Measure the day-column width on mount + on resize so the parent drag
@@ -227,7 +233,7 @@ export function TempoCalendarWeekView({
             {hours.map((h) => (
               <div key={h} data-hour={h} className="relative h-14 border-b border-border/40">
                 <span className="absolute top-0 right-3 -translate-y-1/2 text-[10px] font-medium text-muted-foreground bg-card px-1 tabular-nums">
-                  {format(setHours(date, h), 'h a')}
+                  {format(setHours(date, h), timeFormat === '24h' ? 'HH:mm' : 'h a')}
                 </span>
               </div>
             ))}
@@ -366,7 +372,7 @@ export function TempoCalendarWeekView({
                       <span className="font-semibold truncate text-[10px]">{dragGhost.title}</span>
                     </div>
                     <div className="text-[9px] opacity-75 num">
-                      {format(dragGhost.newStart, 'h:mma')} - {format(dragGhost.newEnd, 'h:mma')}
+                      {format(dragGhost.newStart, timeFormat === '24h' ? 'HH:mm' : 'h:mma')} - {format(dragGhost.newEnd, timeFormat === '24h' ? 'HH:mm' : 'h:mma')}
                     </div>
                   </div>
                   {/* Edge indicator: ghost is clamped (drag went past visible week) */}
@@ -427,10 +433,9 @@ export function TempoCalendarWeekView({
                 >
                   <div className="flex items-center gap-1">
                     <span className="font-semibold truncate text-[10px]">{resizeGhost.title}</span>
-                  </div>
-                  <div className="text-[9px] opacity-75 num">
-                    {format(resizeGhost.newStart, 'h:mma')} - {format(resizeGhost.newEnd, 'h:mma')}
-                  </div>
+                  </div>                    <div className="text-[9px] opacity-75 num">
+                      {format(resizeGhost.newStart, timeFormat === '24h' ? 'HH:mm' : 'h:mma')} - {format(resizeGhost.newEnd, timeFormat === '24h' ? 'HH:mm' : 'h:mma')}
+                    </div>
                 </div>
               );
             })()}

@@ -21,7 +21,7 @@ import { Button } from './components/ui/button';
 import { LeftRail } from './components/LeftRail';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { ProductPreviewMock } from './components/ProductPreviewMock';
-import { AlertCircle, Link2, RefreshCw, LogIn, Zap, Settings2, Calendar, Sparkles, ArrowRight, BarChart3, Layers } from 'lucide-react';
+import { AlertCircle, Link2, RefreshCw, LogIn, Zap, Settings2, Calendar, Sparkles, ArrowRight, BarChart3, Layers, WifiOff } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { format } from 'date-fns';
 import { detectConflicts } from './lib/rescheduler';
@@ -79,6 +79,42 @@ function useWorkingHours(): [WorkingHoursState, (h: WorkingHoursState) => void] 
   return [state, setState];
 }
 
+type CalendarDensity = 'compact' | 'standard' | 'comfortable';
+
+function useCalendarSettings() {
+  const [weekStartsOn, setWeekStartsOn] = useState<0 | 1>(() => {
+    try { return (localStorage.getItem('tempo-week-start') === '0' ? 0 : 1); } catch { return 1; }
+  });
+  const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>(() => {
+    try { return (localStorage.getItem('tempo-time-format') as '12h' | '24h') || '12h'; } catch { return '12h'; }
+  });
+  const [density, setDensity] = useState<CalendarDensity>(() => {
+    try { return (localStorage.getItem('tempo-density') as CalendarDensity) || 'standard'; } catch { return 'standard'; }
+  });
+  useEffect(() => { try { localStorage.setItem('tempo-week-start', String(weekStartsOn)); } catch { /* */ } }, [weekStartsOn]);
+  useEffect(() => { try { localStorage.setItem('tempo-time-format', timeFormat); } catch { /* */ } }, [timeFormat]);
+  useEffect(() => { try { localStorage.setItem('tempo-density', density); } catch { /* */ } }, [density]);
+  // Apply density as a CSS class on the root element
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove('density-compact', 'density-standard', 'density-comfortable');
+    root.classList.add(`density-${density}`);
+  }, [density]);
+  return { weekStartsOn, setWeekStartsOn, timeFormat, setTimeFormat, density, setDensity };
+}
+
+function useOfflineDetection() {
+  const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' ? !navigator.onLine : false);
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => { window.removeEventListener('offline', goOffline); window.removeEventListener('online', goOnline); };
+  }, []);
+  return isOffline;
+}
+
 function App() {
   const auth = useAuth();
   const tasksHook = useTasks();
@@ -129,6 +165,8 @@ function App() {
   const { theme, toggleTheme, setTheme, useSystemTheme } = useTheme();
   // (useSystemTheme is passed to SettingsPanel below)
   const [workingHours, setWorkingHours] = useWorkingHours();
+  const calendarSettings = useCalendarSettings();
+  const isOffline = useOfflineDetection();
 
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -744,6 +782,17 @@ function App() {
         calendars={calendar.calendars}
         selectedCalendarIds={calendar.selectedCalendarIds}
         onToggleCalendar={calendar.toggleCalendarSelection}
+        weekStartsOn={calendarSettings.weekStartsOn}
+        onWeekStartsOnChange={calendarSettings.setWeekStartsOn}
+        timeFormat={calendarSettings.timeFormat}
+        onTimeFormatChange={calendarSettings.setTimeFormat}
+        density={calendarSettings.density}
+        onDensityChange={calendarSettings.setDensity}
+        schedulingProfiles={tasksHook.schedulingProfiles}
+        taskLists={tasksHook.taskLists}
+        onCreateList={async (name, color) => { await tasksHook.createList(name, color); }}
+        onUpdateList={async (id, updates) => { await tasksHook.updateList(id, updates); }}
+        onDeleteList={async (id) => { await tasksHook.deleteList(id); }}
       />
       </div>
     );
@@ -859,6 +908,17 @@ function App() {
         calendars={[]}
         selectedCalendarIds={[]}
         onToggleCalendar={() => {}}
+        weekStartsOn={calendarSettings.weekStartsOn}
+        onWeekStartsOnChange={calendarSettings.setWeekStartsOn}
+        timeFormat={calendarSettings.timeFormat}
+        onTimeFormatChange={calendarSettings.setTimeFormat}
+        density={calendarSettings.density}
+        onDensityChange={calendarSettings.setDensity}
+        schedulingProfiles={tasksHook.schedulingProfiles}
+        taskLists={tasksHook.taskLists}
+        onCreateList={async (name, color) => { await tasksHook.createList(name, color); }}
+        onUpdateList={async (id, updates) => { await tasksHook.updateList(id, updates); }}
+        onDeleteList={async (id) => { await tasksHook.deleteList(id); }}
       />
       </div>
     );
@@ -903,6 +963,18 @@ function App() {
         onOpenSettings={() => setShowSettings(true)}
         onOpenFocus={handleOpenFocus}
       />
+
+      {/* Offline banner */}
+      {isOffline && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center gap-2 px-4 py-2 bg-warning/5 border-b border-warning/20 text-sm text-warning"
+        >
+          <WifiOff className="w-3.5 h-3.5 shrink-0" />
+          <span>You&rsquo;re offline — changes will sync when you reconnect.</span>
+        </div>
+      )}
 
       {/* Error banners */}
       {calendar.error && (
@@ -971,8 +1043,7 @@ function App() {
         <div
           data-onboarding="calendar"
           className={`flex-1 flex flex-col min-w-0 p-3 gap-3 ${activeView === 'calendar' ? '' : activeView === 'insights' ? 'hidden' : 'hidden lg:flex'}`}
-        >
-          <TempoCalendar
+        >            <TempoCalendar
             events={tempoEvents}
             defaultView={tempoView}
             onSelectEvent={handleSelectEvent}
@@ -983,6 +1054,8 @@ function App() {
             navigateToDate={navigateToDate}
             startHour={parseInt(workingHours.start.split(':')[0], 10)}
             endHour={parseInt(workingHours.end.split(':')[0], 10) + 2}
+            weekStartsOn={calendarSettings.weekStartsOn}
+            timeFormat={calendarSettings.timeFormat}
             className="min-h-0"
           />
         </div>
@@ -1067,6 +1140,17 @@ function App() {
         calendars={calendar.calendars}
         selectedCalendarIds={calendar.selectedCalendarIds}
         onToggleCalendar={calendar.toggleCalendarSelection}
+        weekStartsOn={calendarSettings.weekStartsOn}
+        onWeekStartsOnChange={calendarSettings.setWeekStartsOn}
+        timeFormat={calendarSettings.timeFormat}
+        onTimeFormatChange={calendarSettings.setTimeFormat}
+        density={calendarSettings.density}
+        onDensityChange={calendarSettings.setDensity}
+        schedulingProfiles={tasksHook.schedulingProfiles}
+        taskLists={tasksHook.taskLists}
+        onCreateList={async (name, color) => { await tasksHook.createList(name, color); }}
+        onUpdateList={async (id, updates) => { await tasksHook.updateList(id, updates); }}
+        onDeleteList={async (id) => { await tasksHook.deleteList(id); }}
       />
 
       <OnboardingTour onComplete={() => { /* persisted in localStorage */ }} />

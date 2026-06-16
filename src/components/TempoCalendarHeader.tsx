@@ -19,6 +19,8 @@ interface TempoCalendarHeaderProps {
   onNext: () => void;
   /** Snap the displayed date back to today. */
   onToday: () => void;
+  /** 0 = Sunday, 1 = Monday. */
+  weekStartsOn?: 0 | 1;
 }
 
 /**
@@ -36,19 +38,20 @@ export function TempoCalendarHeader({
   onPrev,
   onNext,
   onToday,
+  weekStartsOn = 1,
 }: TempoCalendarHeaderProps) {
   const title = useMemo(() => {
     if (view === 'day') return format(date, 'EEEE, MMMM d');
     if (view === 'week') {
-      const ws = startOfWeek(date, { weekStartsOn: 1 });
-      const we = endOfWeek(date, { weekStartsOn: 1 });
+      const ws = startOfWeek(date, { weekStartsOn });
+      const we = endOfWeek(date, { weekStartsOn });
       if (ws.getMonth() === we.getMonth()) {
         return `${format(ws, 'MMMM d')} - ${format(we, 'd, yyyy')}`;
       }
       return `${format(ws, 'MMM d')} - ${format(we, 'MMM d, yyyy')}`;
     }
     return format(date, 'MMMM yyyy');
-  }, [view, date]);
+  }, [view, date, weekStartsOn]);
 
   return (
     <div className="flex items-center gap-2 px-1">

@@ -19,9 +19,12 @@ interface MonthViewProps {
   events: CalendarEventType[];
   onSelectEvent?: (event: CalendarEventType) => void;
   onSelectDay?: (day: Date) => void;
+  /** 0 = Sunday, 1 = Monday. */
+  weekStartsOn?: 0 | 1;
 }
 
-const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_NAMES_MON = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_NAMES_SUN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /**
  * Six-row month grid (Mon-Sun columns). Clicking a day jumps the calendar
@@ -32,14 +35,16 @@ export function TempoCalendarMonthView({
   events,
   onSelectEvent,
   onSelectDay,
+  weekStartsOn = 1,
 }: MonthViewProps) {
+  const dayNames = weekStartsOn === 0 ? DAY_NAMES_SUN : DAY_NAMES_MON;
   const monthStart = useMemo(
-    () => startOfWeek(new Date(date.getFullYear(), date.getMonth(), 1), { weekStartsOn: 1 }),
-    [date],
+    () => startOfWeek(new Date(date.getFullYear(), date.getMonth(), 1), { weekStartsOn }),
+    [date, weekStartsOn],
   );
   const monthEnd = useMemo(
-    () => endOfWeek(new Date(date.getFullYear(), date.getMonth() + 1, 0), { weekStartsOn: 1 }),
-    [date],
+    () => endOfWeek(new Date(date.getFullYear(), date.getMonth() + 1, 0), { weekStartsOn }),
+    [date, weekStartsOn],
   );
   const days = useMemo(() => {
     const arr: Date[] = [];
@@ -63,7 +68,7 @@ export function TempoCalendarMonthView({
     <div className="flex flex-col h-full bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
       {/* Day name header */}
       <div className="grid grid-cols-7 border-b border-border bg-card/50">
-        {DAY_NAMES.map((n) => (
+        {dayNames.map((n) => (
           <div
             key={n}
             className="py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
