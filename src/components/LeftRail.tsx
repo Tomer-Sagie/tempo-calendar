@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { cn } from '../lib/utils';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-export type LeftRailView = 'calendar' | 'tasks' | 'insights';
+export type LeftRailView = 'calendar' | 'tasks' | 'insights' | 'today';
 
 interface LeftRailProps {
   activeView: LeftRailView;
@@ -106,6 +106,12 @@ export function LeftRail({
             active={activeView === 'tasks'}
             onClick={() => onViewChange('tasks')}
             badge={unscheduledCount > 0 ? unscheduledCount : undefined}
+          />
+          <RailItem
+            icon={Sun}
+            label="Today"
+            active={activeView === 'today'}
+            onClick={() => onViewChange('today')}
           />
           <RailItem
             icon={BarChart3}

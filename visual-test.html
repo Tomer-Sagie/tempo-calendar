@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visual Test — Tempo Calendar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root { color-scheme: light; }
+      html {
+        font-family: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+        font-feature-settings: "ss01", "cv11", "cv02";
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+      .display {
+        font-family: 'Fraunces', ui-serif, Georgia, serif;
+        font-variation-settings: "opsz" 144, "SOFT" 30, "WONK" 0;
+        letter-spacing: -0.025em;
+      }
+      .mono {
+        font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+        font-feature-settings: "ss01", "zero", "tnum";
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/visual-test.tsx"></script>
+  </body>
+</html>

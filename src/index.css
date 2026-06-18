@@ -616,6 +616,163 @@
   border-radius: var(--radius-sm);
 }
 
+/* =============================================
+   Micro-interactions
+   ============================================= */
+
+/* Animated checkmark — spring draw-in on task completion */
+@keyframes checkmark-draw {
+  0% { stroke-dashoffset: 20; opacity: 0; transform: scale(0.5); }
+  50% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; transform: scale(1); }
+}
+.animate-checkmark {
+  animation: checkmark-draw 400ms var(--ease-spring) forwards;
+}
+.animate-checkmark circle {
+  animation: scale-in 300ms var(--ease-spring) forwards;
+}
+.animate-checkmark polyline {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+  animation: checkmark-draw 350ms var(--ease-spring) 100ms forwards;
+}
+
+/* Scheduling pulse — brief glow when a task is newly placed */
+@keyframes schedule-pulse {
+  0% { box-shadow: 0 0 0 0 oklch(var(--primary) / 0.4); }
+  50% { box-shadow: 0 0 0 6px oklch(var(--primary) / 0); }
+  100% { box-shadow: 0 0 0 0 oklch(var(--primary) / 0); }
+}
+.animate-schedule-pulse {
+  animation: schedule-pulse 800ms var(--ease-spring);
+}
+
+/* Conflict banner glow */
+@keyframes conflict-glow {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(var(--warning) / 0.2); }
+  50% { box-shadow: 0 0 12px 2px oklch(var(--warning) / 0.15); }
+}
+.animate-conflict-glow {
+  animation: conflict-glow 3s ease-in-out infinite;
+}
+
+/* Completion fade-out for task rows */
+@keyframes task-complete-fade {
+  0% { opacity: 1; transform: translateY(0); max-height: 80px; }
+  60% { opacity: 0; transform: translateY(-4px); max-height: 80px; }
+  100% { opacity: 0; transform: translateY(-8px); max-height: 0; padding: 0; margin: 0; overflow: hidden; }
+}
+.animate-task-complete {
+  animation: task-complete-fade 500ms var(--ease-spring) forwards;
+}
+
+/* Split task connector bracket */
+.split-connector-left::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-left: 2px dashed oklch(var(--primary) / 0.3);
+  border-top: 2px dashed oklch(var(--primary) / 0.3);
+  border-bottom: 2px dashed oklch(var(--primary) / 0.3);
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
+}
+.split-connector-right::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-right: 2px dashed oklch(var(--primary) / 0.3);
+  border-top: 2px dashed oklch(var(--primary) / 0.3);
+  border-bottom: 2px dashed oklch(var(--primary) / 0.3);
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+}
+
+/* Calendar grid skeleton */
+.calendar-skeleton-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.calendar-skeleton-row .gutter {
+  padding: 4px 8px 4px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+.calendar-skeleton-event {
+  height: 28px;
+  border-radius: var(--radius-sm);
+  margin: 2px 4px;
+}
+
+/* Week fill progress bar */
+.week-fill-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--muted);
+  overflow: hidden;
+}
+.week-fill-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 600ms var(--ease-spring);
+}
+
+/* FAB (Floating Action Button) */
+.fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+  z-index: 30;
+  transition: transform 200ms var(--ease-spring), box-shadow 200ms ease-out;
+}
+.fab:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-xl);
+}
+.fab:active {
+  transform: scale(0.95);
+}
+
+/* =============================================
+   Responsive — mobile-first overrides
+   ============================================= */
+
+@media (max-width: 1024px) {
+  .left-rail {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Hide left rail on mobile */
+  .left-rail { display: none; }
+  /* Sidebar becomes full-width overlay on mobile */
+  .sidebar-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    width: 100%;
+  }
+}
+
 /* Sticky z-index for header in workspaces */
 .z-header { z-index: 30; }
 .z-banner { z-index: 25; }

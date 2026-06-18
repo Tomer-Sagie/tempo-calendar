@@ -34,6 +34,8 @@ export type {
 
 export interface TempoCalendarProps {
   events: CalendarEventType[];
+  /** Show skeleton loading state instead of the calendar grid. */
+  isLoading?: boolean;
   defaultView?: CalendarView;
   onSelectEvent?: (event: CalendarEventType) => void;
   onSelectSlot?: (slot: { start: Date; end: Date }) => void;
@@ -74,8 +76,45 @@ export interface TempoCalendarProps {
  * re-exported here for backward-compat with `App.tsx` and
  * `CalendarEvent.tsx`.
  */
+/**
+ * Calendar skeleton — grey placeholder blocks shown during initial load.
+ */
+function CalendarSkeleton({ startHour, endHour }: { startHour: number; endHour: number }) {
+  const hh = getHourHeight();
+  const hours: number[] = [];
+  for (let h = startHour; h <= endHour; h++) hours.push(h);
+  return (
+    <div className="flex flex-col h-full bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+      <div className="flex-1 overflow-hidden">
+        <div className="grid grid-cols-[64px_1fr]" style={{ height: (endHour - startHour) * hh }}>
+          <div className="border-r border-border">
+            {hours.map((h) => (
+              <div key={h} className="border-b border-border/40" style={{ height: hh }}>
+                <div className="skeleton w-8 h-3 ml-auto mr-3 mt-1" />
+              </div>
+            ))}
+          </div>
+          <div className="relative">
+            {hours.map((h) => (
+              <div key={h} className="border-b border-border/30" style={{ height: hh }} />
+            ))}
+            {[0.15, 0.35, 0.55, 0.7].map((pos, i) => (
+              <div
+                key={i}
+                className="absolute left-2 right-4 skeleton rounded-md"
+                style={{ top: `${pos * 100}%`, height: i % 2 === 0 ? 48 : 32, opacity: 0.5 - i * 0.08 }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TempoCalendar({
   events,
+  isLoading,
   defaultView = 'week',
   onSelectEvent,
   onSelectSlot,
@@ -309,7 +348,12 @@ export function TempoCalendar({
         weekStartsOn={weekStartsOn}
       />
 
-      {/* View */}
+      {/* View — skeleton during initial load, calendar grid once events arrive */}
+      {isLoading ? (
+        <div className="flex-1 min-h-0">
+          <CalendarSkeleton startHour={startHour} endHour={endHour} />
+        </div>
+      ) : (
       <DndContext
         sensors={sensors}
         onDragMove={handleDragMove}
@@ -363,6 +407,7 @@ export function TempoCalendar({
           )}
         </div>
       </DndContext>
+      )}
     </div>
   );
 }

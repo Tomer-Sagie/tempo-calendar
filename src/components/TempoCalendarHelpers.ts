@@ -43,6 +43,10 @@ export interface CalendarEventType {
     is_skipped?: boolean;
     is_busy_block?: boolean;
     is_recurring?: boolean;
+    /** True if this event is a chunk of a split task */
+    is_split_chunk?: boolean;
+    /** Position of this chunk within the split sequence */
+    split_position?: 'first' | 'middle' | 'last' | 'only';
   };
 }
 

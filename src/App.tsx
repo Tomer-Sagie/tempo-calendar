@@ -15,13 +15,14 @@ import { OnboardingTour } from './components/OnboardingTour';
 import { CommandPalette } from './components/CommandPalette';
 import { VersionBadge } from './components/VersionBadge';
 import { FocusMode } from './components/FocusMode';
+import { TodayFocusView } from './components/TodayFocusView';
 import { KeyboardHelpDialog } from './components/KeyboardHelpDialog';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { Button } from './components/ui/button';
 import { LeftRail } from './components/LeftRail';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { ProductPreviewMock } from './components/ProductPreviewMock';
-import { AlertCircle, Link2, RefreshCw, LogIn, Zap, Settings2, Calendar, Sparkles, ArrowRight, BarChart3, Layers, WifiOff } from 'lucide-react';
+import { AlertCircle, Link2, RefreshCw, LogIn, Zap, Settings2, Calendar, Sparkles, ArrowRight, BarChart3, Layers, WifiOff, Plus } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { format } from 'date-fns';
 import { detectConflicts } from './lib/rescheduler';
@@ -181,7 +182,7 @@ function App() {
     changeType: 'move' | 'resize' | 'complete' | 'skip' | 'edit';
     pendingUpdate: { scheduled_start?: string; scheduled_end?: string; duration_minutes?: number } | null;
   }>({ open: false, taskId: '', occurrenceDate: new Date(), changeType: 'move', pendingUpdate: null });
-  const [activeView, setActiveView] = useState<'calendar' | 'tasks' | 'insights'>('calendar');
+  const [activeView, setActiveView] = useState<'calendar' | 'tasks' | 'insights' | 'today'>('calendar');
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [tempoView, setTempoView] = useState<'day' | 'week' | 'month'>('week');
@@ -424,18 +425,27 @@ function App() {
     await tasksHook.unschedule(id);
   };
 
+  // Debounced auto-schedule: batches rapid task completions into a single
+  // scheduleAll call so we don't fire the scheduler N times in quick succession.
+  const autoScheduleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (autoScheduleTimerRef.current) clearTimeout(autoScheduleTimerRef.current); }, []);
+  const triggerAutoSchedule = useCallback(() => {
+    if (autoScheduleTimerRef.current) clearTimeout(autoScheduleTimerRef.current);
+    autoScheduleTimerRef.current = setTimeout(async () => {
+      if (calendarRef.current.isAuthenticated) {
+        const count = await tasksHookRef.current.scheduleAll(calendarRef.current.events);
+        if (count > 0) {
+          toast.success('Rescheduled', { description: `${count} task${count === 1 ? '' : 's'} placed into open slots.` });
+        }
+      }
+    }, 500);
+  }, []);
+
   // Auto-schedule on task completion: fill the vacated slot
   const handleCompleteTask = useCallback(async (id: string) => {
-    const task = allTasksRef.current.find((t) => t.id === id);
     await tasksHookRef.current.complete(id);
-    // After completing, try to schedule remaining unscheduled tasks
-    if (task && calendar.isAuthenticated) {
-      const count = await tasksHookRef.current.scheduleAll(calendar.events);
-      if (count > 0) {
-        toast.success('Rescheduled', { description: `${count} task${count === 1 ? '' : 's'} placed into open slots.` });
-      }
-    }
-  }, [calendar.isAuthenticated, calendar.events]);
+    triggerAutoSchedule();
+  }, [triggerAutoSchedule]);
 
   // Auto-schedule on calendar changes: detect new Google events and reschedule
   const prevCalendarEventsRef = useRef<typeof calendar.events>([]);
@@ -1066,7 +1076,7 @@ function App() {
           role="status"
           aria-live="polite"
           data-onboarding="conflict-banner"
-          className="flex items-center gap-3 px-4 py-2.5 bg-warning/5 border-b border-warning/20 animate-slide-down"
+          className="flex items-center gap-3 px-4 py-2.5 bg-warning/5 border-b border-warning/20 animate-slide-down animate-conflict-glow"
         >
           <div className="w-7 h-7 rounded-lg bg-warning/15 flex items-center justify-center shrink-0">
             <Zap className="w-3.5 h-3.5 text-warning" />
@@ -1095,8 +1105,19 @@ function App() {
         {/* Calendar workspace */}
         <div
           data-onboarding="calendar"
-          className={`flex-1 flex flex-col min-w-0 p-3 gap-3 ${activeView === 'calendar' ? '' : activeView === 'insights' ? 'hidden' : 'hidden lg:flex'}`}
-        >            <TempoCalendar
+          className={`flex-1 flex flex-col min-w-0 p-3 gap-3 ${activeView === 'calendar' || activeView === 'today' ? '' : activeView === 'insights' ? 'hidden' : 'hidden lg:flex'}`}
+        >            {activeView === 'today' ? (
+              <TodayFocusView
+                tasks={allTasks}
+                onSelectTask={handleEditTask}
+                onAddTask={() => { setEditingTask(null); setShowTaskDialog(true); }}
+                onClose={() => setActiveView('calendar')}
+                startHour={parseInt(workingHours.start.split(':')[0], 10)}
+                endHour={parseInt(workingHours.end.split(':')[0], 10) + 2}
+                timeFormat={calendarSettings.timeFormat}
+              />
+            ) : (
+            <TempoCalendar
             events={tempoEvents}
             defaultView={tempoView}
             onSelectEvent={handleSelectEvent}
@@ -1111,6 +1132,7 @@ function App() {
             timeFormat={calendarSettings.timeFormat}
             className="min-h-0"
           />
+            )}
         </div>
 
         {/* Sidebar — Bento on calendar view, full TaskList on tasks view, hidden on insights */}
@@ -1487,6 +1509,16 @@ function App() {
         richColors
         closeButton
       />
+
+      {/* Mobile FAB — quick-add button visible on small screens */}
+      <button
+        type="button"
+        onClick={() => { setEditingTask(null); setShowTaskDialog(true); }}
+        className="fab lg:hidden"
+        aria-label="Add task"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       <VersionBadge />
 

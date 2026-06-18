@@ -114,7 +114,10 @@ export function TaskRow({
         aria-label="Complete task"
       >
         {isCompleting ? (
-          <div className="w-2.5 h-2.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <svg className="w-4 h-4 animate-checkmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" fill="oklch(var(--primary) / 0.15)" stroke="var(--primary)" />
+            <polyline points="7 12 10.5 15.5 17 9" stroke="var(--primary)" />
+          </svg>
         ) : (
           <Check className="w-3 h-3 text-primary opacity-0 group-hover:opacity-50 transition-opacity" />
         )}

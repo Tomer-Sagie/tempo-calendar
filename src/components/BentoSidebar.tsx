@@ -594,6 +594,34 @@ export function BentoSidebar({
             </div>
           </BentoCard>
 
+          {(() => {
+            const weekMinutes = scheduled.reduce((s, t) => s + t.duration_minutes, 0);
+            const weekRatio = weekMinutes / (8 * 60 * 5);
+            const weekPct = Math.min(100, Math.round(weekRatio * 100));
+            return (
+              <BentoCard variant="default" className="col-span-2">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Calendar className="w-3 h-3" />
+                    Week fill
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-foreground tabular-nums">
+                    {weekPct}%
+                  </span>
+                </div>
+                <div className="week-fill-bar">
+                  <div
+                    className="week-fill-bar-fill"
+                    style={{
+                      width: `${weekPct}%`,
+                      background: weekRatio > 0.85 ? 'var(--warning)' : 'var(--primary)',
+                    }}
+                  />
+                </div>
+              </BentoCard>
+            );
+          })()}
+
           <BentoCard variant={overdue.length > 0 ? 'destructive' : 'default'}>
             <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
               <Clock className={cn('w-3 h-3', overdue.length > 0 && 'text-destructive')} />

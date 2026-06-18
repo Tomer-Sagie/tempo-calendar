@@ -69,6 +69,8 @@ export function DraggableEvent({
   const isRecurring = event.data?.is_recurring;
   const isBusyBlock = event.data?.is_busy_block;
   const isMissed = event.data?.is_missed;
+  const isSplitChunk = event.data?.is_split_chunk;
+  const splitPosition = event.data?.split_position;
   const taskColor = event.data?.color;
 
   // For task events, use the task's assigned color as the left border accent
@@ -175,6 +177,9 @@ export function DraggableEvent({
         isDragging && 'cursor-grabbing shadow-xl ring-2 ring-primary/40',
         !isDragging && draggable && !isLocked && 'cursor-grab',
         isBusyBlock && !taskColor && 'bg-primary/20 border-primary font-semibold',
+        // Split task connectors: dashed bracket on left/right edges
+        isSplitChunk && splitPosition !== 'last' && splitPosition !== 'only' && 'split-connector-right',
+        isSplitChunk && splitPosition !== 'first' && splitPosition !== 'only' && 'split-connector-left',
       )}
     >
       <div className="flex items-center gap-1">
