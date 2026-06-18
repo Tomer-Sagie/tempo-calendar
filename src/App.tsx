@@ -31,6 +31,7 @@ import { parseEnhancedTask } from './lib/enhancedParser';
 import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
 import { OccurrenceEditDialog, type OccurrenceEditScope } from './components/OccurrenceEditDialog';
+import { useUndoManager } from './hooks/useUndoManager';
 
 function useTheme() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -167,6 +168,7 @@ function App() {
   const [workingHours, setWorkingHours] = useWorkingHours();
   const calendarSettings = useCalendarSettings();
   const isOffline = useOfflineDetection();
+  const undoManager = useUndoManager();
 
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -192,6 +194,26 @@ function App() {
   const [focusMode, setFocusMode] = useState<{ open: boolean; taskId: string | null }>({ open: false, taskId: null });
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [navigateToDate, setNavigateToDate] = useState<Date>(new Date());
+  const [skipCalendarGate, setSkipCalendarGate] = useState<boolean>(() => {
+    try { return localStorage.getItem('tempo-skip-calendar-gate') === 'true'; } catch { return false; }
+  });
+  useEffect(() => {
+    if (skipCalendarGate) { try { localStorage.setItem('tempo-skip-calendar-gate', 'true'); } catch { /* */ } }
+  }, [skipCalendarGate]);
+  // Clear the skip flag once Google Calendar is connected so the gate
+  // reappears if the user disconnects and signs in fresh later.
+  // Uses ref-during-render pattern (same as OnboardingTour/CommandPalette)
+  // to avoid setState-in-effect lint rule.
+  /* eslint-disable react-hooks/refs */
+  const prevCalAuthRef = useRef(calendar.isAuthenticated);
+  if (calendar.isAuthenticated && !prevCalAuthRef.current && skipCalendarGate) {
+    setSkipCalendarGate(false);
+    try { localStorage.removeItem('tempo-skip-calendar-gate'); } catch { /* */ }
+  }
+  if (calendar.isAuthenticated !== prevCalAuthRef.current) {
+    prevCalAuthRef.current = calendar.isAuthenticated;
+  }
+  /* eslint-enable react-hooks/refs */
   // Keep the ref in sync so the deletion handler can read it without
   // being rebuilt on every focus-mode open/close.
   useEffect(() => {
@@ -388,7 +410,14 @@ function App() {
   };
 
   const handleScheduleAll = async () => {
-    await tasksHook.scheduleAll(calendar.events);
+    // Capture snapshot for undo before scheduling
+    undoManager.capture(tasksHook.tasks, 'Scheduling tasks…');
+    const count = await tasksHook.scheduleAll(calendar.events);
+    if (count > 0) {
+      undoManager.showToast({ onRestore: refresh, label: `${count} task${count === 1 ? '' : 's'} scheduled` });
+    } else {
+      undoManager.clear();
+    }
   };
 
   const handleUnschedule = async (id: string) => {
@@ -513,8 +542,16 @@ function App() {
 
   const handleReschedule = async () => {
     setRescheduleLoading(true);
+    // Capture snapshot for undo before rescheduling
+    undoManager.capture(tasksHook.tasks, 'Tasks rescheduled');
     try {
-      await tasksHook.reschedule(calendar.events);
+      const results = await tasksHook.reschedule(calendar.events);
+      const movedCount = results.filter((r) => r.success).length;
+      if (movedCount > 0) {
+        undoManager.showToast({ onRestore: refresh, label: `${movedCount} task${movedCount === 1 ? '' : 's'} rescheduled` });
+      } else {
+        undoManager.clear();
+      }
     } finally {
       setRescheduleLoading(false);
     }
@@ -529,8 +566,10 @@ function App() {
   const handleConnectCalendar = async () => {
     try {
       await auth.connectGoogleCalendar();
-    } catch {
-      // Failed to start Google Calendar OAuth — error surfaced via toast
+    } catch (err) {
+      toast.error('Could not connect Google Calendar', {
+        description: err instanceof Error ? err.message : 'Please try again later.',
+      });
     }
   };
 
@@ -790,16 +829,19 @@ function App() {
         onDensityChange={calendarSettings.setDensity}
         schedulingProfiles={tasksHook.schedulingProfiles}
         taskLists={tasksHook.taskLists}
-        onCreateList={async (name, color) => { await tasksHook.createList(name, color); }}
-        onUpdateList={async (id, updates) => { await tasksHook.updateList(id, updates); }}
-        onDeleteList={async (id) => { await tasksHook.deleteList(id); }}
+        onCreateList={async (name, color) => { try { await tasksHook.createList(name, color); toast.success('List created'); } catch (err) { toast.error('Could not create list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onUpdateList={async (id, updates) => { try { await tasksHook.updateList(id, updates); } catch (err) { toast.error('Could not update list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onDeleteList={async (id) => { try { await tasksHook.deleteList(id); toast.success('List deleted'); } catch (err) { toast.error('Could not delete list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onCreateProfile={async (input) => { try { await tasksHook.createProfile(input); toast.success('Profile created'); } catch (err) { toast.error('Could not create profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onUpdateProfile={async (id, updates) => { try { await tasksHook.updateProfile(id, updates); } catch (err) { toast.error('Could not update profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onDeleteProfile={async (id) => { try { await tasksHook.deleteProfile(id); toast.success('Profile deleted'); } catch (err) { toast.error('Could not delete profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
       />
       </div>
     );
   }
 
-  // Not authenticated with Google: connect calendar screen
-  if (!calendar.isAuthenticated) {
+  // Not authenticated with Google: connect calendar screen (skip-able)
+  if (!calendar.isAuthenticated && !skipCalendarGate) {
     if (!calendar.isLoaded || calendar.isLoading) {
       return (
         <div className="min-h-[100dvh] flex items-center justify-center app-gradient">
@@ -874,6 +916,14 @@ function App() {
                 </span>
               </div>
 
+              <button
+                type="button"
+                onClick={() => setSkipCalendarGate(true)}
+                className="mt-3 text-sm text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+              >
+                Skip for now
+              </button>
+
               {calendar.error && (
                 <div className="mt-5 p-4 bg-destructive/5 border border-destructive/20 rounded-lg space-y-3">
                   <div className="flex items-start gap-2">
@@ -916,9 +966,12 @@ function App() {
         onDensityChange={calendarSettings.setDensity}
         schedulingProfiles={tasksHook.schedulingProfiles}
         taskLists={tasksHook.taskLists}
-        onCreateList={async (name, color) => { await tasksHook.createList(name, color); }}
-        onUpdateList={async (id, updates) => { await tasksHook.updateList(id, updates); }}
-        onDeleteList={async (id) => { await tasksHook.deleteList(id); }}
+        onCreateList={async (name, color) => { try { await tasksHook.createList(name, color); toast.success('List created'); } catch (err) { toast.error('Could not create list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onUpdateList={async (id, updates) => { try { await tasksHook.updateList(id, updates); } catch (err) { toast.error('Could not update list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onDeleteList={async (id) => { try { await tasksHook.deleteList(id); toast.success('List deleted'); } catch (err) { toast.error('Could not delete list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onCreateProfile={async (input) => { try { await tasksHook.createProfile(input); toast.success('Profile created'); } catch (err) { toast.error('Could not create profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onUpdateProfile={async (id, updates) => { try { await tasksHook.updateProfile(id, updates); } catch (err) { toast.error('Could not update profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onDeleteProfile={async (id) => { try { await tasksHook.deleteProfile(id); toast.success('Profile deleted'); } catch (err) { toast.error('Could not delete profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
       />
       </div>
     );
@@ -1091,9 +1144,9 @@ function App() {
               taskLists={tasksHook.taskLists}
               onBackToCalendar={() => setActiveView('calendar')}
               subtasksByTaskId={subtasksBatch.byTaskId}
-              onCreateList={async (name, color) => { await tasksHook.createList(name, color); }}
-              onUpdateList={async (id, updates) => { await tasksHook.updateList(id, updates); }}
-              onDeleteList={async (id) => { await tasksHook.deleteList(id); }}
+              onCreateList={async (name, color) => { try { await tasksHook.createList(name, color); toast.success('List created'); } catch (err) { toast.error('Could not create list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+              onUpdateList={async (id, updates) => { try { await tasksHook.updateList(id, updates); } catch (err) { toast.error('Could not update list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+              onDeleteList={async (id) => { try { await tasksHook.deleteList(id); toast.success('List deleted'); } catch (err) { toast.error('Could not delete list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
               onSkipNext={(taskId) => {
                 const task = allTasks.find((t) => t.id === taskId);
                 if (!task) return;
@@ -1148,9 +1201,12 @@ function App() {
         onDensityChange={calendarSettings.setDensity}
         schedulingProfiles={tasksHook.schedulingProfiles}
         taskLists={tasksHook.taskLists}
-        onCreateList={async (name, color) => { await tasksHook.createList(name, color); }}
-        onUpdateList={async (id, updates) => { await tasksHook.updateList(id, updates); }}
-        onDeleteList={async (id) => { await tasksHook.deleteList(id); }}
+        onCreateList={async (name, color) => { try { await tasksHook.createList(name, color); toast.success('List created'); } catch (err) { toast.error('Could not create list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onUpdateList={async (id, updates) => { try { await tasksHook.updateList(id, updates); } catch (err) { toast.error('Could not update list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onDeleteList={async (id) => { try { await tasksHook.deleteList(id); toast.success('List deleted'); } catch (err) { toast.error('Could not delete list', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onCreateProfile={async (input) => { try { await tasksHook.createProfile(input); toast.success('Profile created'); } catch (err) { toast.error('Could not create profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onUpdateProfile={async (id, updates) => { try { await tasksHook.updateProfile(id, updates); } catch (err) { toast.error('Could not update profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
+        onDeleteProfile={async (id) => { try { await tasksHook.deleteProfile(id); toast.success('Profile deleted'); } catch (err) { toast.error('Could not delete profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
       />
 
       <OnboardingTour onComplete={() => { /* persisted in localStorage */ }} />

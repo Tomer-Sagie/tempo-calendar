@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Task, TaskList, SchedulingProfile } from '../lib/types';
+import type { Task, TaskList, SchedulingProfile, SchedulingProfileInput } from '../lib/types';
 import type { CalendarEvent } from '../lib/google';
 import {
   fetchTasks, fetchUnscheduledTasks,
@@ -10,6 +10,9 @@ import {
   createTaskList as createTaskListApi,
   updateTaskList as updateTaskListApi,
   deleteTaskList as deleteTaskListApi,
+  createSchedulingProfile as createSchedulingProfileApi,
+  updateSchedulingProfile as updateSchedulingProfileApi,
+  deleteSchedulingProfile as deleteSchedulingProfileApi,
 } from '../lib/tasks';
 import { scheduleMultipleTasks, pickBestSlot, findSlotsForTask } from '../lib/scheduler';
 import { batchReschedule, detectConflicts, type RescheduleResult } from '../lib/rescheduler';
@@ -46,6 +49,10 @@ interface UseTasksReturn {
   createList: (name: string, color: string) => Promise<TaskList>;
   updateList: (id: string, updates: { name?: string; color?: string }) => Promise<TaskList>;
   deleteList: (id: string) => Promise<void>;
+  /** Scheduling profile CRUD */
+  createProfile: (input: SchedulingProfileInput) => Promise<SchedulingProfile>;
+  updateProfile: (id: string, updates: Partial<SchedulingProfileInput>) => Promise<SchedulingProfile>;
+  deleteProfile: (id: string) => Promise<void>;
   /**
    * Clear `google_event_id` on any task whose value appears in the
    * input list. Used by two-way sync to unlink tasks whose Google
@@ -416,6 +423,28 @@ export function useTasks(): UseTasksReturn {
     }
   }, []);
 
+  // Scheduling profile CRUD
+  const createProfile = useCallback(async (input: SchedulingProfileInput): Promise<SchedulingProfile> => {
+    const profile = await createSchedulingProfileApi(input);
+    if (mountedRef.current) setSchedulingProfiles((prev) => [...prev, profile]);
+    return profile;
+  }, []);
+
+  const updateProfile = useCallback(async (id: string, updates: Partial<SchedulingProfileInput>): Promise<SchedulingProfile> => {
+    const profile = await updateSchedulingProfileApi(id, updates);
+    if (mountedRef.current) setSchedulingProfiles((prev) => prev.map((p) => (p.id === id ? profile : p)));
+    return profile;
+  }, []);
+
+  const deleteProfile = useCallback(async (id: string): Promise<void> => {
+    await deleteSchedulingProfileApi(id);
+    if (mountedRef.current) {
+      setSchedulingProfiles((prev) => prev.filter((p) => p.id !== id));
+      // Clear scheduling_profile_id on any tasks that referenced this profile
+      setTasks((prev) => prev.map((t) => (t.scheduling_profile_id === id ? { ...t, scheduling_profile_id: null } : t)));
+    }
+  }, []);
+
   const clearSyncErrors = useCallback(() => setSyncErrors([]), []);
 
   return {
@@ -426,6 +455,7 @@ export function useTasks(): UseTasksReturn {
     clearSyncErrors, detectConflicts: getConflicts, reschedule,
     complete, reopen,
     createList, updateList, deleteList,
+    createProfile, updateProfile, deleteProfile,
     unlinkFromGoogleEvents,
   };
 }

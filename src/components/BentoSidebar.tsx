@@ -29,6 +29,7 @@ import { cn } from '../lib/utils';
 import type { Task } from '../lib/types';
 import { computeCurrentStreak } from '../lib/analytics';
 
+
 interface BentoSidebarProps {
   tasks: Task[];
   conflictCount: number;
@@ -682,8 +683,14 @@ export function BentoSidebar({
 
         <div className="flex-1 overflow-y-auto px-4 py-2 tempo-scrollbar">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-4 h-4 border-2 border-border border-t-primary rounded-full animate-spin" />
+            <div className="px-0 py-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2 py-2">
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0 skeleton" />
+                  <div className="h-3.5 flex-1 skeleton rounded" />
+                  <div className="h-3 w-8 skeleton rounded" />
+                </div>
+              ))}
             </div>
           ) : topUnscheduled.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">

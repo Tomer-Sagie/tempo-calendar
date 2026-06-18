@@ -5,6 +5,7 @@ import type { Task, Subtask } from '../lib/types';
 import { TaskRow, CompletedTaskRow } from './TaskRow';
 import { TaskFilters } from './TaskFilters';
 import { TaskListToolbar } from './TaskListToolbar';
+import { TaskRowSkeleton } from './ui/skeleton';
 
 interface TaskListProps {
   tasks: Task[];
@@ -293,10 +294,8 @@ export function TaskList({
           </div>
         )}
 
-        {isLoading && (
-          <div className="flex items-center justify-center py-8 text-muted-foreground">
-            <div className="w-3.5 h-3.5 border-2 border-border border-t-primary rounded-full animate-spin" />
-          </div>
+        {isLoading && tasks.length === 0 && (
+          <TaskRowSkeleton count={6} />
         )}
       </div>
     </div>

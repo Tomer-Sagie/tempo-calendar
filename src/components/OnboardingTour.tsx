@@ -119,6 +119,9 @@ export function OnboardingTour({ forceOpen, onComplete }: OnboardingTourProps) {
           'animate-scale-in p-6',
           hasSpotlight ? 'w-[min(calc(100vw-2rem),420px)]' : 'w-[min(calc(100vw-2rem),420px)] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
         )}
+        role="dialog"
+        aria-modal="true"
+        aria-label={step.title}
         style={hasSpotlight ? tooltipPosition : undefined}
       >
         <button

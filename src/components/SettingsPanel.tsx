@@ -10,7 +10,7 @@ import { cn } from '../lib/utils';
 import { TEMPO_VERSION } from '../lib/version';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { GoogleCalendar } from '../lib/google';
-import type { SchedulingProfile, TaskList } from '../lib/types';
+import type { SchedulingProfile, TaskList, SchedulingProfileInput, ScheduleWindow } from '../lib/types';
 
 type CalendarDensity = 'compact' | 'standard' | 'comfortable';
 
@@ -49,6 +49,10 @@ interface SettingsPanelProps {
   onCreateList?: (name: string, color: string) => Promise<void>;
   onUpdateList?: (id: string, updates: { name?: string; color?: string }) => Promise<void>;
   onDeleteList?: (id: string) => Promise<void>;
+  /** Scheduling profile CRUD. */
+  onCreateProfile?: (input: SchedulingProfileInput) => Promise<void>;
+  onUpdateProfile?: (id: string, updates: Partial<SchedulingProfileInput>) => Promise<void>;
+  onDeleteProfile?: (id: string) => Promise<void>;
 }
 
 type Section = 'appearance' | 'schedule' | 'account';
@@ -83,6 +87,9 @@ export function SettingsPanel({
   onCreateList,
   onUpdateList,
   onDeleteList,
+  onCreateProfile,
+  onUpdateProfile,
+  onDeleteProfile,
 }: SettingsPanelProps) {
   const [section, setSection] = useState<Section>('appearance');
 
@@ -207,6 +214,9 @@ export function SettingsPanel({
                 onCreateList={onCreateList}
                 onUpdateList={onUpdateList}
                 onDeleteList={onDeleteList}
+                onCreateProfile={onCreateProfile}
+                onUpdateProfile={onUpdateProfile}
+                onDeleteProfile={onDeleteProfile}
               />
             )}
 
@@ -392,6 +402,9 @@ function ScheduleSection({
   onCreateList,
   onUpdateList,
   onDeleteList,
+  onCreateProfile,
+  onUpdateProfile,
+  onDeleteProfile,
 }: {
   workingHours: { start: string; end: string };
   onWorkingHoursChange: (hours: { start: string; end: string }) => void;
@@ -402,6 +415,9 @@ function ScheduleSection({
   onCreateList?: (name: string, color: string) => Promise<void>;
   onUpdateList?: (id: string, updates: { name?: string; color?: string }) => Promise<void>;
   onDeleteList?: (id: string) => Promise<void>;
+  onCreateProfile?: (input: SchedulingProfileInput) => Promise<void>;
+  onUpdateProfile?: (id: string, updates: Partial<SchedulingProfileInput>) => Promise<void>;
+  onDeleteProfile?: (id: string) => Promise<void>;
 }) {
   return (
     <div className="space-y-6">
@@ -481,46 +497,12 @@ function ScheduleSection({
       />
 
       {/* Scheduling profiles */}
-      <section>
-        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-          <Palette className="w-3 h-3 inline mr-1 -mt-px" />
-          Scheduling profiles
-        </h3>
-        <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-          Assign different working-hour windows to specific tasks. Coming soon — profiles are read-only for now.
-        </p>
-        {schedulingProfiles.length === 0 ? (
-          <div className="p-3 rounded-lg border border-dashed border-border text-xs text-muted-foreground text-center">
-            No scheduling profiles yet
-          </div>
-        ) : (
-          <div className="space-y-1.5" role="list" aria-label="Scheduling profiles">
-            {schedulingProfiles.map((profile) => (
-              <div
-                key={profile.id}
-                role="listitem"
-                className="flex items-center gap-2.5 p-3 rounded-lg border border-border bg-card"
-              >
-                <div
-                  className="w-3.5 h-3.5 rounded-full shrink-0"
-                  style={{ backgroundColor: profile.color }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-foreground truncate">
-                    {profile.name}
-                    {profile.is_default && (
-                      <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">(default)</span>
-                    )}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
-                    {profile.windows.length} {profile.windows.length === 1 ? 'window' : 'windows'}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <SchedulingProfilesSection
+        schedulingProfiles={schedulingProfiles}
+        onCreateProfile={onCreateProfile}
+        onUpdateProfile={onUpdateProfile}
+        onDeleteProfile={onDeleteProfile}
+      />
     </div>
   );
 }
@@ -577,11 +559,11 @@ function TaskListsSection({
     if (original && trimmed === original.name) { setEditingId(null); return; }
     try {
       await onUpdateList(id, { name: trimmed });
+      setEditingId(null);
     } catch {
       // Keep editing state on failure so user can retry
       return;
     }
-    setEditingId(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -729,6 +711,359 @@ function TaskListsSection({
         >
           <Plus className="w-3 h-3" />
           Add list
+        </button>
+      )}
+    </section>
+  );
+}
+
+// ============================================================
+// Scheduling Profiles Sub-section
+// ============================================================
+
+const PROFILE_COLORS = ['#2563EB', '#0D9488', '#059669', '#7C3AED', '#DB2777', '#B45309', '#DC2626', '#D97706'];
+const DAY_LABELS_SHORT = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+function emptyWindows(): ScheduleWindow[] {
+  return [1, 2, 3, 4, 5, 6, 7].map((day) => ({ day, start: '09:00', end: '17:00' }));
+}
+
+function SchedulingProfilesSection({
+  schedulingProfiles,
+  onCreateProfile,
+  onUpdateProfile,
+  onDeleteProfile,
+}: {
+  schedulingProfiles: SchedulingProfile[];
+  onCreateProfile?: (input: SchedulingProfileInput) => Promise<void>;
+  onUpdateProfile?: (id: string, updates: Partial<SchedulingProfileInput>) => Promise<void>;
+  onDeleteProfile?: (id: string) => Promise<void>;
+}) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Form state for create/edit
+  const [formName, setFormName] = useState('');
+  const [formColor, setFormColor] = useState(PROFILE_COLORS[0]);
+  const [formIsDefault, setFormIsDefault] = useState(false);
+  const [formWindows, setFormWindows] = useState<ScheduleWindow[]>(emptyWindows());
+  const [enabledDays, setEnabledDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5]));
+
+  const resetForm = () => {
+    setFormName('');
+    setFormColor(PROFILE_COLORS[0]);
+    setFormIsDefault(false);
+    setFormWindows(emptyWindows());
+    setEnabledDays(new Set([1, 2, 3, 4, 5]));
+  };
+
+  const openEdit = (profile: SchedulingProfile) => {
+    setEditingId(profile.id);
+    setFormName(profile.name);
+    setFormColor(profile.color);
+    setFormIsDefault(profile.is_default);
+    const days = new Set(profile.windows.map((w) => w.day));
+    setEnabledDays(days);
+    // Merge profile windows with defaults so every day has a value
+    const merged = emptyWindows().map((dw) => {
+      const existing = profile.windows.find((w) => w.day === dw.day);
+      return existing || { ...dw, start: '', end: '' };
+    });
+    setFormWindows(merged);
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setShowCreate(true);
+    setEditingId(null);
+  };
+
+  const handleSave = async () => {
+    if (!formName.trim()) return;
+    const windows = formWindows.filter((w) => enabledDays.has(w.day));
+    if (windows.length === 0) return; // Require at least one working day
+    setSaving(true);
+    try {
+      if (editingId && onUpdateProfile) {
+        await onUpdateProfile(editingId, {
+          name: formName.trim(),
+          color: formColor,
+          is_default: formIsDefault,
+          windows,
+        });
+      } else if (onCreateProfile) {
+        await onCreateProfile({
+          name: formName.trim(),
+          color: formColor,
+          is_default: formIsDefault,
+          windows,
+        });
+      }
+      setShowCreate(false);
+      setEditingId(null);
+      resetForm();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!onDeleteProfile) return;
+    try {
+      await onDeleteProfile(id);
+      setConfirmDeleteId(null);
+    } catch {
+      // Keep confirm state on failure
+    }
+  };
+
+  const toggleDay = (day: number) => {
+    setEnabledDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(day)) next.delete(day);
+      else next.add(day);
+      return next;
+    });
+  };
+
+  const updateWindow = (day: number, field: 'start' | 'end', value: string) => {
+    setFormWindows((prev) =>
+      prev.map((w) => (w.day === day ? { ...w, [field]: value } : w)),
+    );
+  };
+
+  const isFormOpen = showCreate || editingId !== null;
+
+  return (
+    <section>
+      <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+        <Palette className="w-3 h-3 inline mr-1 -mt-px" />
+        Scheduling profiles
+      </h3>
+      <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+        Define per-day time windows for different types of work (e.g. "Work": Mon-Fri 9-17, "Study": evenings).
+      </p>
+
+      {/* Profile list */}
+      {schedulingProfiles.length === 0 && !isFormOpen ? (
+        <div className="p-3 rounded-lg border border-dashed border-border text-xs text-muted-foreground text-center">
+          No scheduling profiles yet
+        </div>
+      ) : (
+        <div className="space-y-1.5" role="list" aria-label="Scheduling profiles">
+          {schedulingProfiles.map((profile) => (              <div
+                key={profile.id}
+                role="listitem"
+                className="relative flex items-center gap-2.5 p-3 rounded-lg border border-border bg-card group"
+              >
+              <div
+                className="w-3.5 h-3.5 rounded-full shrink-0"
+                style={{ backgroundColor: profile.color }}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium text-foreground truncate">
+                  {profile.name}
+                  {profile.is_default && (
+                    <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">(default)</span>
+                  )}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  {profile.windows
+                    .sort((a, b) => a.day - b.day)
+                    .map((w) => DAY_LABELS_SHORT[w.day - 1])
+                    .join(' ')}
+                  {profile.windows.length > 0 && (
+                    <span className="ml-1">
+                      {profile.windows[0].start}–{profile.windows[0].end}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => openEdit(profile)}
+                  className="p-1 rounded hover:bg-accent text-muted-foreground transition-colors"
+                  aria-label={`Edit ${profile.name}`}
+                >
+                  <ExternalLink className="w-3 h-3" />
+                </button>
+                {onDeleteProfile && (
+                  <button
+                    onClick={() => setConfirmDeleteId(profile.id)}
+                    className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                    aria-label={`Delete ${profile.name}`}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              {/* Inline delete confirmation */}
+              {confirmDeleteId === profile.id && (
+                <div className="absolute right-0 top-full mt-1 z-10 p-2 bg-card border border-border rounded-lg shadow-lg">
+                  <p className="text-[11px] text-foreground mb-2">Delete "{profile.name}"?</p>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleDelete(profile.id)}
+                      className="px-2 py-1 rounded bg-destructive text-[10px] font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="px-2 py-1 rounded bg-muted text-[10px] font-medium text-foreground hover:bg-accent transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Profile editor form (create or edit) */}
+      {isFormOpen && (
+        <div className="mt-3 p-4 rounded-lg border border-border bg-card space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-semibold text-foreground">
+              {editingId ? 'Edit profile' : 'New profile'}
+            </h4>
+            {onCreateProfile && !editingId && (
+              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formIsDefault}
+                  onChange={(e) => setFormIsDefault(e.target.checked)}
+                  className="rounded border-border text-primary focus:ring-ring w-3.5 h-3.5"
+                />
+                Default
+              </label>
+            )}
+            {editingId && onUpdateProfile && (
+              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formIsDefault}
+                  onChange={(e) => setFormIsDefault(e.target.checked)}
+                  className="rounded border-border text-primary focus:ring-ring w-3.5 h-3.5"
+                />
+                Default
+              </label>
+            )}
+          </div>
+
+          <input
+            type="text"
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            placeholder="Profile name (e.g. Work, Study)"
+            className="w-full px-2.5 py-1.5 text-xs bg-muted rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+            autoFocus
+          />
+
+          {/* Color picker */}
+          <div className="flex items-center gap-1.5">
+            {PROFILE_COLORS.map((c) => (
+              <button
+                key={c}
+                onClick={() => setFormColor(c)}
+                className={cn(
+                  'w-5 h-5 rounded-full border-2 transition-colors',
+                  formColor === c ? 'border-foreground scale-110' : 'border-transparent',
+                )}
+                style={{ backgroundColor: c }}
+                aria-label={`Select color ${c}`}
+              />
+            ))}
+          </div>
+
+          {/* Day-of-week toggles + time windows */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              Working days & hours
+            </label>
+            {[1, 2, 3, 4, 5, 6, 7].map((day) => {
+              const enabled = enabledDays.has(day);
+              const win = formWindows.find((w) => w.day === day);
+              return (
+                <div
+                  key={day}
+                  className={cn(
+                    'flex items-center gap-2 py-1.5 px-2 rounded-md transition-colors',
+                    enabled ? 'bg-primary/5' : 'opacity-50',
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleDay(day)}
+                    className={cn(
+                      'w-8 text-[11px] font-medium rounded transition-colors text-center',
+                      enabled
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-accent',
+                    )}
+                  >
+                    {DAY_LABELS_SHORT[day - 1]}
+                  </button>
+                  {enabled ? (
+                    <div className="flex items-center gap-1 flex-1">
+                      <input
+                        type="time"
+                        value={win?.start || '09:00'}
+                        onChange={(e) => updateWindow(day, 'start', e.target.value)}
+                        className="flex-1 px-1.5 py-1 text-[11px] bg-muted rounded focus:outline-none focus:ring-1 focus:ring-ring tabular-nums"
+                      />
+                      <span className="text-[10px] text-muted-foreground">–</span>
+                      <input
+                        type="time"
+                        value={win?.end || '17:00'}
+                        onChange={(e) => updateWindow(day, 'end', e.target.value)}
+                        className="flex-1 px-1.5 py-1 text-[11px] bg-muted rounded focus:outline-none focus:ring-1 focus:ring-ring tabular-nums"
+                      />
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">Off</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex gap-1.5 pt-1">              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={!formName.trim() || saving || enabledDays.size === 0}
+                className="h-7 px-3 text-[11px]"
+              >
+              {saving ? 'Saving...' : editingId ? 'Save' : 'Create'}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setShowCreate(false);
+                setEditingId(null);
+                resetForm();
+              }}
+              className="h-7 px-3 text-[11px]"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Add profile button */}
+      {!isFormOpen && onCreateProfile && (
+        <button
+          onClick={openCreate}
+          className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-muted-foreground/50 transition-colors"
+        >
+          <Plus className="w-3 h-3" />
+          Add profile
         </button>
       )}
     </section>

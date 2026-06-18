@@ -23,10 +23,10 @@ export interface KeyboardShortcutHandlers {
  * Modifier shortcuts (Cmd+K) always fire.
  */
 export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
-  /* eslint-disable react-hooks/refs, react-hooks/immutability -- intentional ref mutation for stable callback in event listener */
+  /* eslint-disable react-hooks/refs -- intentional ref mutation for stable callback in event listener */
   const handlersRef = useRef(handlers);
   if (handlers !== handlersRef.current) handlersRef.current = handlers;
-  /* eslint-enable react-hooks/refs, react-hooks/immutability */
+  /* eslint-enable react-hooks/refs */
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

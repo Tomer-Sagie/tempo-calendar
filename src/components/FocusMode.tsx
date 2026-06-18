@@ -86,7 +86,7 @@ export function FocusMode({ open, currentTask, queue, onClose, onCompleteTask, o
   const ringColor = isBreak ? 'var(--success)' : 'var(--primary)';
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background/97 backdrop-blur-md flex flex-col animate-fade-in">
+    <div className="fixed inset-0 z-[100] bg-background/97 backdrop-blur-md flex flex-col animate-fade-in" role="dialog" aria-modal="true" aria-label="Focus Mode">
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">

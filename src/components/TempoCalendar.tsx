@@ -14,7 +14,7 @@ import { TempoCalendarHeader } from './TempoCalendarHeader';
 import { TempoCalendarDayView } from './TempoCalendarDayView';
 import { TempoCalendarWeekView } from './TempoCalendarWeekView';
 import { TempoCalendarMonthView } from './TempoCalendarMonthView';
-import { HOUR_HEIGHT } from './TempoCalendarHelpers';
+import { getHourHeight } from './TempoCalendarHelpers';
 import type {
   CalendarEventType,
   CalendarView,
@@ -165,6 +165,7 @@ export function TempoCalendar({
     initialStart: Date;
     initialEnd: Date;
     startY: number;
+    hourHeight: number;
   } | null>(null);
   const [resizeGhost, setResizeGhost] = useState<DragGhostTarget | null>(null);
   const resizeGhostRef = useRef(resizeGhost);
@@ -179,6 +180,7 @@ export function TempoCalendar({
       initialStart: new Date(ev.start),
       initialEnd: new Date(ev.end),
       startY: clientY,
+      hourHeight: getHourHeight(),
     });
   }, [events]);
 
@@ -186,10 +188,9 @@ export function TempoCalendar({
   // the cursor leaves the calendar grid.
   useEffect(() => {
     if (!resizeState) return;
-    const MIN_DURATION_MINUTES = 15;
-    const onMouseMove = (e: MouseEvent) => {
+    const MIN_DURATION_MINUTES = 15;    const onMouseMove = (e: MouseEvent) => {
       const deltaY = e.clientY - resizeState.startY;
-      const deltaMinutes = Math.round(deltaY / HOUR_HEIGHT * 60 / 15) * 15;
+      const deltaMinutes = Math.round(deltaY / resizeState.hourHeight * 60 / 15) * 15;
       let newStart = new Date(resizeState.initialStart);
       let newEnd = new Date(resizeState.initialEnd);
       if (resizeState.direction === 'top') {
@@ -251,7 +252,7 @@ export function TempoCalendar({
         end: ev.end,
         deltaX: event.delta.x,
         deltaY: event.delta.y,
-        hourHeight: HOUR_HEIGHT,
+        hourHeight: getHourHeight(),
         dayColumnWidth: dayColumnWidthRef.current,
         view,
       });
@@ -283,7 +284,7 @@ export function TempoCalendar({
         end: ev.end,
         deltaX: event.delta.x,
         deltaY: event.delta.y,
-        hourHeight: HOUR_HEIGHT,
+        hourHeight: getHourHeight(),
         dayColumnWidth: dayColumnWidthRef.current,
         view,
       });

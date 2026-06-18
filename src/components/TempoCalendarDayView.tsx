@@ -12,7 +12,7 @@ import { DraggableEvent } from './CalendarEvent';
 import { cn } from '../lib/utils';
 import { CalendarDays } from 'lucide-react';
 import {
-  HOUR_HEIGHT,
+  useHourHeight,
   getEventsForDay,
   getAllDayEvents,
   positionEvents,
@@ -54,12 +54,13 @@ export function TempoCalendarDayView({
 }: DayViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
+  const HOUR_HEIGHT = useHourHeight();
   const dayEvents = useMemo(() => getEventsForDay(events, date), [events, date]);
   const allDayEvents = useMemo(() => getAllDayEvents(dayEvents), [dayEvents]);
   const timedEvents = useMemo(() => dayEvents.filter((e) => !e.allDay), [dayEvents]);
   const positioned = useMemo(
-    () => positionEvents(timedEvents, date, startHour),
-    [timedEvents, date, startHour],
+    () => positionEvents(timedEvents, date, startHour, HOUR_HEIGHT),
+    [timedEvents, date, startHour, HOUR_HEIGHT],
   );
 
   // Scroll to current time on mount and tick every minute
@@ -76,7 +77,7 @@ export function TempoCalendarDayView({
 
     const id = setInterval(() => setTick((n) => n + 1), 60_000);
     return () => clearInterval(id);
-  }, [date, startHour]);
+  }, [date, startHour, HOUR_HEIGHT]);
 
   // Now line (computed inline — cheap, no need to memoize)
   const nowOffset = isToday(date)
@@ -146,7 +147,7 @@ export function TempoCalendarDayView({
           {/* Hour gutter */}
           <div className="border-r border-border bg-card">
             {hours.map((h) => (
-              <div key={h} data-hour={h} className="relative h-14 border-b border-border/40">
+              <div key={h} data-hour={h} className="relative border-b border-border/40" style={{ height: HOUR_HEIGHT }}>
                 <span className="absolute top-0 right-3 -translate-y-1/2 text-[10px] font-medium text-muted-foreground bg-card px-1 tabular-nums">
                   {format(setHours(date, h), timeFormat === '24h' ? 'HH:mm' : 'h a')}
                 </span>
@@ -158,7 +159,7 @@ export function TempoCalendarDayView({
           <div className="relative" onClick={handleGridClick}>
             {/* Hour lines */}
             {hours.map((h) => (
-              <div key={h} data-hour={h} className="h-14 border-b border-border/40" />
+              <div key={h} data-hour={h} className="border-b border-border/40" style={{ height: HOUR_HEIGHT }} />
             ))}
 
             {/* Half-hour lines (subtle) */}

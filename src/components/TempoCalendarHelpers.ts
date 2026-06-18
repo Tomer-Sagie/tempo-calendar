@@ -9,6 +9,7 @@
  */
 
 import { startOfDay, endOfDay, isSameDay } from 'date-fns';
+import { useState, useEffect } from 'react';
 
 // ============================================================
 // Public types
@@ -68,8 +69,41 @@ export interface DragGhostTarget {
 // Shared helpers
 // ============================================================
 
-/** Pixels per hour — generous and readable; keep in sync with `lib/drag.ts`. */
-export const HOUR_HEIGHT = 56;
+/** Default pixels per hour — used as fallback when CSS var unavailable. */
+const DEFAULT_HOUR_HEIGHT = 56;
+
+/**
+ * Read the current hour height from the `--cal-hour-height` CSS custom
+ * property, which changes based on the density setting (compact/standard/
+ * comfortable). Falls back to 56px (standard) when running on the server
+ * or when the variable is not set.
+ */
+export function getHourHeight(): number {
+  if (typeof document === 'undefined') return DEFAULT_HOUR_HEIGHT;
+  const val = getComputedStyle(document.documentElement).getPropertyValue('--cal-hour-height').trim();
+  const parsed = parseInt(val, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_HOUR_HEIGHT;
+}
+
+
+
+/**
+ * React hook that returns the current hour height and only re-renders when
+ * the density CSS class on `<html>` actually changes. Uses a MutationObserver
+ * on the `class` attribute so useMemo dependencies stay stable.
+ */
+export function useHourHeight(): number {
+  const [hh, setHh] = useState(getHourHeight);
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const next = getHourHeight();
+      setHh((prev) => (prev === next ? prev : next));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+  return hh;
+}
 
 export function getEventsForDay(events: CalendarEventType[], day: Date): CalendarEventType[] {
   const dayStart = startOfDay(day);
@@ -107,7 +141,9 @@ export function positionEvents(
   events: CalendarEventType[],
   day: Date,
   startHour: number,
+  hourHeight?: number,
 ): PositionedEvent[] {
+  const hh = hourHeight ?? DEFAULT_HOUR_HEIGHT;
   const dayStart = startOfDay(day);
   const visibleStart = new Date(dayStart);
   visibleStart.setHours(startHour, 0, 0, 0);
@@ -138,8 +174,8 @@ export function positionEvents(
         const minutes = Math.max(15, (ev.end.getTime() - ev.start.getTime()) / 60_000);
         positioned.push({
           ...ev,
-          top: (minutesFromTop / 60) * HOUR_HEIGHT,
-          height: (minutes / 60) * HOUR_HEIGHT,
+          top: (minutesFromTop / 60) * hh,
+          height: (minutes / 60) * hh,
           column: i,
           totalColumns: 0, // filled in below
           isStart: true,
@@ -156,8 +192,8 @@ export function positionEvents(
       const minutes = Math.max(15, (ev.end.getTime() - ev.start.getTime()) / 60_000);
       positioned.push({
         ...ev,
-        top: (minutesFromTop / 60) * HOUR_HEIGHT,
-        height: (minutes / 60) * HOUR_HEIGHT,
+        top: (minutesFromTop / 60) * hh,
+        height: (minutes / 60) * hh,
         column: columns.length - 1,
         totalColumns: 0,
         isStart: true,

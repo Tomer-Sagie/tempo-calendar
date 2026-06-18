@@ -164,6 +164,9 @@ export function CommandPalette({
       />
       <div
         className="fixed left-1/2 top-[20vh] z-[100] w-[min(calc(100vw-2rem),580px)] bg-card border border-border rounded-2xl shadow-xl overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
         data-state={animState}
         style={{ animation: closing ? 'content-hide 200ms var(--ease-in-out-smooth) forwards' : 'content-show 300ms var(--ease-spring)' }}
       >

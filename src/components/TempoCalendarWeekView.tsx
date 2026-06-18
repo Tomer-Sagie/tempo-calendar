@@ -16,7 +16,7 @@ import { DraggableEvent } from './CalendarEvent';
 import { cn } from '../lib/utils';
 import { CalendarDays } from 'lucide-react';
 import {
-  HOUR_HEIGHT,
+  useHourHeight,
   getEventsForDay,
   getAllDayEvents,
   positionEvents,
@@ -72,6 +72,7 @@ export function TempoCalendarWeekView({
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
+  const HOUR_HEIGHT = useHourHeight();
   const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn }), [date, weekStartsOn]);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -103,9 +104,9 @@ export function TempoCalendarWeekView({
   // Pre-position events per day
   const dayPositions = useMemo(() => {
     return days.map((d) =>
-      positionEvents(getEventsForDay(events, d).filter((e) => !e.allDay), d, startHour),
+      positionEvents(getEventsForDay(events, d).filter((e) => !e.allDay), d, startHour, HOUR_HEIGHT),
     );
-  }, [days, events, startHour]);
+  }, [days, events, startHour, HOUR_HEIGHT]);
 
   const allDayPerDay = useMemo(
     () => days.map((d) => getAllDayEvents(getEventsForDay(events, d))),
@@ -128,7 +129,7 @@ export function TempoCalendarWeekView({
 
     const id = setInterval(() => setTick((n) => n + 1), 60_000);
     return () => clearInterval(id);
-  }, [days, startHour]);
+  }, [days, startHour, HOUR_HEIGHT]);
 
   // Now line position (computed inline — cheap, no need to memoize)
   const nowOffset = (() => {
@@ -231,7 +232,7 @@ export function TempoCalendarWeekView({
           {/* Hour gutter */}
           <div className="border-r border-border">
             {hours.map((h) => (
-              <div key={h} data-hour={h} className="relative h-14 border-b border-border/40">
+              <div key={h} data-hour={h} className="relative border-b border-border/40" style={{ height: HOUR_HEIGHT }}>
                 <span className="absolute top-0 right-3 -translate-y-1/2 text-[10px] font-medium text-muted-foreground bg-card px-1 tabular-nums">
                   {format(setHours(date, h), timeFormat === '24h' ? 'HH:mm' : 'h a')}
                 </span>
@@ -253,7 +254,7 @@ export function TempoCalendarWeekView({
                 onClick={(e) => handleGridClick(e, d)}
               >
                 {hours.map((h) => (
-                  <div key={h} data-hour={h} className="h-14 border-b border-border/30" />
+                  <div key={h} data-hour={h} className="border-b border-border/30" style={{ height: HOUR_HEIGHT }} />
                 ))}
                 {hours.slice(0, -1).map((h) => (
                   <div
