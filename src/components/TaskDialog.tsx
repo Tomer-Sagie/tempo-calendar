@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { SubtasksEditor } from './SubtasksEditor';
 import { TaskDialogBasics } from './TaskDialogBasics';
@@ -20,6 +20,8 @@ interface TaskDialogProps {
   /** Task id (only set when editing an existing task). Used to anchor
    *  the in-dialog subtasks editor. */
   taskId?: string;
+  /** Called when the user deletes this task from within the editor. */
+  onDelete?: (id: string) => void;
   /**
    * If provided, enables the in-dialog subtasks editor. Only meaningful
    * when editing an existing task (which has an `id`). The host owns
@@ -45,7 +47,7 @@ interface TaskDialogProps {
  *   - Step 2: <TaskDialogAdvanced /> (description, tags, color, days)
  *   - "Expert settings" toggle below for the expert knobs.
  */
-export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = [], schedulingProfiles = [], subtasksProps, taskId }: TaskDialogProps) {
+export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = [], schedulingProfiles = [], subtasksProps, taskId, onDelete }: TaskDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
   const deriveTaskType = (): TaskFormState['task_type'] => {
@@ -347,6 +349,16 @@ export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = 
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">
+              {taskId && onDelete && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => { onDelete(taskId); onClose(); }}
+                  className="h-10 px-3 text-destructive hover:text-destructive hover:bg-destructive/5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
               <Button type="button" variant="ghost" onClick={onClose} className="flex-1 h-10">
                 Cancel
               </Button>

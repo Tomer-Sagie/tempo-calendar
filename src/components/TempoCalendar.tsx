@@ -362,7 +362,7 @@ export function TempoCalendar({
       >
         <div className="flex-1 min-h-0">
           {view === 'day' && (
-            <div className="h-full animate-fade-in" key="day">
+            <div className="h-full animate-view-enter" key="day">
               <TempoCalendarDayView
                 date={date}
                 events={events}
@@ -377,7 +377,7 @@ export function TempoCalendar({
             </div>
           )}
           {view === 'week' && (
-            <div className="h-full animate-fade-in" key="week">
+            <div className="h-full animate-view-enter" key="week">
               <TempoCalendarWeekView
                 date={date}
                 events={events}
@@ -395,7 +395,7 @@ export function TempoCalendar({
             </div>
           )}
           {view === 'month' && (
-            <div className="h-full animate-fade-in" key="month">
+            <div className="h-full animate-view-enter" key="month">
               <TempoCalendarMonthView
                 date={date}
                 events={events}

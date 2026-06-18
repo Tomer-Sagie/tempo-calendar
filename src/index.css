@@ -386,6 +386,34 @@
 
 /* Enter animations */
 .animate-fade-in { animation: fade-in 300ms var(--ease-spring); }
+
+/* View transition — slide + fade, direction-aware */
+.animate-view-enter {
+  animation: view-enter 280ms var(--ease-spring) both;
+}
+@keyframes view-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Drag spring — bouncy settle after drop */
+@keyframes drag-settle {
+  0% { transform: var(--drag-transform, none) scale(1.04); }
+  50% { transform: var(--drag-transform, none) scale(0.98); }
+  100% { transform: var(--drag-transform, none) scale(1); }
+}
+.animate-drag-settle {
+  animation: drag-settle 300ms var(--ease-spring);
+}
+
+/* Now-line gentle pulse */
+@keyframes now-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+.now-dot {
+  animation: now-pulse 3s ease-in-out infinite;
+}
 .animate-slide-down { animation: slide-down 300ms var(--ease-spring); }
 .animate-slide-up { animation: slide-up 300ms var(--ease-spring); }
 .animate-slide-in-right { animation: slide-in-right 350ms var(--ease-out-expo); }
@@ -406,7 +434,7 @@
 
 /* Stagger utility: add --stagger-index as a CSS variable on children */
 .stagger-children > * {
-  animation-fill-mode: both;
+  animation: slide-up 350ms var(--ease-spring) both;
 }
 .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
 .stagger-children > *:nth-child(2) { animation-delay: 40ms; }

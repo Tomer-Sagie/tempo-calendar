@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   format,
   startOfWeek,
@@ -71,8 +71,8 @@ export function TempoCalendarWeekView({
 }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const [, setTick] = useState(0);
   const HOUR_HEIGHT = useHourHeight();
+  const nowLineRef = useRef<HTMLDivElement>(null);
   const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn }), [date, weekStartsOn]);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -114,7 +114,7 @@ export function TempoCalendarWeekView({
   );
   const hasAllDay = allDayPerDay.some((d) => d.length > 0);
 
-  // Scroll to current time on mount and tick every minute
+  // Scroll to current time on mount and update now-line via RAF (no React re-render)
   useEffect(() => {
     if (!containerRef.current) return;
     const now = new Date();
@@ -127,9 +127,23 @@ export function TempoCalendarWeekView({
     const target = (minutesFromTop / 60) * HOUR_HEIGHT - 80;
     containerRef.current.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
 
-    const id = setInterval(() => setTick((n) => n + 1), 60_000);
+    // Update now-line position via RAF instead of setInterval + setState
+    const updateNowLine = () => {
+      if (!nowLineRef.current) return;
+      const n = new Date();
+      const mins = (n.getHours() - startHour) * 60 + n.getMinutes();
+      if (mins >= 0 && mins <= (endHour - startHour) * 60) {
+        nowLineRef.current.style.top = `${(mins / 60) * HOUR_HEIGHT}px`;
+        nowLineRef.current.style.display = '';
+      } else {
+        nowLineRef.current.style.display = 'none';
+      }
+    };
+    // Re-render once per minute for hour labels, but update now-line position smoothly
+    const id = setInterval(updateNowLine, 60_000);
+    updateNowLine();
     return () => clearInterval(id);
-  }, [days, startHour, HOUR_HEIGHT]);
+  }, [days, startHour, endHour, HOUR_HEIGHT]);
 
   // Now line position (computed inline — cheap, no need to memoize)
   const nowOffset = (() => {
@@ -444,12 +458,13 @@ export function TempoCalendarWeekView({
           {/* Now line — Fantastical-style red line with prominent dot */}
           {nowOffset !== null && (
             <div
+              ref={nowLineRef}
               className="absolute left-16 right-0 z-[5] pointer-events-none"
               style={{ top: nowOffset }}
             >
               <div className="relative flex items-center">
                 <div
-                  className="w-2.5 h-2.5 rounded-full bg-destructive border-2 border-destructive -ml-[5px]"
+                  className="w-2.5 h-2.5 rounded-full bg-destructive border-2 border-destructive -ml-[5px] now-dot"
                   style={{ boxShadow: '0 0 6px oklch(0.5 0.18 28 / 0.5)' }}
                 />
                 <div

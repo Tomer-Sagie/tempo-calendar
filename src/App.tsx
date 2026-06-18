@@ -271,14 +271,8 @@ function App() {
     return [...googleEvents, ...taskEvents];
   }, [calendar.events, allTasks]);
 
-  const tempoEvents = useMemo<CalendarEventType[]>(() => {
+  const baseEvents = useMemo<CalendarEventType[]>(() => {
     const now = new Date();
-    // Use the visible calendar range from TempoCalendar so recurring
-    // occurrences are generated for the exact window the user is looking at.
-    // Add a small buffer (1 week back, 1 week ahead) so drag-ghosts and
-    // edge navigation still have data available.
-    const from = new Date(visibleRange.start.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const horizon = new Date(visibleRange.end.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     // Base events from allEvents
     const baseEvents = allEvents.map((ev) => {
@@ -330,21 +324,56 @@ function App() {
         };
       });
 
-    // Generate recurring occurrences for repeating tasks
-    const recurringEvents: CalendarEventType[] = [];
+    return baseEvents;
+  }, [allEvents, allTasks]);
+
+  // Recurring occurrences: cached separately so non-repeating task changes
+  // (title edit, completion, etc.) don't regenerate all 365 occurrences.
+  // A stable key derived from only repeating tasks' scheduling fields ensures
+  // the memo only recomputes when something relevant actually changes.
+  const repeatingKey = useMemo(() =>
+    allTasks
+      .filter((t) => t.frequency !== 'once' && t.is_scheduled)
+      .map((t) => `${t.id}:${t.scheduled_start}:${t.scheduled_end}:${t.frequency}:${JSON.stringify(t.occurrence_overrides)}`)
+      .join('|'),
+    [allTasks],
+  );
+  const recurringEvents = useMemo<CalendarEventType[]>(() => {
+    const from = new Date(visibleRange.start.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const horizon = new Date(visibleRange.end.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const events: CalendarEventType[] = [];
     for (const task of allTasks) {
       if (task.frequency !== 'once' && task.is_scheduled && task.scheduled_start && task.scheduled_end) {
-        recurringEvents.push(...generateRecurringOccurrences(task, from, horizon));
+        events.push(...generateRecurringOccurrences(task, from, horizon));
       }
     }
+    return events;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- repeatingKey captures allTasks' repeating fields
+  }, [repeatingKey, visibleRange]);
 
+  const tempoEvents = useMemo<CalendarEventType[]>(() => {
     return [...baseEvents, ...recurringEvents];
-  }, [allEvents, allTasks, visibleRange]);
+  }, [baseEvents, recurringEvents]);
 
   const handleSaveTask = async (input: TaskInput) => {
     if (editingTask) {
       await tasksHook.update(editingTask.id, input);
-      setEditingTask(null);
+      // If this was a recurring task edit from a calendar occurrence,
+      // show the scope dialog AFTER saving so the user can choose
+      // whether changes apply to this occurrence, future, or all.
+      if (
+        occurrenceEdit.changeType === 'edit' &&
+        occurrenceEdit.taskId === editingTask.id &&
+        editingTask.frequency !== 'once'
+      ) {
+        // Close the task editor first, then open scope dialog
+        setShowTaskDialog(false);
+        setEditingTask(null);
+        setOccurrenceEdit((p) => ({ ...p, open: true, changeType: 'edit' }));
+      } else {
+        setShowTaskDialog(false);
+        setEditingTask(null);
+      }
     } else {
       const task = await tasksHook.create(input);
       // Auto-schedule on creation if task is flexible and auto_schedule is enabled
@@ -682,17 +711,17 @@ function App() {
     const task = allTasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    // Recurring occurrences: show scope dialog instead of jumping straight to the base task
+    // Recurring occurrences: open the task editor directly.
+    // The scope dialog (this/this+after/all) will appear AFTER the user
+    // saves changes, not before.
     if (event.id.includes('-occ-')) {
-      const occDate = event.start;
       setOccurrenceEdit({
-        open: true,
+        open: false,
         taskId,
-        occurrenceDate: occDate,
+        occurrenceDate: event.start,
         changeType: 'edit',
         pendingUpdate: null,
       });
-      return;
     }
 
     handleEditTask(task);
@@ -1263,10 +1292,9 @@ function App() {
                     description: `${format(occurrenceDate, 'MMM d')}`,
                   });
                 } else if (changeType === 'edit') {
-                  // For "edit this", open the base task dialog
-                  setOccurrenceEdit((p) => ({ ...p, open: false }));
-                  handleEditTask(task);
-                  return;
+                  // Changes already saved to base task; override this occurrence to keep the original values.
+                  // For "this only", the base task was already updated — nothing more to do.
+                  // (The base task update already applied to all occurrences.)
                 } else if (pendingUpdate) {
                   await tasksHook.update(taskId, {
                     occurrence_overrides: {
@@ -1286,10 +1314,8 @@ function App() {
                     status: changeType === 'skip' ? 'skipped' : 'completed',
                   });
                 } else if (changeType === 'edit') {
-                  // For "edit all", just open the base task dialog
-                  setOccurrenceEdit((p) => ({ ...p, open: false }));
-                  handleEditTask(task);
-                  return;
+                  // Changes already saved to base task — applies to all occurrences. Done.
+                  toast.success('All occurrences updated');
                 } else if (pendingUpdate) {
                   await tasksHook.update(taskId, {
                     scheduled_start: pendingUpdate.scheduled_start,
@@ -1364,10 +1390,43 @@ function App() {
                   });
                   toast.success('Series completed', { description: `From ${format(occurrenceDate, 'MMM d')} onwards` });
                 } else if (changeType === 'edit') {
-                  // For "edit future", open the base task dialog (user can adjust recurrence_end)
-                  setOccurrenceEdit((p) => ({ ...p, open: false }));
-                  handleEditTask(task);
-                  return;
+                  // For "future", split the series so past occurrences keep old values.
+                  // The base task was already updated; set recurrence_end to yesterday.
+                  const prevDate = new Date(occurrenceDate.getTime() - 24 * 60 * 60 * 1000);
+                  const newRecurrenceEnd = format(prevDate, 'yyyy-MM-dd');
+                  await tasksHook.update(taskId, { recurrence_end: newRecurrenceEnd });
+                  // Create a new task starting from this occurrence with the updated values
+                  await tasksHook.create({
+                    title: task.title,
+                    description: task.description || undefined,
+                    duration_minutes: task.duration_minutes,
+                    priority: task.priority,
+                    frequency: task.frequency,
+                    due_date: task.due_date || undefined,
+                    color: task.color,
+                    tags: task.tags || undefined,
+                    preferred_days: task.preferred_days || undefined,
+                    is_habit: task.is_habit,
+                    can_split: task.can_split,
+                    is_busy_block: task.is_busy_block,
+                    ignore_if_cannot_schedule: task.ignore_if_cannot_schedule,
+                    can_balance_across_days: task.can_balance_across_days,
+                    buffer_before_minutes: task.buffer_before_minutes || undefined,
+                    buffer_after_minutes: task.buffer_after_minutes || undefined,
+                    notes: task.notes || undefined,
+                    is_locked: task.is_locked,
+                    auto_schedule: task.auto_schedule,
+                    scheduling_cutoff_weeks: task.scheduling_cutoff_weeks,
+                    preferred_time_windows: task.preferred_time_windows || undefined,
+                    list_id: task.list_id || undefined,
+                    scheduling_profile_id: task.scheduling_profile_id || undefined,
+                    is_recurring: true,
+                    recurrence_end: task.recurrence_end || undefined,
+                    scheduled_start: task.scheduled_start || undefined,
+                    scheduled_end: task.scheduled_end || undefined,
+                    is_scheduled: task.is_scheduled || false,
+                  });
+                  toast.success('Future occurrences updated');
                 } else if (pendingUpdate) {
                   // Split the series: set recurrence_end to the day before this occurrence
                   const prevDate = new Date(occurrenceDate.getTime() - 24 * 60 * 60 * 1000);
@@ -1454,6 +1513,7 @@ function App() {
             scheduling_profile_id: editingTask.scheduling_profile_id || undefined,
           } : undefined}
           title={editingTask ? 'Edit task' : 'New task'}
+          onDelete={editingTask ? (id) => { tasksHook.remove(id); setShowTaskDialog(false); setEditingTask(null); } : undefined}
           taskLists={tasksHook.taskLists}
           schedulingProfiles={tasksHook.schedulingProfiles}
           taskId={editingTask?.id}

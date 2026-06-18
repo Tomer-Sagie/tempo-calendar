@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   format,
   isToday,
@@ -53,8 +53,8 @@ export function TempoCalendarDayView({
   timeFormat = '12h',
 }: DayViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [, setTick] = useState(0);
   const HOUR_HEIGHT = useHourHeight();
+  const nowLineRef = useRef<HTMLDivElement>(null);
   const dayEvents = useMemo(() => getEventsForDay(events, date), [events, date]);
   const allDayEvents = useMemo(() => getAllDayEvents(dayEvents), [dayEvents]);
   const timedEvents = useMemo(() => dayEvents.filter((e) => !e.allDay), [dayEvents]);
@@ -75,9 +75,22 @@ export function TempoCalendarDayView({
     const target = (minutesFromTop / 60) * HOUR_HEIGHT - 80;
     containerRef.current.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
 
-    const id = setInterval(() => setTick((n) => n + 1), 60_000);
+    // Update now-line position via RAF instead of forcing re-renders
+    const updateNowLine = () => {
+      if (!nowLineRef.current) return;
+      const n = new Date();
+      const mins = (n.getHours() - startHour) * 60 + n.getMinutes();
+      if (mins >= 0 && mins <= (endHour - startHour) * 60) {
+        nowLineRef.current.style.top = `${(mins / 60) * HOUR_HEIGHT}px`;
+        nowLineRef.current.style.display = '';
+      } else {
+        nowLineRef.current.style.display = 'none';
+      }
+    };
+    const id = setInterval(updateNowLine, 60_000);
+    updateNowLine();
     return () => clearInterval(id);
-  }, [date, startHour, HOUR_HEIGHT]);
+  }, [date, startHour, endHour, HOUR_HEIGHT]);
 
   // Now line (computed inline — cheap, no need to memoize)
   const nowOffset = isToday(date)
@@ -173,10 +186,10 @@ export function TempoCalendarDayView({
 
             {/* Now line — Fantastical-style red line with prominent dot */}
             {nowOffset !== null && (
-              <div className="absolute left-0 right-0 z-[5] pointer-events-none" style={{ top: nowOffset }}>
+              <div ref={nowLineRef} className="absolute left-0 right-0 z-[5] pointer-events-none" style={{ top: nowOffset }}>
                 <div className="relative flex items-center">
                   <div
-                    className="w-2.5 h-2.5 rounded-full bg-destructive border-2 border-destructive -ml-[5px]"
+                    className="w-2.5 h-2.5 rounded-full bg-destructive border-2 border-destructive -ml-[5px] now-dot"
                     style={{ boxShadow: '0 0 6px oklch(0.5 0.18 28 / 0.5)' }}
                   />
                   <div

@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import {
-  Clock,
   MoreHorizontal,
   Trash2,
   ExternalLink,
@@ -24,13 +23,6 @@ const PRIORITY_DOTS: Record<string, string> = {
   HIGH: 'bg-warning',
   NORMAL: 'bg-muted-foreground/40',
   LOW: 'bg-muted-foreground/20',
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  ASAP: 'ASAP',
-  HIGH: 'High',
-  NORMAL: 'Normal',
-  LOW: 'Low',
 };
 
 function getUrgencyBadge(task: Task): { label: string; className: string } | null {
@@ -74,21 +66,7 @@ export function TaskRow({
   onSkipNext,
 }: TaskRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const [unscheduling, setUnscheduling] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handle = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as HTMLElement)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, [menuOpen]);
 
   const isOverdue =
     task.is_scheduled &&
@@ -136,65 +114,41 @@ export function TaskRow({
           <span className={`text-sm font-medium truncate ${isOverdue ? 'text-overdue' : 'text-foreground'}`}>
             {task.title}
           </span>
-          {task.is_locked && (
-            <span className="text-[10px] font-medium text-success bg-success/10 px-1.5 py-0.5 rounded-md shrink-0">locked</span>
-          )}
           {task.is_recurring && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-md shrink-0">
-              <Repeat className="w-2.5 h-2.5" />
-              {task.frequency === 'daily' ? 'daily' : task.frequency === 'weekly' ? 'weekly' : 'recurring'}
-            </span>
+            <Repeat className="w-3 h-3 text-muted-foreground/50 shrink-0" />
           )}
           {task.is_habit && task.streak_count > 0 && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-warning bg-warning/10 px-1.5 py-0.5 rounded-md shrink-0">
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-warning">
               <Flame className="w-2.5 h-2.5 fill-warning/40" />
-              {task.streak_count}d
+              {task.streak_count}
             </span>
           )}
           {subtasks && <SubtaskProgressChip subtasks={subtasks} />}
         </div>
-        <div className="flex items-center gap-2.5 mt-1">
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {task.duration_minutes}m
-          </span>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[11px] text-muted-foreground">{task.duration_minutes}m</span>
           {task.due_date && !task.is_recurring && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              {format(parseISO(task.due_date), 'MMM d')}
-            </span>
-          )}
-          {task.is_recurring && task.recurrence_end && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              until {format(parseISO(task.recurrence_end), 'MMM d')}
-            </span>
+            <span className="text-[11px] text-muted-foreground">{format(parseISO(task.due_date), 'MMM d')}</span>
           )}
           {(() => {
             const urgency = getUrgencyBadge(task);
             return urgency ? (
-              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md shrink-0 ${urgency.className}`}>
+              <span className={`text-[10px] font-medium px-1 py-0.5 rounded ${urgency.className}`}>
                 {urgency.label}
               </span>
             ) : null;
           })()}
           {isScheduled && task.scheduled_start && (
-            <span className="text-xs text-success flex items-center gap-1">
-              {format(parseISO(task.scheduled_start), 'MMM d, h:mm a')}
-            </span>
+            <span className="text-[11px] text-success">{format(parseISO(task.scheduled_start), 'h:mm a')}</span>
           )}
         </div>
       </button>
 
       {/* Actions */}
-      <div className="relative shrink-0" ref={menuRef}>
+      <div className="relative shrink-0">
         <button
           onClick={(e) => {
             e.stopPropagation();
-            const rect = e.currentTarget.getBoundingClientRect();
-            setMenuPosition({
-              top: rect.bottom + 4,
-              right: window.innerWidth - rect.right,
-            });
-            setConfirmDelete(false);
             setMenuOpen(!menuOpen);
           }}
           className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors sm:opacity-60 sm:group-hover:opacity-100"
@@ -204,80 +158,54 @@ export function TaskRow({
           <MoreHorizontal className="w-4 h-4" />
         </button>
         {menuOpen && (
-          <div
-            className="fixed w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down"
-            style={{ top: menuPosition.top, right: menuPosition.right, transformOrigin: 'top right' }}
-          >
-            {confirmDelete ? (
-              <div className="p-3">
-                <p className="mb-3 text-sm leading-snug text-foreground">Delete this task?</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(task.id);
-                      setConfirmDelete(false);
-                      setMenuOpen(false);
-                    }}
-                    className="flex-1 rounded-lg bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground"
-                  >
-                    Delete
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
-                    className="flex-1 rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-foreground"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
+          <>
+            {/* Backdrop to catch outside clicks */}
+            <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} />
+            <div
+              className="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down"
+            >
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(task); setMenuOpen(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Edit
+              </button>
+              {isScheduled && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); onEdit(task); setMenuOpen(false); }}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setUnscheduling(true);
+                    await onUnschedule(task.id);
+                    setUnscheduling(false);
+                    setMenuOpen(false);
+                  }}
+                  disabled={unscheduling}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Unschedule
+                </button>
+              )}
+              {task.is_recurring && onSkipNext && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onSkipNext(task.id); setMenuOpen(false); }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
                 >
-                  <ExternalLink className="w-4 h-4" />
-                  Edit
+                  <SkipForward className="w-4 h-4" />
+                  Skip next
                 </button>
-                {isScheduled && (
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      setUnscheduling(true);
-                      await onUnschedule(task.id);
-                      setUnscheduling(false);
-                      setMenuOpen(false);
-                    }}
-                    disabled={unscheduling}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    Unschedule
-                  </button>
-                )}
-                {task.is_recurring && onSkipNext && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onSkipNext(task.id); setMenuOpen(false); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
-                  >
-                    <SkipForward className="w-4 h-4" />
-                    Skip next
-                  </button>
-                )}
-                <div className="border-t border-border my-1" />
-                <button
-                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
+              )}
+              <div className="border-t border-border my-1" />
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(task.id); setMenuOpen(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -297,20 +225,6 @@ export interface CompletedTaskRowProps {
 export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowProps) {
   const [reopening, setReopening] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handle = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as HTMLElement)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, [menuOpen]);
 
   return (
     <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-accent/40 transition-colors group animate-slide-up">
@@ -325,34 +239,14 @@ export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowP
           <span className="text-sm font-medium truncate text-muted-foreground line-through">
             {task.title}
           </span>
-          <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md shrink-0">
-            {PRIORITY_LABELS[task.priority] || task.priority}
-          </span>
-        </div>
-        <div className="flex items-center gap-2.5 mt-1">
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {task.duration_minutes}m
-          </span>
-          {task.completed_at && (
-            <span className="text-xs text-muted-foreground">
-              {format(parseISO(task.completed_at), 'MMM d')}
-            </span>
-          )}
         </div>
       </div>
 
       {/* Actions */}
-      <div className="relative shrink-0" ref={menuRef}>
+      <div className="relative shrink-0">
         <button
           onClick={(e) => {
             e.stopPropagation();
-            const rect = e.currentTarget.getBoundingClientRect();
-            setMenuPosition({
-              top: rect.bottom + 4,
-              right: window.innerWidth - rect.right,
-            });
-            setConfirmDelete(false);
             setMenuOpen(!menuOpen);
           }}
           className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors sm:opacity-60 sm:group-hover:opacity-100"
@@ -362,62 +256,33 @@ export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowP
           <MoreHorizontal className="w-4 h-4" />
         </button>
         {menuOpen && (
-          <div
-            className="fixed w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down"
-            style={{ top: menuPosition.top, right: menuPosition.right, transformOrigin: 'top right' }}
-          >
-            {confirmDelete ? (
-              <div className="p-3">
-                <p className="mb-3 text-sm leading-snug text-foreground">Delete this task?</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(task.id);
-                      setConfirmDelete(false);
-                      setMenuOpen(false);
-                    }}
-                    className="flex-1 rounded-lg bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground"
-                  >
-                    Delete
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
-                    className="flex-1 rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-foreground"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    setReopening(true);
-                    await onReopen(task.id);
-                    setReopening(false);
-                    setMenuOpen(false);
-                  }}
-                  disabled={reopening}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Reopen
-                </button>
-                <div className="border-t border-border my-1" />
-                <button
-                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
+          <>
+            <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} />
+            <div className="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down">
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  setReopening(true);
+                  await onReopen(task.id);
+                  setReopening(false);
+                  setMenuOpen(false);
+                }}
+                disabled={reopening}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reopen
+              </button>
+              <div className="border-t border-border my-1" />
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(task.id); setMenuOpen(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
