@@ -18,13 +18,6 @@ import { format, parseISO, isToday, isTomorrow, differenceInDays } from 'date-fn
 // Shared helpers (used by both TaskRow variants below).
 // ============================================================
 
-const PRIORITY_DOTS: Record<string, string> = {
-  ASAP: 'bg-destructive',
-  HIGH: 'bg-warning',
-  NORMAL: 'bg-muted-foreground/40',
-  LOW: 'bg-muted-foreground/20',
-};
-
 function getUrgencyBadge(task: Task): { label: string; className: string } | null {
   if (!task.due_date) return null;
   const due = parseISO(task.due_date);
@@ -75,7 +68,7 @@ export function TaskRow({
     task.status === 'active';
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-accent/40 transition-colors group animate-slide-up">
+    <div className="flex items-center gap-2 px-3 py-2 hover:bg-accent/30 transition-colors group animate-slide-up">
       {/* Completion checkbox */}
       <button
         type="button"
@@ -84,7 +77,7 @@ export function TaskRow({
           onComplete(task.id);
         }}
         disabled={isCompleting}
-        className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+        className={`shrink-0 w-[18px] h-[18px] rounded border flex items-center justify-center transition-all duration-150 ${
           isCompleting
             ? 'border-primary bg-primary/20'
             : 'border-muted-foreground/30 hover:border-primary hover:bg-primary/10'
@@ -101,8 +94,7 @@ export function TaskRow({
         )}
       </button>
 
-      {/* Priority indicator */}
-      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${PRIORITY_DOTS[task.priority] || 'bg-muted-foreground/20'}`} />
+
 
       {/* Content */}
       <button
@@ -111,7 +103,7 @@ export function TaskRow({
         onClick={() => onEdit(task)}
       >
         <div className="flex items-center gap-1.5">
-          <span className={`text-sm font-medium truncate ${isOverdue ? 'text-overdue' : 'text-foreground'}`}>
+          <span className={`text-[13px] font-medium truncate ${isOverdue ? 'text-overdue' : 'text-foreground'}`}>
             {task.title}
           </span>
           {task.is_recurring && (
@@ -151,7 +143,7 @@ export function TaskRow({
             e.stopPropagation();
             setMenuOpen(!menuOpen);
           }}
-          className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors sm:opacity-60 sm:group-hover:opacity-100"
+          className="p-1 rounded-md hover:bg-accent text-muted-foreground transition-colors sm:opacity-0 sm:group-hover:opacity-100"
           aria-label="More actions"
           aria-expanded={menuOpen}
         >
@@ -227,7 +219,7 @@ export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowP
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-accent/40 transition-colors group animate-slide-up">
+    <div className="flex items-center gap-2 px-3 py-2 hover:bg-accent/30 transition-colors group animate-slide-up">
       {/* Completed checkmark */}
       <div className="shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
         <Check className="w-3 h-3 text-primary-foreground" />
@@ -249,7 +241,7 @@ export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowP
             e.stopPropagation();
             setMenuOpen(!menuOpen);
           }}
-          className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors sm:opacity-60 sm:group-hover:opacity-100"
+          className="p-1 rounded-md hover:bg-accent text-muted-foreground transition-colors sm:opacity-0 sm:group-hover:opacity-100"
           aria-label="More actions"
           aria-expanded={menuOpen}
         >

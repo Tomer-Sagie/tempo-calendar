@@ -69,12 +69,12 @@ export function LeftRail({
 
   return (
     <aside
-      className="w-[64px] shrink-0 h-full bg-card border-r border-border flex flex-col items-center py-3 gap-1 z-20"
+      className="w-[52px] shrink-0 h-full bg-card border-r border-border/70 flex flex-col items-center py-2 gap-0.5 z-20"
       aria-label="Primary navigation"
     >
       {/* Brand mark */}
       <div
-        className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center mb-3 shadow-sm"
+        className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center mb-2"
         title="Tempo Calendar"
       >
         {/* Tempo mark: three vertical bars of different heights.
@@ -82,7 +82,7 @@ export function LeftRail({
         <svg
           viewBox="0 0 24 24"
           fill="currentColor"
-          className="w-6 h-6 text-primary-foreground"
+          className="w-5 h-5 text-primary-foreground"
           aria-hidden
         >
           <rect x="4" y="14" width="3" height="8" rx="0.6" />
@@ -211,9 +211,8 @@ export function LeftRail({
           {user ? (
             <>
               <button
-                onClick={() => setShowAccount(!showAccount)}
-                className={cn(
-                  'w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold transition-colors',
+                onClick={() => setShowAccount(!showAccount)}        className={cn(
+          'w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold transition-colors',
                   showAccount
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-primary/10 text-primary hover:bg-primary/20',
@@ -296,9 +295,8 @@ function RailItem({ icon: Icon, label, active, disabled, badge, onClick }: RailI
   return (
     <button
       onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        'group relative w-10 h-10 rounded-lg flex items-center justify-center transition-all',
+      disabled={disabled}        className={cn(
+          'group relative w-9 h-9 rounded-md flex items-center justify-center transition-all',
         active && 'bg-primary/10 text-primary',
         !active && !disabled && 'text-muted-foreground hover:text-foreground hover:bg-accent',
         disabled && 'text-muted-foreground/40 cursor-not-allowed',

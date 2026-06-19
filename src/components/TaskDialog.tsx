@@ -49,7 +49,6 @@ interface TaskDialogProps {
  */
 export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = [], schedulingProfiles = [], subtasksProps, taskId, onDelete }: TaskDialogProps) {
   const titleId = useId();
-  const descriptionId = useId();
   const deriveTaskType = (): TaskFormState['task_type'] => {
     if (initial?.is_recurring || initial?.frequency === 'daily' || initial?.frequency === 'weekly') return 'repeating';
     if (initial?.is_busy_block) return 'fixed';
@@ -204,17 +203,13 @@ export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = 
         <Dialog.Content
           className="dialog-content p-0"
           aria-labelledby={titleId}
-          aria-describedby={descriptionId}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border/70">
             <div>
-              <Dialog.Title id={titleId} className="text-sm font-semibold text-foreground">
+              <Dialog.Title id={titleId} className="text-[13px] font-semibold text-foreground">
                 {title || 'New task'}
               </Dialog.Title>
-              <Dialog.Description id={descriptionId} className="mt-0.5 text-[11px] text-muted-foreground">
-                Define the work and how it should fit into your calendar.
-              </Dialog.Description>
             </div>
             <Dialog.Close
               className="p-0.5 rounded hover:bg-accent text-muted-foreground transition-colors"

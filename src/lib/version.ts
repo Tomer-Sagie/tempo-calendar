@@ -41,7 +41,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: 'v1.1.0',
     date: '2026-06-10',
     changes: [
-      'Editorial font pairing: Fraunces, Instrument Sans, IBM Plex Mono',
+      'Clean Inter-based design system inspired by Linear/Notion',
       'CommandPalette (Cmd/Ctrl+K) with natural-language date parsing',
       'Sonner toasts for scheduling feedback',
       'Drag-and-drop event move on the calendar',

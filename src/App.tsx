@@ -793,7 +793,7 @@ function App() {
               <Sparkles className="w-3 h-3" />
               Calendar + tasks, finally
             </div>
-            <h1 className="mt-5 text-4xl lg:text-5xl display-1 text-foreground leading-[1.05]">
+            <h1 className="mt-5 text-4xl lg:text-5xl font-bold text-foreground leading-[1.1] tracking-tight">
               Tasks find their own time.
             </h1>
             <p className="mt-5 text-base lg:text-lg text-muted-foreground leading-relaxed">
@@ -913,7 +913,7 @@ function App() {
                 <Sparkles className="w-3 h-3" />
                 One last step
               </div>
-            <h1 className="mt-5 text-4xl lg:text-5xl display-1 text-foreground leading-[1.05]">
+            <h1 className="mt-5 text-4xl lg:text-5xl font-bold text-foreground leading-[1.1] tracking-tight">
               Connect your calendar.
             </h1>
               <p className="mt-5 text-base lg:text-lg text-muted-foreground leading-relaxed">
@@ -1172,7 +1172,6 @@ function App() {
           {activeView === 'calendar' ? (
             <BentoSidebar
               tasks={allTasks}
-              conflictCount={conflictCount}
               isLoading={tasksHook.isLoading}
               onQuickAdd={handleQuickAdd}
               onAddTask={() => { setEditingTask(null); setShowTaskDialog(true); }}
