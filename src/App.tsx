@@ -51,6 +51,40 @@ const FocusMode = lazy(() => import('./components/FocusMode').then((m) => ({ def
 const TodayFocusView = lazy(() => import('./components/TodayFocusView').then((m) => ({ default: m.TodayFocusView })));
 const KeyboardHelpDialog = lazy(() => import('./components/KeyboardHelpDialog').then((m) => ({ default: m.KeyboardHelpDialog })));
 
+/**
+ * Detect whether a time string represents an all-day event.
+ * Matches: date-only strings ("2024-01-15"), ISO midnight UTC ("...T00:00:00Z"),
+ * and local midnight ("...T00:00:00"). Handles timezone-shifted midnight
+ * (e.g. "...T05:00:00Z" = midnight EST).
+ */
+function isAllDayTimeString(iso: string): boolean {
+  // Date-only: "2024-01-15"
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return true;
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return false;
+    // Midnight UTC or local midnight (with/without Z)
+    if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) return true;
+    // Timezone-shifted midnight: parse offset from ISO string and check if it
+    // represents midnight in that timezone (e.g. "05:00:00-05:00" = 00:00 local)
+    const offsetMatch = iso.match(/([+-])(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (offsetMatch) {
+      const sign = offsetMatch[1] === '-' ? -1 : 1;
+      const offsetH = parseInt(offsetMatch[2], 10);
+      const offsetM = parseInt(offsetMatch[3], 10);
+      const totalOffsetMinutes = sign * (offsetH * 60 + offsetM);
+      const utcMinutes = d.getUTCHours() * 60 + d.getUTCMinutes();
+      // Check if the UTC time + offset = 00:00 (midnight in that timezone)
+      let localMinutes = utcMinutes + totalOffsetMinutes;
+      // Wrap around 24h
+      if (localMinutes < 0) localMinutes += 24 * 60;
+      if (localMinutes >= 24 * 60) localMinutes -= 24 * 60;
+      if (localMinutes === 0 && d.getUTCSeconds() === 0) return true;
+    }
+  } catch { /* not a valid date */ }
+  return false;
+}
+
 function useTheme() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') return 'light';
@@ -209,6 +243,12 @@ function App() {
     const threeMonthsAhead = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
     return { start: oneWeekAgo, end: threeMonthsAhead };
   });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('tempo-sidebar-collapsed') === 'true'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('tempo-sidebar-collapsed', String(sidebarCollapsed)); } catch { /* */ }
+  }, [sidebarCollapsed]);
   const [focusMode, setFocusMode] = useState<{ open: boolean; taskId: string | null }>({ open: false, taskId: null });
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [navigateToDate, setNavigateToDate] = useState<Date>(new Date());
@@ -284,7 +324,7 @@ function App() {
         calendar: 'tasks',
         source: 'task' as const,
         color: t.color,
-        allDay: false,
+        allDay: isAllDayTimeString(t.scheduled_start!) && isAllDayTimeString(t.scheduled_end!),
       }));
     return [...googleEvents, ...taskEvents];
   }, [calendar.events, allTasks]);
@@ -499,6 +539,34 @@ function App() {
     triggerAutoSchedule();
   }, [triggerAutoSchedule]);
 
+  // Auto-import calendar names as task lists on first calendar connect.
+  // Uses a localStorage flag so it only runs once per calendar set.
+  useEffect(() => {
+    if (!calendar.isAuthenticated || calendar.calendars.length === 0) return;
+    try {
+      const stored = localStorage.getItem('tempo-cal-lists-synced');
+      const syncedIds: string[] = stored ? JSON.parse(stored) : [];
+      const syncedSet = new Set(syncedIds);
+      const writable = calendar.calendars.filter(
+        (c) => !syncedSet.has(c.id) && c.accessRole !== 'reader' && c.accessRole !== 'freeBusyReader',
+      );
+      if (writable.length === 0) return;
+      (async () => {
+        const succeeded: string[] = [];
+        for (const cal of writable) {
+          try {
+            await tasksHook.createList(cal.summary || cal.id, cal.backgroundColor || '#6366f1');
+            succeeded.push(cal.id);
+          } catch { /* ignore duplicates or RLS errors — will retry next time */ }
+        }
+        if (succeeded.length > 0) {
+          const allSynced = [...syncedIds, ...succeeded];
+          try { localStorage.setItem('tempo-cal-lists-synced', JSON.stringify(allSynced)); } catch { /* */ }
+        }
+      })();
+    } catch { /* best-effort */ }
+  }, [calendar.isAuthenticated, calendar.calendars, tasksHook.createList]);
+
   // Auto-schedule on calendar changes: detect new Google events and reschedule
   const prevCalendarEventsRef = useRef<typeof calendar.events>([]);
   // Mirror frequently-changing values into refs so callbacks and effects
@@ -580,7 +648,7 @@ function App() {
       today: 'Today',
     };
     const viewLabel = viewLabels[activeView] || 'Calendar';
-    document.title = `${viewLabel} — Tempo`;
+    document.title = viewLabel === 'Calendar' ? 'Tempo Calendar' : `${viewLabel} — Tempo Calendar`;
   }, [activeView]);
 
   useEffect(() => {
@@ -771,15 +839,9 @@ function App() {
       <div className="min-h-[100dvh] flex flex-col app-gradient">
         <Header
           isAuthenticated={false}
-          onDisconnect={() => {}}
           onRefresh={() => {}}
           onScheduleAll={() => {}}
           unscheduledCount={0}
-          user={null}
-          onSignOut={async () => {}}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          onOpenSettings={() => setShowSettings(true)}
         />
         <main id="main-content" className="flex-1 grid place-items-center px-6 py-12">
           <div className="w-full max-w-[460px] rounded-2xl bg-card p-8 shadow-md border border-border">
@@ -814,15 +876,9 @@ function App() {
       <div className="min-h-[100dvh] flex flex-col app-gradient">
         <Header
           isAuthenticated={false}
-          onDisconnect={calendar.disconnect}
           onRefresh={calendar.refreshEvents}
           onScheduleAll={handleScheduleAll}
           unscheduledCount={unscheduledCount}
-          user={auth.user}
-          onSignOut={auth.signOut}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          onOpenSettings={() => setShowSettings(true)}
         />
         <main id="main-content" className="flex-1 grid lg:grid-cols-[1.1fr_1fr] gap-8 items-center px-6 lg:px-16 py-10 max-w-[1280px] mx-auto w-full">
           {/* Left: copy + CTA */}
@@ -936,15 +992,9 @@ function App() {
       <div className="min-h-[100dvh] flex flex-col app-gradient">
         <Header
           isAuthenticated={false}
-          onDisconnect={calendar.disconnect}
           onRefresh={calendar.refreshEvents}
           onScheduleAll={handleScheduleAll}
           unscheduledCount={unscheduledCount}
-          user={auth.user}
-          onSignOut={auth.signOut}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          onOpenSettings={() => setShowSettings(true)}
         />
         <main id="main-content" className="flex-1 grid lg:grid-cols-[1.1fr_1fr] gap-8 items-center px-6 lg:px-16 py-10 max-w-[1280px] mx-auto w-full overflow-y-auto tempo-scrollbar">
             {/* Left: copy + CTA */}
@@ -1087,15 +1137,9 @@ function App() {
       >
       <Header
         isAuthenticated={calendar.isAuthenticated}
-        onDisconnect={calendar.disconnect}
         onRefresh={calendar.refreshEvents}
         onScheduleAll={handleScheduleAll}
         unscheduledCount={unscheduledCount}
-        user={auth.user}
-        onSignOut={auth.signOut}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        onOpenSettings={() => setShowSettings(true)}
         onOpenFocus={handleOpenFocus}
       />
 
@@ -1213,9 +1257,23 @@ function App() {
         </div>
 
         {/* Sidebar — Bento on calendar view, full TaskList on tasks view, hidden on insights */}
+        {/* Sidebar collapse/expand toggle — always visible when on calendar view */}
+        {activeView === 'calendar' && (
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="self-start mt-3 -mr-2 z-10 w-5 h-8 rounded-l-md border border-r-0 border-border bg-card hover:bg-accent text-muted-foreground flex items-center justify-center transition-colors shrink-0"
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <polyline points={sidebarCollapsed ? '3 2 7 5 3 8' : '7 2 3 5 7 8'} />
+            </svg>
+          </button>
+        )}
         <div
           data-onboarding="quick-add"
-          className={`w-80 lg:w-[360px] border-l border-border flex flex-col shrink-0 bg-card ${activeView === 'calendar' ? '' : 'hidden lg:flex'} ${activeView === 'insights' ? 'lg:hidden' : ''}`}
+          className={`${sidebarCollapsed ? 'w-0 overflow-hidden border-l-0' : 'w-80 lg:w-[360px] border-l border-border'} flex flex-col shrink-0 bg-card transition-all duration-200 ${activeView === 'calendar' ? '' : 'hidden lg:flex'} ${activeView === 'insights' ? 'lg:hidden' : ''}`}
         >
           {activeView === 'calendar' ? (
             <BentoSidebar

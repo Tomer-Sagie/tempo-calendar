@@ -19,6 +19,8 @@ import {
   useHourHeight,
   getEventsForDay,
   getAllDayEvents,
+  getMultiDayEvents,
+  packMultiDayRows,
   positionEvents,
   getContrastText,
   type CalendarEventType,
@@ -109,11 +111,24 @@ export function TempoCalendarWeekView({
     );
   }, [days, events, startHour, HOUR_HEIGHT]);
 
-  const allDayPerDay = useMemo(
-    () => days.map((d) => getAllDayEvents(getEventsForDay(events, d))),
-    [days, events],
+  // Multi-day spanning events: compute which events span across days and
+  // pack them into rows so they render as continuous bars (like Google Calendar).
+  const multiDaySpans = useMemo(
+    () => getMultiDayEvents(events, weekStart, days),
+    [events, weekStart, days],
   );
-  const hasAllDay = allDayPerDay.some((d) => d.length > 0);
+  const multiDayRows = useMemo(() => packMultiDayRows(multiDaySpans), [multiDaySpans]);
+
+  // Single-day all-day events (not multi-day) — rendered as pills per day
+  const multiDayIds = useMemo(
+    () => new Set(multiDaySpans.map((s) => s.event.id)),
+    [multiDaySpans],
+  );
+  const allDayPerDay = useMemo(
+    () => days.map((d) => getAllDayEvents(getEventsForDay(events, d)).filter((ev) => !multiDayIds.has(ev.id))),
+    [days, events, multiDayIds],
+  );
+  const hasAllDay = multiDaySpans.length > 0 || allDayPerDay.some((d) => d.length > 0);
 
   // Scroll to current time on mount and update now-line via RAF (no React re-render)
   useEffect(() => {
@@ -196,37 +211,84 @@ export function TempoCalendarWeekView({
         })}
       </div>
 
-      {/* All-day row — compact pills like Google Calendar */}
+      {/* All-day row — spanning bars for multi-day events + pills for single-day all-day */}
       {hasAllDay && (
-        <div className="grid border-b border-border/50 bg-card grid-cols-[56px_repeat(7,1fr)]">
-          <div className="border-r border-border/70" />
-          {days.map((d, i) => (
-            <div
-              key={d.toISOString()}
-              className="border-r border-border/30 last:border-r-0 px-1 py-1 min-h-[28px] flex flex-wrap gap-0.5 items-start"
-            >
-              {allDayPerDay[i].slice(0, 2).map((ev) => {
+        <div className="border-b border-border/50 bg-card">
+          {/* Multi-day spanning events — each gets its own row spanning columns */}
+          {multiDaySpans.length > 0 && (
+            <div className="relative" style={{ minHeight: (Math.max(...multiDayRows, 0) + 1) * 24 + 4 }}>
+              {/* Grid column lines for positioning reference */}
+              <div className="absolute inset-0 grid grid-cols-[56px_repeat(7,1fr)] pointer-events-none">
+                <div />
+                {days.map((d) => (
+                  <div key={d.toISOString()} className="border-r border-border/20 last:border-r-0" />
+                ))}
+              </div>
+              {multiDaySpans.map((span, idx) => {
+                const ev = span.event;
+                const row = multiDayRows[idx];
                 const evColor = ev.data?.color || '';
-                const bgColor = evColor || 'var(--primary)';
-                const textColor = evColor ? getContrastText(evColor) : 'white';
+                const bgColor = evColor || '#6366f1';
+                const textColor = evColor ? getContrastText(evColor) : '#ffffff';
+                // Grid is 56px gutter + 7 equal 1fr columns.
+                // Use calc() to account for the fixed gutter width.
+                const left = `calc(56px + (100% - 56px) * ${span.startCol} / 7)`;
+                const width = `calc((100% - 56px) * ${span.endCol - span.startCol + 1} / 7)`;
+                const topPx = row * 24 + 2;
                 return (
                   <button
                     key={ev.id}
                     onClick={() => onSelectEvent?.(ev)}
-                    className="w-full text-left px-1.5 py-0.5 text-[10px] font-medium rounded-sm truncate transition-colors hover:opacity-80"
-                    style={{ backgroundColor: bgColor, color: textColor }}
+                    className="absolute h-[22px] text-[10px] font-medium rounded-sm truncate transition-colors hover:opacity-80 px-1.5 flex items-center border-l-[3px]"
+                    style={{
+                      backgroundColor: bgColor,
+                      color: textColor,
+                      borderLeftColor: textColor,
+                      left,
+                      width,
+                      top: topPx,
+                    }}
+                    title={ev.title}
                   >
                     {ev.title}
                   </button>
                 );
               })}
-              {allDayPerDay[i].length > 2 && (
-                <span className="text-[9px] font-medium text-muted-foreground px-1">
-                  +{allDayPerDay[i].length - 2}
-                </span>
-              )}
             </div>
-          ))}
+          )}
+          {/* Single-day all-day events — compact pills per day column */}
+          {allDayPerDay.some((d) => d.length > 0) && (
+            <div className="grid grid-cols-[56px_repeat(7,1fr)]">
+              <div className="border-r border-border/70" />
+              {days.map((d, i) => (
+                <div
+                  key={d.toISOString()}
+                  className="border-r border-border/30 last:border-r-0 px-1 py-0.5 min-h-[24px] flex flex-wrap gap-0.5 items-start"
+                >
+                  {allDayPerDay[i].slice(0, 2).map((ev) => {
+                    const evColor = ev.data?.color || '';
+                    const bgColor = evColor || '#6366f1';
+                    const textColor = evColor ? getContrastText(evColor) : '#ffffff';
+                    return (
+                      <button
+                        key={ev.id}
+                        onClick={() => onSelectEvent?.(ev)}
+                        className="w-full text-left px-1.5 py-0.5 text-[10px] font-medium rounded-sm truncate transition-colors hover:opacity-80"
+                        style={{ backgroundColor: bgColor, color: textColor }}
+                      >
+                        {ev.title}
+                      </button>
+                    );
+                  })}
+                  {allDayPerDay[i].length > 2 && (
+                    <span className="text-[9px] font-medium text-muted-foreground px-1">
+                      +{allDayPerDay[i].length - 2}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -239,8 +301,8 @@ export function TempoCalendarWeekView({
               <CalendarDays className="w-5 h-5 text-muted-foreground/60" />
             </div>
             <p className="text-sm font-medium text-foreground mb-1">Nothing scheduled this week</p>
-            <p className="text-xs text-muted-foreground max-w-[220px] leading-relaxed">
-              Click any time slot to add a task.
+            <p className="text-xs text-muted-foreground max-w-[260px] leading-relaxed">
+              Click any time slot to create a task. Press <kbd className="inline-flex items-center h-4 px-1 font-mono text-[10px] font-medium bg-muted border border-border rounded mx-0.5">Q</kbd> to quick-add.
             </p>
           </div>
         )}

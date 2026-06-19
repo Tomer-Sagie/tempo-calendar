@@ -423,7 +423,8 @@ export function getBlockingDependencies(
 export function getAutoSchedulableTasks(tasks: Task[]): Task[] {
   return tasks.filter(t =>
     t.status === 'active' &&
-    t.auto_schedule === true &&
+    // auto_schedule defaults to true — only exclude explicitly opted-out tasks
+    t.auto_schedule !== false &&
     !t.is_busy_block
   );
 }

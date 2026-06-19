@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import {
   format,
   isToday,
+  isSameDay,
   setHours,
   setMinutes,
   setSeconds,
@@ -19,6 +20,7 @@ import {
   getContrastText,
   type CalendarEventType,
 } from './TempoCalendarHelpers';
+
 
 interface DayViewProps {
   date: Date;
@@ -57,8 +59,23 @@ export function TempoCalendarDayView({
   const HOUR_HEIGHT = useHourHeight();
   const nowLineRef = useRef<HTMLDivElement>(null);
   const dayEvents = useMemo(() => getEventsForDay(events, date), [events, date]);
-  const allDayEvents = useMemo(() => getAllDayEvents(dayEvents), [dayEvents]);
-  const timedEvents = useMemo(() => dayEvents.filter((e) => !e.allDay), [dayEvents]);
+  // Multi-day events that aren't allDay but span multiple days should also
+  // appear in the all-day strip rather than being clipped into the time grid.
+  const allDayEvents = useMemo(() => {
+    const allDay = getAllDayEvents(dayEvents);
+    const multiDayTimed = dayEvents.filter(
+      (e) => !e.allDay && !isSameDay(e.start, e.end),
+    );
+    // Deduplicate (an event could match both) — don't mutate the cached array
+    const seen = new Set(allDay.map((e) => e.id));
+    const extra = multiDayTimed.filter((ev) => !seen.has(ev.id));
+    return [...allDay, ...extra];
+  }, [dayEvents]);
+  const allDayIds = useMemo(() => new Set(allDayEvents.map((e) => e.id)), [allDayEvents]);
+  const timedEvents = useMemo(
+    () => dayEvents.filter((e) => !allDayIds.has(e.id)),
+    [dayEvents, allDayIds],
+  );
   const positioned = useMemo(
     () => positionEvents(timedEvents, date, startHour, HOUR_HEIGHT),
     [timedEvents, date, startHour, HOUR_HEIGHT],
@@ -155,8 +172,8 @@ export function TempoCalendarDayView({
               <CalendarDays className="w-5 h-5 text-muted-foreground/60" />
             </div>
             <p className="text-sm font-medium text-foreground mb-1">Nothing scheduled today</p>
-            <p className="text-xs text-muted-foreground max-w-[220px] leading-relaxed">
-              Click any time slot to add a task.
+            <p className="text-xs text-muted-foreground max-w-[260px] leading-relaxed">
+              Click any time slot to create a task. Press <kbd className="inline-flex items-center h-4 px-1 font-mono text-[10px] font-medium bg-muted border border-border rounded mx-0.5">Q</kbd> to quick-add.
             </p>
           </div>
         )}

@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { modKey } from '../lib/utils';
+import { SidebarSkeleton } from './ui/skeleton';
 import {
   parseISO,
   isToday,
@@ -43,42 +45,57 @@ function QuickAdd({ onSubmit, onAdvanced }: { onSubmit: (title: string) => void;
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={cn(
-        'group relative flex items-center gap-2 rounded-lg border bg-card transition-all',
-        focused ? 'border-primary/40 shadow-sm' : 'border-border hover:border-muted-foreground/20',
-      )}
-    >
-      <div className="pl-3 text-muted-foreground">
-        <Plus className={cn('w-4 h-4 transition-transform', focused && 'rotate-90 text-primary')} />
-      </div>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        placeholder="Quick add task..."
-        className="flex-1 bg-transparent py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
-      />
-      {value.trim() && (
-        <button
-          type="submit"
-          className="mr-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors animate-scale-in"
-        >
-          Add
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={onAdvanced}
-        className="mr-1.5 p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-        title="More options"
+    <>
+      <form
+        onSubmit={handleSubmit}
+        className={cn(
+          'group relative flex items-center gap-2 rounded-lg border bg-card transition-all',
+          focused ? 'border-primary/40 shadow-sm' : 'border-border hover:border-muted-foreground/20',
+        )}
       >
-        <Sparkles className="w-3.5 h-3.5" />
-      </button>
-    </form>
+        <div className="pl-3 text-muted-foreground">
+          <Plus className={cn('w-4 h-4 transition-transform', focused && 'rotate-90 text-primary')} />
+        </div>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder="Quick add task..."
+          className="flex-1 bg-transparent py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+        />
+        {value.trim() && (
+          <button
+            type="submit"
+            className="mr-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors animate-scale-in"
+          >
+            Add
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onAdvanced}
+          className="mr-1.5 p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          title="More options — or try natural language: Buy milk tomorrow !high #errands ~30m"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+        </button>
+      </form>
+      {!focused && !value && (
+        <div className="flex items-center gap-2 mt-1.5 px-1">
+          <kbd className="inline-flex items-center h-4 px-1 font-mono text-[9px] font-medium text-muted-foreground bg-muted border border-border rounded">
+            Q
+          </kbd>
+          <span className="text-[10px] text-muted-foreground/60">to quick add</span>
+          <span className="text-muted-foreground/30">·</span>
+          <kbd className="inline-flex items-center h-4 px-1 font-mono text-[9px] font-medium text-muted-foreground bg-muted border border-border rounded">
+            {modKey}+K
+          </kbd>
+          <span className="text-[10px] text-muted-foreground/60">command palette</span>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -200,15 +217,7 @@ export function BentoSidebar({
 
         <div className="flex-1 overflow-y-auto px-3 py-1.5 tempo-scrollbar">
           {isLoading ? (
-            <div className="py-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-2 py-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full shrink-0 skeleton" />
-                  <div className="h-3.5 flex-1 skeleton rounded" />
-                  <div className="h-3 w-8 skeleton rounded" />
-                </div>
-              ))}
-            </div>
+            <SidebarSkeleton />
           ) : topUnscheduled.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="w-8 h-8 rounded-md bg-success/10 flex items-center justify-center mb-2">

@@ -97,12 +97,14 @@ export function LeftRail({
           <RailItem
             icon={Calendar}
             label="Calendar"
+            title="Calendar — W (week) · D (day) · M (month)"
             active={activeView === 'calendar'}
             onClick={() => onViewChange('calendar')}
           />
           <RailItem
             icon={ListTodo}
             label="Tasks"
+            title="Tasks — S to schedule all"
             active={activeView === 'tasks'}
             onClick={() => onViewChange('tasks')}
             badge={unscheduledCount > 0 ? unscheduledCount : undefined}
@@ -110,6 +112,7 @@ export function LeftRail({
           <RailItem
             icon={Sun}
             label="Today"
+            title="Today — T to jump here"
             active={activeView === 'today'}
             onClick={() => onViewChange('today')}
           />
@@ -123,13 +126,20 @@ export function LeftRail({
           <RailItem
             icon={Sparkles}
             label="Plan inbox"
+            title="Plan inbox — schedule all unscheduled tasks"
             active={false}
-            onClick={onScheduleAll}
-            disabled={unscheduledCount === 0}
+            onClick={() => {
+              // Navigate to tasks view so the user can see their unscheduled
+              // items. If there are unscheduled tasks, also trigger scheduling.
+              onViewChange('tasks');
+              if (unscheduledCount > 0) onScheduleAll();
+            }}
+            badge={unscheduledCount > 0 ? unscheduledCount : undefined}
           />
           <RailItem
             icon={RefreshCw}
             label="Refresh"
+            title="Refresh calendar events"
             active={false}
             onClick={onRefresh}
             disabled={isLoading}
@@ -285,13 +295,14 @@ export function LeftRail({
 interface RailItemProps {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
+  title?: string;
   active?: boolean;
   disabled?: boolean;
   badge?: number;
   onClick: () => void;
 }
 
-function RailItem({ icon: Icon, label, active, disabled, badge, onClick }: RailItemProps) {
+function RailItem({ icon: Icon, label, title, active, disabled, badge, onClick }: RailItemProps) {
   return (
     <button
       onClick={onClick}
@@ -303,7 +314,7 @@ function RailItem({ icon: Icon, label, active, disabled, badge, onClick }: RailI
       )}
       aria-label={label}
       aria-current={active ? 'page' : undefined}
-      title={label}
+      title={title || label}
     >
       <Icon className="w-[18px] h-[18px]" />
       {badge !== undefined && badge > 0 && (

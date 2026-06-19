@@ -136,6 +136,93 @@ export function getAllDayEvents(events: CalendarEventType[]): CalendarEventType[
   return events.filter((e) => e.allDay);
 }
 
+/**
+ * Events that span multiple days — either flagged `allDay` or timed events
+ * whose start and end fall on different calendar days. These should render
+ * in the all-day strip as spanning bars rather than in the time grid.
+ */
+export function getMultiDayEvents(
+  events: CalendarEventType[],
+  rangeStart: Date,
+  days: Date[],
+): Array<{
+  event: CalendarEventType;
+  startCol: number;
+  endCol: number;
+}> {
+  const results: Array<{ event: CalendarEventType; startCol: number; endCol: number }> = [];
+  const lastDay = days[days.length - 1];
+
+  for (const ev of events) {
+    // Include if allDay OR if the event spans more than one calendar day
+    const isMultiDay =
+      ev.allDay ||
+      ev.start.toDateString() !== ev.end.toDateString();
+    if (!isMultiDay) continue;
+
+    // Clamp to the visible range
+    const evStart = ev.start < rangeStart ? rangeStart : ev.start;
+    const evEnd = ev.end > new Date(lastDay.getTime() + 86400000)
+      ? new Date(lastDay.getTime() + 86400000)
+      : ev.end;
+    if (evStart >= evEnd) continue;
+
+    // Find column indices (0..6)
+    let startCol = -1;
+    let endCol = -1;
+    for (let i = 0; i < days.length; i++) {
+      const dayStart = days[i];
+      const dayEnd = new Date(dayStart.getTime() + 86400000);
+      if (startCol === -1 && evStart < dayEnd) startCol = i;
+      if (evEnd > dayStart) endCol = i;
+    }
+    if (startCol === -1 || endCol === -1) continue;
+    results.push({ event: ev, startCol, endCol });
+  }
+
+  // Sort by span length (longest first), then by start column
+  results.sort((a, b) => {
+    const spanA = a.endCol - a.startCol;
+    const spanB = b.endCol - b.startCol;
+    if (spanA !== spanB) return spanB - spanA;
+    return a.startCol - b.startCol;
+  });
+
+  return results;
+}
+
+/**
+ * Pack multi-day events into rows so that no two events in the same row
+ * overlap in their day span. Returns an array parallel to the input where
+ * each element is the 0-based row index for that event.
+ */
+export function packMultiDayRows(
+  spans: Array<{ startCol: number; endCol: number }>,
+): number[] {
+  const rows: number[][] = []; // rows[rowIdx] = [endCol, ...]
+  const result: number[] = [];
+
+  for (const span of spans) {
+    let placed = false;
+    for (let r = 0; r < rows.length; r++) {
+      // Check if this span fits in row r (no overlap with existing events)
+      const fits = rows[r].every((endCol) => span.startCol > endCol);
+      if (fits) {
+        rows[r].push(span.endCol);
+        result.push(r);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      rows.push([span.endCol]);
+      result.push(rows.length - 1);
+    }
+  }
+
+  return result;
+}
+
 interface PositionedEvent extends CalendarEventType {
   top: number;
   height: number;

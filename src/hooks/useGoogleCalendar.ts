@@ -181,11 +181,12 @@ export function useGoogleCalendar({
       const allGoogleEvents: Array<{ event: GoogleEvent; calendarId: string }> = [];
       const perCalendarErrors: string[] = [];
       // Fetch in parallel — each calendar is independent.
-      const timeMin = range?.start.toISOString();
-      const timeMax = range?.end.toISOString();
+      const timeMin = range?.start?.toISOString();
+      const timeMax = range?.end?.toISOString();
       const results = await Promise.allSettled(
         idsToFetch.map((calId) => fetchCalendarEvents(calId, timeMin, timeMax).then((evts) => ({ calId, evts })))
       );
+      const calendarsToDeselect: string[] = [];
       for (let i = 0; i < results.length; i++) {
         const result = results[i];
         const calId = idsToFetch[i];
@@ -195,10 +196,26 @@ export function useGoogleCalendar({
           }
         } else {
           const calErr = result.reason;
-          // Failed to fetch calendar — error recorded in perCalendarErrors
           const label = calErr instanceof GoogleAuthError ? calErr.message : String(calErr);
+          // If the calendar returned a 404, it was deleted or is no longer
+          // accessible — silently deselect it instead of showing a permanent error.
+          if (/404/.test(label)) {
+            calendarsToDeselect.push(calId);
+            continue;
+          }
           perCalendarErrors.push(`${calId}: ${label}`);
         }
+      }
+      // Auto-remove inaccessible calendars from the selection
+      if (calendarsToDeselect.length > 0) {
+        const deselected = new Set(calendarsToDeselect);
+        let next = selectedCalendarIdsRef.current.filter((id) => !deselected.has(id));
+        // If all selected calendars 404'd, fall back to primary so the user
+        // isn't stuck with an empty calendar and a permanent error.
+        if (next.length === 0) next = ['primary'];
+        selectedCalendarIdsRef.current = next;
+        setSelectedCalendarIds(next);
+        try { localStorage.setItem('tempo-selected-calendars', JSON.stringify(next)); } catch { /* ignore */ }
       }
       // Build a lookup from calendarId → backgroundColor so we can
       // pass the calendar color to each event as a fallback.

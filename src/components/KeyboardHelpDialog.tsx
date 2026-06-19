@@ -1,19 +1,18 @@
 import { Keyboard, X } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useId } from 'react';
+import { modKey } from '../lib/utils';
 
 interface KeyboardHelpDialogProps {
   open: boolean;
   onClose: () => void;
 }
 
-const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-
 const SECTIONS: Array<{ heading: string; shortcuts: Array<[string, string]> }> = [
   {
     heading: 'General',
     shortcuts: [
-      ['Open command palette', isMac ? '⌘ K' : 'Ctrl+K'],
+      ['Open command palette', `${modKey}+K`],
       ['Quick add task', 'Q'],
       ['Keyboard shortcuts', '?'],
     ],
@@ -32,6 +31,12 @@ const SECTIONS: Array<{ heading: string; shortcuts: Array<[string, string]> }> =
     shortcuts: [
       ['Schedule all inbox', 'S'],
       ['Start focus mode', 'F8'],
+    ],
+  },
+  {
+    heading: 'Navigation',
+    shortcuts: [
+      ['Dismiss / close', 'Esc'],
     ],
   },
 ];
@@ -95,9 +100,13 @@ export function KeyboardHelpDialog({ open, onClose }: KeyboardHelpDialogProps) {
           </div>
 
           {/* Footer */}
-          <div className="px-5 py-2.5 border-t border-border bg-muted/20 text-[10px] text-muted-foreground">
-            <span>Tip: type tasks naturally in the command palette — </span>
-            <span className="font-mono text-foreground">&quot;Buy milk tomorrow !high #errands ~30m&quot;</span>
+          <div className="px-5 py-2.5 border-t border-border bg-muted/20 space-y-1">
+            <p className="text-[10px] text-muted-foreground">
+              <span className="font-semibold">Pro tip:</span> Type tasks naturally — <span className="font-mono text-foreground">Buy milk tomorrow !high #errands ~30m</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              <span className="font-semibold">Click</span> any empty time slot on the calendar to create a task at that time.
+            </p>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

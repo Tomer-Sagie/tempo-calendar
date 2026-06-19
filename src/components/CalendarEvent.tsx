@@ -33,6 +33,9 @@ interface DraggableEventProps {
  *   - Completed tasks: strikethrough + reduced opacity
  *   - Missed tasks: destructive border + reduced opacity
  */
+/** Fallback color for task events that don't have an explicit color. */
+const DEFAULT_TASK_COLOR = '#6366f1';
+
 export function DraggableEvent({
   event,
   isLocked,
@@ -73,9 +76,11 @@ export function DraggableEvent({
   const splitPosition = event.data?.split_position;
   const taskColor = event.data?.color;
 
-  // For task events, use the task's assigned color as the left border accent
-  const colorBorder = taskColor && !isGoogle ? { borderLeftColor: taskColor } : {};
-  const colorBg = taskColor && !isGoogle ? { backgroundColor: `${taskColor}18` } : {};
+  // For task events, use the task's assigned color as the left border accent.
+  // Always apply a color so task events are never plain gray.
+  const effectiveColor = taskColor && !isGoogle ? taskColor : (isGoogle ? '' : DEFAULT_TASK_COLOR);
+  const colorBorder = effectiveColor ? { borderLeftColor: effectiveColor } : {};
+  const colorBg = effectiveColor ? { backgroundColor: `${effectiveColor}18` } : {};
 
   const style: React.CSSProperties = {
     ...positionStyle,

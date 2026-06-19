@@ -11,6 +11,9 @@ import { cn } from '../lib/utils';
 import { CalendarDays } from 'lucide-react';
 import {
   getEventsForDay,
+  getMultiDayEvents,
+  packMultiDayRows,
+  getContrastText,
   type CalendarEventType,
 } from './TempoCalendarHelpers';
 
@@ -56,13 +59,25 @@ export function TempoCalendarMonthView({
     return arr;
   }, [monthStart, monthEnd]);
 
+  // Multi-day spanning events for the month grid
+  const multiDaySpans = useMemo(
+    () => getMultiDayEvents(events, monthStart, days),
+    [events, monthStart, days],
+  );
+  const multiDayRows = useMemo(() => packMultiDayRows(multiDaySpans), [multiDaySpans]);
+  const multiDayIds = useMemo(() => new Set(multiDaySpans.map((s) => s.event.id)), [multiDaySpans]);
+
   const eventsByDay = useMemo(() => {
     const map = new Map<string, CalendarEventType[]>();
     for (const d of days) {
-      map.set(d.toDateString(), getEventsForDay(events, d));
+      // Exclude multi-day events from per-day pills — they render as spanning bars
+      map.set(
+        d.toDateString(),
+        getEventsForDay(events, d).filter((ev) => !multiDayIds.has(ev.id)),
+      );
     }
     return map;
-  }, [days, events]);
+  }, [days, events, multiDayIds]);
 
   return (
     <div className="flex flex-col h-full bg-card rounded-lg border border-border/70 overflow-hidden">
@@ -78,6 +93,41 @@ export function TempoCalendarMonthView({
         ))}
       </div>
 
+      {/* Multi-day spanning event bars — positioned over the day grid */}
+      {multiDaySpans.length > 0 && (
+        <div className="relative border-b border-border/30" style={{ minHeight: (Math.max(0, ...multiDayRows) + 1) * 22 + 2 }}>
+          {multiDaySpans.map((span, idx) => {
+            const ev = span.event;
+            const row = multiDayRows[idx];
+            const evColor = ev.data?.color || '';
+            const bgColor = evColor || '#6366f1';
+            const textColor = evColor ? getContrastText(evColor) : '#ffffff';
+            // Each column is 1/7 of the grid; offset by 0 for the first col
+            const leftPct = (span.startCol / 7) * 100;
+            const widthPct = ((span.endCol - span.startCol + 1) / 7) * 100;
+            const topPx = row * 22 + 2;
+            return (
+              <button
+                key={ev.id}
+                onClick={() => onSelectEvent?.(ev)}
+                className="absolute h-[20px] text-[9px] font-medium rounded-sm truncate transition-colors hover:opacity-80 px-1.5 flex items-center border-l-[3px] z-10"
+                style={{
+                  backgroundColor: bgColor,
+                  color: textColor,
+                  borderLeftColor: textColor,
+                  left: `${leftPct}%`,
+                  width: `${widthPct}%`,
+                  top: topPx,
+                }}
+                title={ev.title}
+              >
+                {ev.title}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Day grid — always visible so users can click days */}
       <div className="flex-1 grid grid-cols-7 grid-rows-6 relative">
         {/* Subtle empty-state overlay when no events */}
@@ -87,8 +137,8 @@ export function TempoCalendarMonthView({
               <CalendarDays className="w-5 h-5 text-muted-foreground/60" />
             </div>
             <p className="text-sm font-medium text-foreground mb-1">Nothing scheduled this month</p>
-            <p className="text-xs text-muted-foreground max-w-[220px] leading-relaxed">
-              Click a day to add a task.
+            <p className="text-xs text-muted-foreground max-w-[260px] leading-relaxed">
+              Click a day to add a task. Press <kbd className="inline-flex items-center h-4 px-1 font-mono text-[10px] font-medium bg-muted border border-border rounded mx-0.5">Q</kbd> to quick-add.
             </p>
           </div>
         )}
@@ -134,14 +184,15 @@ export function TempoCalendarMonthView({
                     }}
                     className={cn(
                       'px-1.5 py-0.5 text-[10px] font-medium rounded truncate cursor-pointer transition-colors border-l-[2px]',
-                      ev.variant === 'primary' && 'bg-primary/15 border-primary text-foreground',
-                      ev.variant === 'secondary' && 'bg-event-task/40 border-event-task-border text-foreground',
                       ev.variant === 'warning' && 'bg-warning/15 border-warning text-foreground',
                       ev.variant === 'destructive' && 'bg-destructive/15 border-destructive text-foreground',
                       ev.variant === 'success' && 'bg-success/15 border-success text-foreground',
                       ev.variant === 'muted' && 'bg-muted border-muted-foreground/30 text-foreground',
-                      (!ev.variant || ev.variant === 'primary') && 'bg-primary/15 border-primary text-foreground',
+                      (!ev.data?.color && ev.variant === 'primary') && 'bg-primary/15 border-primary text-foreground',
+                      (!ev.data?.color && ev.variant === 'secondary') && 'bg-event-task/40 border-event-task-border text-foreground',
+                      !ev.data?.color && !ev.variant && 'bg-primary/15 border-primary text-foreground',
                     )}
+                    style={ev.data?.color?.startsWith('#') ? { backgroundColor: `${ev.data.color}20`, borderLeftColor: ev.data.color, color: 'inherit' } : undefined}
                   >
                     {ev.title}
                   </div>
