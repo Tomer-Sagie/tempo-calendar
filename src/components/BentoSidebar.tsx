@@ -63,6 +63,7 @@ function QuickAdd({ onSubmit, onAdvanced }: { onSubmit: (title: string) => void;
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder="Quick add task..."
+          aria-label="Quick add task"
           className="flex-1 bg-transparent py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
         />
         {value.trim() && (

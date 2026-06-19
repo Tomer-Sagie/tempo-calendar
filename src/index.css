@@ -62,7 +62,12 @@
   /* Calendar density — more breathing room */
   --cal-hour-height: 64px;
 
-  /* Radii — tight */
+  /* Radii — standardized scale:
+     sm (6px)  → small elements: badges, chips, scrollbar thumbs
+     md (8px)  → buttons, inputs, small cards, calendar events
+     lg (10px) → cards, panels, dropdown menus, labels
+     xl (14px) → modals, dialogs, large cards, toast notifications
+     2xl (20px) → hero cards, onboarding tours, command palette */
   --radius: 0.5rem;
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
@@ -765,8 +770,8 @@
 /* FAB (Floating Action Button) */
 .fab {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  right: 16px;
   width: 56px;
   height: 56px;
   border-radius: 16px;
@@ -797,6 +802,13 @@
   }
 }
 
+@media (max-width: 1023px) {
+  /* Add bottom padding so content isn't hidden behind mobile nav */
+  #main-content {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 @media (max-width: 640px) {
   /* Hide left rail on mobile */
   .left-rail { display: none; }
@@ -806,6 +818,57 @@
     inset: 0;
     z-index: 35;
     width: 100%;
+  }
+}
+
+/* =============================================
+   Mobile bottom navigation
+   ============================================= */
+
+.mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 56px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 1px;
+  padding: 6px 0;
+  color: var(--muted-foreground);
+  transition: color 150ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  background: none;
+  border: none;
+  min-height: 44px;
+}
+
+.mobile-nav-item:active {
+  transform: scale(0.92);
+}
+
+.mobile-nav-item--active {
+  color: var(--primary);
+}
+
+@media (min-width: 1024px) {
+  .mobile-nav {
+    display: none;
   }
 }
 

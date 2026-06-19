@@ -17,6 +17,7 @@ import { VersionBadge } from './components/VersionBadge';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { Button } from './components/ui/button';
 import { LeftRail } from './components/LeftRail';
+import { MobileNav } from './components/MobileNav';
 
 import { ProductPreviewMock } from './components/ProductPreviewMock';
 import { AlertCircle, Link2, RefreshCw, LogIn, Zap, Settings2, Calendar, Sparkles, ArrowRight, BarChart3, Layers, WifiOff, Plus } from 'lucide-react';
@@ -514,8 +515,57 @@ function App() {
   };
 
   const handleUnschedule = async (id: string) => {
+    // Capture snapshot for undo before unscheduling
+    const task = tasksHook.tasks.find((t) => t.id === id);
+    undoManager.capture(tasksHook.tasks, 'Task unscheduled');
     await tasksHook.unschedule(id);
+    undoManager.showToast({ onRestore: refresh, label: `${task?.title ?? 'Task'} unscheduled` });
   };
+
+  // Delete task with undo toast — shared by TaskList and TaskDialog
+  const handleDeleteTask = useCallback(async (id: string) => {
+    const deletedTask = allTasksRef.current.find((t) => t.id === id);
+    await tasksHookRef.current.remove(id);
+    if (deletedTask) {
+      toast.success(`"${deletedTask.title}" deleted`, {
+        description: 'Click Undo to restore.',
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            await tasksHookRef.current.create({
+              title: deletedTask.title,
+              description: deletedTask.description || undefined,
+              duration_minutes: deletedTask.duration_minutes,
+              priority: deletedTask.priority,
+              frequency: deletedTask.frequency,
+              due_date: deletedTask.due_date || undefined,
+              due_time: deletedTask.due_time || undefined,
+              color: deletedTask.color,
+              tags: deletedTask.tags || undefined,
+              preferred_days: deletedTask.preferred_days || undefined,
+              preferred_time_windows: deletedTask.preferred_time_windows || undefined,
+              notes: deletedTask.notes || undefined,
+              deadline: deletedTask.deadline || undefined,
+              is_locked: deletedTask.is_locked,
+              auto_schedule: deletedTask.auto_schedule,
+              is_habit: deletedTask.is_habit,
+              can_split: deletedTask.can_split,
+              is_busy_block: deletedTask.is_busy_block,
+              scheduling_cutoff_weeks: deletedTask.scheduling_cutoff_weeks,
+              list_id: deletedTask.list_id || undefined,
+              scheduling_profile_id: deletedTask.scheduling_profile_id || undefined,
+              scheduled_start: deletedTask.scheduled_start || undefined,
+              scheduled_end: deletedTask.scheduled_end || undefined,
+              is_scheduled: deletedTask.is_scheduled,
+            });
+            toast.success('Task restored');
+            await refresh();
+          },
+        },
+        duration: 8000,
+      });
+    }
+  }, []);
 
   // Debounced auto-schedule: batches rapid task completions into a single
   // scheduleAll call so we don't fire the scheduler N times in quick succession.
@@ -1262,7 +1312,7 @@ function App() {
           <button
             type="button"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="self-start mt-3 -mr-2 z-10 w-5 h-8 rounded-l-md border border-r-0 border-border bg-card hover:bg-accent text-muted-foreground flex items-center justify-center transition-colors shrink-0"
+            className="self-start mt-3 -mr-2 z-10 w-6 h-8 rounded-l-md border border-r-0 border-border bg-card hover:bg-accent text-muted-foreground flex items-center justify-center transition-colors shrink-0"
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -1292,7 +1342,7 @@ function App() {
               isLoading={tasksHook.isLoading}
               onAddTask={() => { setEditingTask(null); setShowTaskDialog(true); }}
               onEditTask={handleEditTask}
-              onDeleteTask={tasksHook.remove}
+              onDeleteTask={handleDeleteTask}
               onScheduleAll={handleScheduleAll}
               onUnschedule={handleUnschedule}
               onCompleteTask={handleCompleteTask}
@@ -1626,7 +1676,7 @@ function App() {
             scheduling_profile_id: editingTask.scheduling_profile_id || undefined,
           } : undefined}
           title={editingTask ? 'Edit task' : 'New task'}
-          onDelete={editingTask ? (id) => { tasksHook.remove(id); setShowTaskDialog(false); setEditingTask(null); } : undefined}
+          onDelete={editingTask ? (id) => { handleDeleteTask(id); setShowTaskDialog(false); setEditingTask(null); } : undefined}
           taskLists={tasksHook.taskLists}
           schedulingProfiles={tasksHook.schedulingProfiles}
           taskId={editingTask?.id}
@@ -1685,6 +1735,13 @@ function App() {
         }}
         richColors
         closeButton
+      />
+
+      {/* Mobile bottom nav — replaces LeftRail on small screens */}
+      <MobileNav
+        activeView={activeView}
+        onViewChange={setActiveView}
+        unscheduledCount={unscheduledCount}
       />
 
       {/* Mobile FAB — quick-add button visible on small screens */}

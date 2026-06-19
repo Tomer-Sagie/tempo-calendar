@@ -157,6 +157,7 @@ export function DraggableEvent({
       role="button"
       tabIndex={0}
       aria-label={`${event.title} ${format(event.start, 'h:mma')} - ${format(event.end, 'h:mma')}`}
+      title={event.title}
       className={cn(
         'absolute text-left px-2 py-1 rounded-md overflow-hidden transition-shadow duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -241,7 +242,7 @@ export function DraggableEvent({
         <>
           {/* Top handle */}
           <div
-            className="absolute top-0 left-3 right-3 h-1.5 cursor-ns-resize z-30 opacity-40 hover:opacity-80 transition-opacity"
+            className="absolute top-0 left-3 right-3 h-2.5 cursor-ns-resize z-30 opacity-0 group-hover/event:opacity-60 hover:!opacity-100 transition-opacity"
             onPointerDown={(e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -253,7 +254,7 @@ export function DraggableEvent({
           </div>
           {/* Bottom handle */}
           <div
-            className="absolute bottom-0 left-3 right-3 h-1.5 cursor-ns-resize z-30 opacity-40 hover:opacity-80 transition-opacity"
+            className="absolute bottom-0 left-3 right-3 h-2.5 cursor-ns-resize z-30 opacity-0 group-hover/event:opacity-60 hover:!opacity-100 transition-opacity"
             onPointerDown={(e) => {
               e.stopPropagation();
               e.preventDefault();

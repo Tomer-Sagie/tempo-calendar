@@ -9,6 +9,17 @@
     <meta name="theme-color" content="#ffffff" />
     <meta name="color-scheme" content="light dark" />
 
+    <!-- Open Graph -->
+    <meta property="og:title" content="Tempo Calendar" />
+    <meta property="og:description" content="A calendar that schedules itself. Tasks find their own time on your Google Calendar." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tempo-calendar-one.vercel.app" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Tempo Calendar" />
+    <meta name="twitter:description" content="A calendar that schedules itself. Tasks find their own time on your Google Calendar." />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,6 +29,30 @@
       onload="this.media='all'"
     />
     <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" /></noscript>
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Tempo Calendar",
+      "url": "https://tempo-calendar-one.vercel.app",
+      "description": "A calendar that schedules itself. Tasks find their own time on your Google Calendar.",
+      "applicationCategory": "ProductivityApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Auto-schedule tasks into open calendar slots",
+        "Google Calendar two-way sync",
+        "Smart reschedule on conflict detection",
+        "Task streaks and productivity insights",
+        "Keyboard shortcuts and command palette"
+      ]
+    }
+    </script>
   </head>
   <body>
     <a href="#main-content" class="skip-to-content">Skip to main content</a>
