@@ -154,10 +154,10 @@ export function getMultiDayEvents(
   const lastDay = days[days.length - 1];
 
   for (const ev of events) {
-    // Include if allDay OR if the event spans more than one calendar day
-    const isMultiDay =
-      ev.allDay ||
-      ev.start.toDateString() !== ev.end.toDateString();
+    // Only include events explicitly flagged as allDay.
+    // Regular timed events that happen to cross midnight (e.g. 11 PM – 1 AM)
+    // should stay in the time grid, not be rendered as spanning bars.
+    const isMultiDay = ev.allDay;
     if (!isMultiDay) continue;
 
     // Clamp to the visible range
