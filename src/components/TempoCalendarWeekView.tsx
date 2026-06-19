@@ -167,9 +167,9 @@ export function TempoCalendarWeekView({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-lg border border-border/70 overflow-hidden">
+    <div className="flex flex-col h-full bg-card rounded-xl border border-border/50 overflow-hidden">
       {/* Day header row */}
-      <div className={cn('grid border-b border-border/70 bg-card', 'grid-cols-[56px_repeat(7,1fr)]')}>
+      <div className={cn('grid border-b border-border/50 bg-card', 'grid-cols-[56px_repeat(7,1fr)]')}>
         <div className="border-r border-border" />
         {days.map((d) => {
           const t = isToday(d);
@@ -198,7 +198,7 @@ export function TempoCalendarWeekView({
 
       {/* All-day row — compact pills like Google Calendar */}
       {hasAllDay && (
-        <div className="grid border-b border-border/70 bg-card grid-cols-[56px_repeat(7,1fr)]">
+        <div className="grid border-b border-border/50 bg-card grid-cols-[56px_repeat(7,1fr)]">
           <div className="border-r border-border/70" />
           {days.map((d, i) => (
             <div

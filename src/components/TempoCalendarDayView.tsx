@@ -121,7 +121,7 @@ export function TempoCalendarDayView({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-lg border border-border/70 overflow-hidden">
+    <div className="flex flex-col h-full bg-card rounded-xl border border-border/50 overflow-hidden">
       {/* All-day row */}
       {allDayEvents.length > 0 && (
         <div className="border-b border-border/70 bg-card px-3 py-1.5 flex items-center gap-2 overflow-x-auto">
