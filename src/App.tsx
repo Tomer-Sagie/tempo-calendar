@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useGoogleCalendar } from './hooks/useGoogleCalendar';
 import { useTasks } from './hooks/useTasks';
 import { useAuth } from './hooks/useAuth';
@@ -10,17 +10,14 @@ import { BentoSidebar } from './components/BentoSidebar';
 import { TaskList } from './components/TaskList';
 import { TaskDialog } from './components/TaskDialog';
 import { AuthDialog } from './components/AuthDialog';
-import { SettingsPanel } from './components/SettingsPanel';
-import { OnboardingTour } from './components/OnboardingTour';
-import { CommandPalette } from './components/CommandPalette';
+
+
+
 import { VersionBadge } from './components/VersionBadge';
-import { FocusMode } from './components/FocusMode';
-import { TodayFocusView } from './components/TodayFocusView';
-import { KeyboardHelpDialog } from './components/KeyboardHelpDialog';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { Button } from './components/ui/button';
 import { LeftRail } from './components/LeftRail';
-import { AnalyticsPanel } from './components/AnalyticsPanel';
+
 import { ProductPreviewMock } from './components/ProductPreviewMock';
 import { AlertCircle, Link2, RefreshCw, LogIn, Zap, Settings2, Calendar, Sparkles, ArrowRight, BarChart3, Layers, WifiOff, Plus } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
@@ -32,8 +29,27 @@ import { generateRecurringOccurrences } from './lib/recurring';
 import { parseEnhancedTask } from './lib/enhancedParser';
 import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
-import { OccurrenceEditDialog, type OccurrenceEditScope } from './components/OccurrenceEditDialog';
+import type { OccurrenceEditScope } from './components/OccurrenceEditDialog';
 import { useUndoManager } from './hooks/useUndoManager';
+
+// Tiny Suspense fallback for lazy-loaded dialogs/panels
+function PanelSpinner() {
+  return (
+    <div className="flex items-center justify-center p-6">
+      <div className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin" />
+    </div>
+  );
+}
+
+// Lazy-loaded heavy components (code splitting)
+const SettingsPanel = lazy(() => import('./components/SettingsPanel').then((m) => ({ default: m.SettingsPanel })));
+const OnboardingTour = lazy(() => import('./components/OnboardingTour').then((m) => ({ default: m.OnboardingTour })));
+const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })));
+const AnalyticsPanel = lazy(() => import('./components/AnalyticsPanel').then((m) => ({ default: m.AnalyticsPanel })));
+const OccurrenceEditDialog = lazy(() => import('./components/OccurrenceEditDialog').then((m) => ({ default: m.OccurrenceEditDialog })));
+const FocusMode = lazy(() => import('./components/FocusMode').then((m) => ({ default: m.FocusMode })));
+const TodayFocusView = lazy(() => import('./components/TodayFocusView').then((m) => ({ default: m.TodayFocusView })));
+const KeyboardHelpDialog = lazy(() => import('./components/KeyboardHelpDialog').then((m) => ({ default: m.KeyboardHelpDialog })));
 
 function useTheme() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -863,6 +879,7 @@ function App() {
           </div>
           </main>
         <AuthDialog open={showAuthDialog} onClose={() => setShowAuthDialog(false)} />
+      <Suspense fallback={<PanelSpinner />}>
       <SettingsPanel
         open={showSettings}
         onClose={() => setShowSettings(false)}
@@ -897,6 +914,7 @@ function App() {
         onUpdateProfile={async (id, updates) => { try { await tasksHook.updateProfile(id, updates); } catch (err) { toast.error('Could not update profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
         onDeleteProfile={async (id) => { try { await tasksHook.deleteProfile(id); toast.success('Profile deleted'); } catch (err) { toast.error('Could not delete profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
       />
+      </Suspense>
       </div>
     );
   }
@@ -1000,6 +1018,7 @@ function App() {
               <ProductPreviewMock />
             </div>
           </main>
+      <Suspense fallback={<PanelSpinner />}>
       <SettingsPanel
         open={showSettings}
         onClose={() => setShowSettings(false)}
@@ -1034,6 +1053,7 @@ function App() {
         onUpdateProfile={async (id, updates) => { try { await tasksHook.updateProfile(id, updates); } catch (err) { toast.error('Could not update profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
         onDeleteProfile={async (id) => { try { await tasksHook.deleteProfile(id); toast.success('Profile deleted'); } catch (err) { toast.error('Could not delete profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
       />
+      </Suspense>
       </div>
     );
   }
@@ -1159,6 +1179,7 @@ function App() {
           data-onboarding="calendar"
           className={`flex-1 flex flex-col min-w-0 p-3 gap-3 ${activeView === 'calendar' || activeView === 'today' ? '' : activeView === 'insights' ? 'hidden' : 'hidden lg:flex'}`}
         >            {activeView === 'today' ? (
+              <Suspense fallback={<PanelSpinner />}>
               <TodayFocusView
                 tasks={allTasks}
                 onSelectTask={handleEditTask}
@@ -1168,6 +1189,7 @@ function App() {
                 endHour={parseInt(workingHours.end.split(':')[0], 10) + 2}
                 timeFormat={calendarSettings.timeFormat}
               />
+              </Suspense>
             ) : (
             <TempoCalendar
             events={tempoEvents}
@@ -1240,16 +1262,19 @@ function App() {
 
         {/* Insights view — full-screen analytics panel */}
         {activeView === 'insights' && (
+          <Suspense fallback={<PanelSpinner />}>
           <AnalyticsPanel
             tasks={tasksHook.tasks}
             onClose={() => setActiveView('calendar')}
           />
+          </Suspense>
         )}
       </div>
 
       {/* Dialogs */}
       <AuthDialog open={showAuthDialog} onClose={() => setShowAuthDialog(false)} />
 
+      <Suspense fallback={<PanelSpinner />}>
       <SettingsPanel
         open={showSettings}
         onClose={() => setShowSettings(false)}
@@ -1284,10 +1309,14 @@ function App() {
         onUpdateProfile={async (id, updates) => { try { await tasksHook.updateProfile(id, updates); } catch (err) { toast.error('Could not update profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
         onDeleteProfile={async (id) => { try { await tasksHook.deleteProfile(id); toast.success('Profile deleted'); } catch (err) { toast.error('Could not delete profile', { description: err instanceof Error ? err.message : 'Unknown error' }); } }}
       />
+      </Suspense>
 
+      <Suspense fallback={null}>
       <OnboardingTour onComplete={() => { /* persisted in localStorage */ }} />
+      </Suspense>
 
       {occurrenceEdit.open && (
+        <Suspense fallback={null}>
         <OccurrenceEditDialog
           key={`${occurrenceEdit.taskId}-${occurrenceEdit.changeType}-${occurrenceEdit.occurrenceDate?.toISOString() ?? 'none'}`}
           open={occurrenceEdit.open}
@@ -1503,6 +1532,7 @@ function App() {
           occurrenceDate={occurrenceEdit.occurrenceDate}
           changeType={occurrenceEdit.changeType}
         />
+        </Suspense>
       )}
 
       {showTaskDialog && (
@@ -1566,6 +1596,7 @@ function App() {
         />
       )}
 
+      <Suspense fallback={null}>
       <CommandPalette
         open={commandOpen}
         onOpenChange={setCommandOpen}
@@ -1577,11 +1608,14 @@ function App() {
         currentView={tempoView}
         theme={theme}
       />
+      </Suspense>
 
+      <Suspense fallback={null}>
       <KeyboardHelpDialog
         open={showKeyboardHelp}
         onClose={() => setShowKeyboardHelp(false)}
       />
+      </Suspense>
 
       <Toaster
         position="bottom-right"
@@ -1611,6 +1645,7 @@ function App() {
       </ErrorBoundary>
 
       {focusMode.open && calendar.isAuthenticated && (
+        <Suspense fallback={null}>
         <FocusMode
           open={focusMode.open}
           currentTask={focusCurrentTask}
@@ -1624,6 +1659,7 @@ function App() {
           }}
           onSwitchTask={(taskId) => setFocusMode({ open: true, taskId })}
         />
+        </Suspense>
       )}
     </div>
   );
