@@ -190,7 +190,11 @@ export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = 
       });
       onClose();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save task');
+      const msg = err instanceof Error ? err.message
+        : typeof err === 'object' && err !== null && 'message' in err ? String((err as Record<string, unknown>).message)
+        : typeof err === 'string' ? err
+        : 'Failed to save task';
+      setSaveError(msg);
     } finally {
       setSaving(false);
     }
