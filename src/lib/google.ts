@@ -27,6 +27,10 @@ export interface CalendarEvent {
   calendar: string;
   source: 'google' | 'task';
   color?: string;
+  /** True for all-day Google events (those with `date` but no `dateTime`). */
+  allDay?: boolean;
+  /** The parent Google Calendar's backgroundColor, used as a fallback color. */
+  calendarColor?: string;
 }
 
 /** The active Google access token (in-memory only). */

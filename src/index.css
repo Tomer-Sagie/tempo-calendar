@@ -558,6 +558,16 @@
   box-shadow: var(--shadow-md);
 }
 
+/* Calendar event chip transitions */
+[data-event-id] {
+  transition: box-shadow 150ms ease-out, opacity 150ms ease-out;
+}
+[data-event-id]:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+
+
 /* =============================================
    Calendar density classes
    ============================================= */

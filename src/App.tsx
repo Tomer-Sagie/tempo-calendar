@@ -267,6 +267,7 @@ function App() {
         calendar: 'tasks',
         source: 'task' as const,
         color: t.color,
+        allDay: false,
       }));
     return [...googleEvents, ...taskEvents];
   }, [calendar.events, allTasks]);
@@ -274,8 +275,10 @@ function App() {
   const baseEvents = useMemo<CalendarEventType[]>(() => {
     const now = new Date();
 
-    // Base events from allEvents
-    const baseEvents = allEvents.map((ev) => {
+    // Base events from allEvents — filter out events with missing/invalid dates
+    const baseEvents = allEvents
+      .filter((ev) => ev.startTime && ev.endTime)
+      .map((ev) => {
       const originalTask = ev.source === 'task'
         ? allTasks.find((t) => `task-${t.id}` === ev.id)
         : null;
@@ -289,7 +292,8 @@ function App() {
       const isSkipped = originalTask?.status === 'skipped';
       const isLocked = originalTask?.is_locked === true;
       const isBusyBlock = originalTask?.is_busy_block === true;
-      const isRecurring = originalTask?.frequency !== 'once';        const variant: CalendarEventType['variant'] = isSkipped
+      const isRecurring = originalTask?.frequency !== 'once';
+      const variant: CalendarEventType['variant'] = isSkipped
         ? 'muted'
         : isCompleted
           ? 'muted'
@@ -311,18 +315,20 @@ function App() {
         start: new Date(ev.startTime),
         end: new Date(ev.endTime),
         variant,
+        allDay: ev.allDay || false,
         data: {
           description: ev.description,
           source: ev.source,
           color: ev.color,
           is_locked: isLocked,
-          is_missed: isMissed,            is_completed: isCompleted,
-            is_skipped: isSkipped,
-            is_busy_block: isBusyBlock,
-            is_recurring: isRecurring,
-          },
-        };
-      });
+          is_missed: isMissed,
+          is_completed: isCompleted,
+          is_skipped: isSkipped,
+          is_busy_block: isBusyBlock,
+          is_recurring: isRecurring,
+        },
+      };
+    });
 
     return baseEvents;
   }, [allEvents, allTasks]);
@@ -622,6 +628,8 @@ function App() {
       toast.error('Google events are read-only here');
       return;
     }
+    // Defensive: guard against undefined dates from drag computation
+    if (!newStart || !newEnd || isNaN(newStart.getTime()) || isNaN(newEnd.getTime())) return;
     const m = eventId.match(/^task-(.+?)(?:-occ-.+)?$/);
     const taskId = m?.[1] ?? '';
     if (!taskId) return;
@@ -649,7 +657,7 @@ function App() {
         is_scheduled: true,
         scheduled_start: newStart.toISOString(),
         scheduled_end: newEnd.toISOString(),
-        is_locked: true, // Lock-on-drag: prevent auto-scheduler from moving it back
+        is_locked: true,
       });
       toast.success('Moved & locked', { description: `Rescheduled to ${format(newStart, 'EEE h:mm a')} — locked in place` });
     } catch (err) {
@@ -662,6 +670,7 @@ function App() {
       toast.error('Google events are read-only here');
       return;
     }
+    if (!newStart || !newEnd || isNaN(newStart.getTime()) || isNaN(newEnd.getTime())) return;
     const m = eventId.match(/^task-(.+?)(?:-occ-.+)?$/);
     const taskId = m?.[1] ?? '';
     if (!taskId) return;
@@ -1159,6 +1168,9 @@ function App() {
             endHour={24}
             weekStartsOn={calendarSettings.weekStartsOn}
             timeFormat={calendarSettings.timeFormat}
+            calendars={calendar.calendars}
+            selectedCalendarIds={calendar.selectedCalendarIds}
+            onToggleCalendar={calendar.toggleCalendarSelection}
             className="min-h-0"
           />
             )}
@@ -1263,7 +1275,7 @@ function App() {
 
       {occurrenceEdit.open && (
         <OccurrenceEditDialog
-          key={`${occurrenceEdit.taskId}-${occurrenceEdit.changeType}-${occurrenceEdit.occurrenceDate.toISOString()}`}
+          key={`${occurrenceEdit.taskId}-${occurrenceEdit.changeType}-${occurrenceEdit.occurrenceDate?.toISOString() ?? 'none'}`}
           open={occurrenceEdit.open}
           onClose={() => setOccurrenceEdit((p) => ({ ...p, open: false }))}
           onConfirm={async (scope: OccurrenceEditScope) => {

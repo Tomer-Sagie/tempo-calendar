@@ -206,7 +206,7 @@ export function TempoCalendarWeekView({
               className="border-r border-border/30 last:border-r-0 px-1 py-1 min-h-[28px] flex flex-wrap gap-0.5 items-start"
             >
               {allDayPerDay[i].slice(0, 2).map((ev) => {
-                const evColor = ev.data?.color || (ev.data?.source === 'google' ? '#4285f4' : '');
+                const evColor = ev.data?.color || '';
                 const bgColor = evColor || 'var(--primary)';
                 const textColor = evColor ? getContrastText(evColor) : 'white';
                 return (

@@ -128,7 +128,7 @@ export function TempoCalendarDayView({
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 shrink-0">All day</span>
           <div className="flex gap-1 flex-wrap">
             {allDayEvents.map((ev) => {
-              const evColor = ev.data?.color || (ev.data?.source === 'google' ? '#4285f4' : '');
+              const evColor = ev.data?.color || '';
               const bgColor = evColor || 'var(--primary)';
               const textColor = evColor ? getContrastText(evColor) : 'white';
               return (

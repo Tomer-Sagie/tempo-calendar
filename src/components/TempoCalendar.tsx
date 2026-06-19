@@ -21,6 +21,7 @@ import type {
   DayColumnWidthRef,
   DragGhostTarget,
 } from './TempoCalendarHelpers';
+import type { GoogleCalendar } from '../lib/google';
 
 // Re-export shared types so existing consumers (App.tsx, CalendarEvent.tsx)
 // don't need to change their imports.
@@ -59,6 +60,10 @@ export interface TempoCalendarProps {
   weekStartsOn?: 0 | 1;
   /** '12h' (default) or '24h'. Persisted in localStorage. */
   timeFormat?: '12h' | '24h';
+  /** Google calendars for inline picker. */
+  calendars?: GoogleCalendar[];
+  selectedCalendarIds?: string[];
+  onToggleCalendar?: (calendarId: string) => void;
 }
 
 /**
@@ -127,6 +132,9 @@ export function TempoCalendar({
   endHour = 22,
   weekStartsOn = 1,
   timeFormat = '12h',
+  calendars,
+  selectedCalendarIds,
+  onToggleCalendar,
 }: TempoCalendarProps) {
   const [view, setView] = useState<CalendarView>(defaultView);
   const [date, setDate] = useState<Date>(new Date());
@@ -346,6 +354,9 @@ export function TempoCalendar({
         onNext={handleNext}
         onToday={handleToday}
         weekStartsOn={weekStartsOn}
+        calendars={calendars}
+        selectedCalendarIds={selectedCalendarIds}
+        onToggleCalendar={onToggleCalendar}
       />
 
       {/* View — skeleton during initial load, calendar grid once events arrive */}

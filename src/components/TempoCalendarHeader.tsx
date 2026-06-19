@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { CalendarView } from './TempoCalendarHelpers';
+import type { GoogleCalendar } from '../lib/google';
 
 interface TempoCalendarHeaderProps {
   /** The currently-displayed date. */
@@ -21,6 +22,10 @@ interface TempoCalendarHeaderProps {
   onToday: () => void;
   /** 0 = Sunday, 1 = Monday. */
   weekStartsOn?: 0 | 1;
+  /** Google calendars for the inline picker. */
+  calendars?: GoogleCalendar[];
+  selectedCalendarIds?: string[];
+  onToggleCalendar?: (calendarId: string) => void;
 }
 
 /**
@@ -39,7 +44,24 @@ export function TempoCalendarHeader({
   onNext,
   onToday,
   weekStartsOn = 1,
+  calendars = [],
+  selectedCalendarIds = [],
+  onToggleCalendar,
 }: TempoCalendarHeaderProps) {
+  const [showCalPicker, setShowCalPicker] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Close picker on outside click
+  useEffect(() => {
+    if (!showCalPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowCalPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showCalPicker]);
   const title = useMemo(() => {
     if (view === 'day') return format(date, 'EEEE, MMMM d');
     if (view === 'week') {
@@ -89,6 +111,61 @@ export function TempoCalendarHeader({
       </h2>
 
       <div className="flex-1" />
+
+      {/* Calendar picker — inline dropdown when multiple Google calendars exist */}
+      {calendars.length > 0 && onToggleCalendar && (
+        <div className="relative" ref={pickerRef}>
+          <button
+            onClick={() => setShowCalPicker((v) => !v)}
+            className="h-8 px-2.5 flex items-center gap-1.5 text-[11px] font-medium rounded-md border border-border bg-card text-foreground hover:bg-accent transition-colors"
+            aria-label="Select calendars"
+            aria-expanded={showCalPicker}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{selectedCalendarIds.length > 0 ? `${selectedCalendarIds.length} cal` : 'Calendars'}</span>
+            <ChevronDown className={cn('w-3 h-3 transition-transform', showCalPicker && 'rotate-180')} />
+          </button>
+          {showCalPicker && (
+            <div className="absolute right-0 top-full mt-1 w-56 bg-popover border border-border rounded-lg shadow-xl z-50 py-1 animate-slide-down" role="menu" aria-label="Select calendars">
+              <div className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Synced calendars
+              </div>
+              {calendars.map((cal) => {
+                const isSelected = selectedCalendarIds.includes(cal.id);
+                return (
+                  <button
+                    key={cal.id}
+                    onClick={() => { onToggleCalendar(cal.id); }}
+                    role="menuitemcheckbox"
+                    aria-checked={isSelected}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"
+                  >
+                    <div
+                      className="w-3 h-3 rounded-sm shrink-0 border"
+                      style={{
+                        backgroundColor: isSelected ? (cal.backgroundColor || '#999') : 'transparent',
+                        borderColor: cal.backgroundColor || '#999',
+                      }}
+                    />
+                    <span className="flex-1 text-left truncate">
+                      {cal.summary}
+                      {cal.primary && (
+                        <span className="ml-1 text-[10px] text-muted-foreground">(primary)</span>
+                      )}
+                    </span>
+                    {isSelected && <Check className="w-3 h-3 text-primary shrink-0" />}
+                  </button>
+                );
+              })}
+              <div className="border-t border-border mt-1 pt-1 px-3 pb-1">
+                <p className="text-[10px] text-muted-foreground leading-snug">
+                  Toggle calendars to import as busy blocks.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center bg-muted/60 rounded-lg p-0.5">
         {(['day', 'week', 'month'] as const).map((v) => (

@@ -66,16 +66,30 @@ interface UseGoogleCalendarReturn {
   refreshEvents: (range?: { start: Date; end: Date }) => Promise<void>;
 }
 
-function mapGoogleEvent(event: GoogleEvent, calendarId: string): CalendarEvent {
+function mapGoogleEvent(
+  event: GoogleEvent,
+  calendarId: string,
+  calendarColor?: string,
+): CalendarEvent {
+  // An all-day event has `start.date` but no `start.dateTime`.
+  const isAllDay = !!(event.start?.date && !event.start?.dateTime);
+
+  // Guard against malformed events with no start/end data at all.
+  const startTime = event.start?.dateTime || event.start?.date || '';
+  const endTime = event.end?.dateTime || event.end?.date || '';
+
   return {
     id: event.id,
-    title: event.summary,
+    title: event.summary || '(No title)',
     description: event.description || '',
-    startTime: event.start.dateTime || event.start.date || '',
-    endTime: event.end.dateTime || event.end.date || '',
+    startTime,
+    endTime,
     calendar: calendarId,
     source: 'google',
-    color: event.colorId ? getColorFromId(event.colorId) : undefined,
+    // Priority: event colorId > calendar backgroundColor > default
+    color: event.colorId ? getColorFromId(event.colorId) : (calendarColor || undefined),
+    allDay: isAllDay,
+    calendarColor: calendarColor || undefined,
   };
 }
 
@@ -117,6 +131,10 @@ export function useGoogleCalendar({
   // Mirror selectedCalendarIds into a ref so fetchAndSetEvents can read
   // the latest selection without rebuilding the callback every time.
   const selectedCalendarIdsRef = useRef(selectedCalendarIds);
+  // Mirror calendars state into a ref so fetchAndSetEvents can look up
+  // calendar backgroundColor without adding `calendars` to its deps.
+  const calendarsRef = useRef(calendars);
+  useEffect(() => { calendarsRef.current = calendars; }, [calendars]);
   useEffect(() => { selectedCalendarIdsRef.current = selectedCalendarIds; }, [selectedCalendarIds]);
   // `disconnect()` is a local action that flips the derived
   // `isAuthenticated` to false without requiring the parent to clear the
@@ -182,7 +200,15 @@ export function useGoogleCalendar({
           perCalendarErrors.push(`${calId}: ${label}`);
         }
       }
-      const mappedRaw = allGoogleEvents.map((item) => mapGoogleEvent(item.event, item.calendarId));
+      // Build a lookup from calendarId → backgroundColor so we can
+      // pass the calendar color to each event as a fallback.
+      const calColorMap = new Map<string, string>();
+      for (const cal of calendarsRef.current) {
+        if (cal.backgroundColor) calColorMap.set(cal.id, cal.backgroundColor);
+      }
+      const mappedRaw = allGoogleEvents.map((item) =>
+        mapGoogleEvent(item.event, item.calendarId, calColorMap.get(item.calendarId)),
+      );
       // Deduplicate by event ID — the same event can appear in multiple
       // calendars (e.g. a shared calendar + primary) or via recurring
       // instances expanded by singleEvents=true.
