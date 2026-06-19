@@ -765,7 +765,7 @@ function App() {
           onToggleTheme={toggleTheme}
           onOpenSettings={() => setShowSettings(true)}
         />
-        <main className="flex-1 grid place-items-center px-6 py-12">
+        <main id="main-content" className="flex-1 grid place-items-center px-6 py-12">
           <div className="w-full max-w-[460px] rounded-2xl bg-card p-8 shadow-md border border-border">
             <div className="w-11 h-11 rounded-xl bg-destructive/10 flex items-center justify-center mb-5">
               <Settings2 className="w-5 h-5 text-destructive" />
@@ -808,7 +808,7 @@ function App() {
           onToggleTheme={toggleTheme}
           onOpenSettings={() => setShowSettings(true)}
         />
-        <main className="flex-1 grid lg:grid-cols-[1.1fr_1fr] gap-8 items-center px-6 lg:px-16 py-10 max-w-[1280px] mx-auto w-full">
+        <main id="main-content" className="flex-1 grid lg:grid-cols-[1.1fr_1fr] gap-8 items-center px-6 lg:px-16 py-10 max-w-[1280px] mx-auto w-full">
           {/* Left: copy + CTA */}
           <div className="max-w-[520px]">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider">
@@ -928,7 +928,7 @@ function App() {
           onToggleTheme={toggleTheme}
           onOpenSettings={() => setShowSettings(true)}
         />
-        <main className="flex-1 grid lg:grid-cols-[1.1fr_1fr] gap-8 items-center px-6 lg:px-16 py-10 max-w-[1280px] mx-auto w-full overflow-y-auto tempo-scrollbar">
+        <main id="main-content" className="flex-1 grid lg:grid-cols-[1.1fr_1fr] gap-8 items-center px-6 lg:px-16 py-10 max-w-[1280px] mx-auto w-full overflow-y-auto tempo-scrollbar">
             {/* Left: copy + CTA */}
             <div className="max-w-[520px]">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider">
@@ -1064,8 +1064,6 @@ function App() {
       <div
         className="flex-1 flex flex-col min-w-0"
         inert={focusMode.open && calendar.isAuthenticated ? true : undefined}
-        id="main-content"
-        role="main"
       >
       <Header
         isAuthenticated={calendar.isAuthenticated}
@@ -1154,8 +1152,8 @@ function App() {
         </div>
       )}
 
-      {/* Main workspace */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main workspace — skip-to-content target */}
+      <div id="main-content" className="flex-1 flex overflow-hidden">
         {/* Calendar workspace */}
         <div
           data-onboarding="calendar"
