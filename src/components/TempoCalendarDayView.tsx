@@ -120,7 +120,7 @@ export function TempoCalendarDayView({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+    <div className="flex flex-col h-full bg-card rounded-lg border border-border/70 overflow-hidden">
       {/* All-day row */}
       {allDayEvents.length > 0 && (
         <div className="border-b border-border bg-muted/20 px-4 py-2 flex items-center gap-2 overflow-x-auto">
@@ -154,14 +154,14 @@ export function TempoCalendarDayView({
           </div>
         )}
         <div
-          className="relative grid grid-cols-[64px_1fr]"
+          className="relative grid grid-cols-[56px_1fr]"
           style={{ height: (endHour - startHour) * HOUR_HEIGHT }}
         >
           {/* Hour gutter */}
-          <div className="border-r border-border bg-card">
+          <div className="border-r border-border/70 bg-card">
             {hours.map((h) => (
-              <div key={h} data-hour={h} className="relative border-b border-border/40" style={{ height: HOUR_HEIGHT }}>
-                <span className="absolute top-0 right-3 -translate-y-1/2 text-[10px] font-medium text-muted-foreground bg-card px-1 tabular-nums">
+              <div key={h} data-hour={h} className="relative border-b border-border/20" style={{ height: HOUR_HEIGHT }}>
+                <span className="absolute top-0 right-2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground/60 bg-card px-1 tabular-nums">
                   {format(setHours(date, h), timeFormat === '24h' ? 'HH:mm' : 'h a')}
                 </span>
               </div>
@@ -172,29 +172,27 @@ export function TempoCalendarDayView({
           <div className="relative" onClick={handleGridClick}>
             {/* Hour lines */}
             {hours.map((h) => (
-              <div key={h} data-hour={h} className="border-b border-border/40" style={{ height: HOUR_HEIGHT }} />
+              <div key={h} data-hour={h} className="border-b border-border/20" style={{ height: HOUR_HEIGHT }} />
             ))}
 
             {/* Half-hour lines (subtle) */}
             {hours.slice(0, -1).map((h) => (
               <div
                 key={`half-${h}`}
-                className="absolute left-0 right-0 h-px bg-border/30 pointer-events-none"
+                className="absolute left-0 right-0 h-px bg-border/15 pointer-events-none"
                 style={{ top: (h - startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
               />
             ))}
 
-            {/* Now line — Fantastical-style red line with prominent dot */}
+            {/* Now line */}
             {nowOffset !== null && (
               <div ref={nowLineRef} className="absolute left-0 right-0 z-[5] pointer-events-none" style={{ top: nowOffset }}>
                 <div className="relative flex items-center">
                   <div
-                    className="w-2.5 h-2.5 rounded-full bg-destructive border-2 border-destructive -ml-[5px] now-dot"
-                    style={{ boxShadow: '0 0 6px oklch(0.5 0.18 28 / 0.5)' }}
+                    className="w-2 h-2 rounded-full bg-primary border-2 border-primary -ml-[4px] now-dot"
                   />
                   <div
-                    className="flex-1 h-[1.5px] bg-destructive"
-                    style={{ boxShadow: '0 0 4px oklch(0.5 0.18 28 / 0.3)' }}
+                    className="flex-1 h-px bg-primary"
                   />
                 </div>
               </div>

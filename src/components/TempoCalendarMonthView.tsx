@@ -65,13 +65,13 @@ export function TempoCalendarMonthView({
   }, [days, events]);
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+    <div className="flex flex-col h-full bg-card rounded-lg border border-border/70 overflow-hidden">
       {/* Day name header */}
-      <div className="grid grid-cols-7 border-b border-border bg-card/50">
+      <div className="grid grid-cols-7 border-b border-border/70 bg-card">
         {dayNames.map((n) => (
           <div
             key={n}
-            className="py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+            className="py-2 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
           >
             {n}
           </div>
@@ -104,7 +104,7 @@ export function TempoCalendarMonthView({
               key={d.toISOString()}
               onClick={() => onSelectDay?.(d)}
               className={cn(
-                'flex flex-col items-stretch p-1.5 border-r border-b border-border/40 last:border-r-0 text-left transition-colors hover:bg-accent/30 min-h-0 group',
+                'flex flex-col items-stretch p-1.5 border-r border-b border-border/25 last:border-r-0 text-left transition-colors hover:bg-accent/30 min-h-0 group',
                 !inMonth && 'bg-muted/30 text-muted-foreground',
                 t && 'bg-primary/[0.04]',
               )}
@@ -112,7 +112,7 @@ export function TempoCalendarMonthView({
               <div className="flex items-center justify-between mb-1">
                 <span
                   className={cn(
-                    'text-xs font-semibold tabular-nums w-6 h-6 flex items-center justify-center rounded-full transition-colors',
+                    'text-[11px] font-semibold tabular-nums w-5 h-5 flex items-center justify-center rounded-full transition-colors',
                     t ? 'bg-primary text-primary-foreground' : 'text-foreground',
                   )}
                 >
@@ -133,7 +133,7 @@ export function TempoCalendarMonthView({
                       onSelectEvent?.(ev);
                     }}
                     className={cn(
-                      'px-1.5 py-0.5 text-[10px] font-medium rounded truncate cursor-pointer transition-colors border-l-2',
+                      'px-1.5 py-0.5 text-[10px] font-medium rounded truncate cursor-pointer transition-colors border-l-[2px]',
                       ev.variant === 'primary' && 'bg-primary/15 border-primary text-foreground',
                       ev.variant === 'secondary' && 'bg-event-task/40 border-event-task-border text-foreground',
                       ev.variant === 'warning' && 'bg-warning/15 border-warning text-foreground',

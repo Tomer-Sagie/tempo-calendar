@@ -54,11 +54,11 @@ export function TempoCalendarHeader({
   }, [view, date, weekStartsOn]);
 
   return (
-    <div className="flex items-center gap-2 px-1">
+    <div className="flex items-center gap-1.5">
       <button
         onClick={onToday}
         className={cn(
-          'h-9 px-3.5 text-xs font-semibold rounded-lg border transition-colors',
+          'h-8 px-3 text-[11px] font-medium rounded-md border transition-colors',
           isSameDay(date, today)
             ? 'bg-primary text-primary-foreground border-primary'
             : 'bg-card border-border text-foreground hover:bg-accent',
@@ -67,38 +67,38 @@ export function TempoCalendarHeader({
         Today
       </button>
 
-      <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden">
+      <div className="flex items-center">
         <button
           onClick={onPrev}
-          className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
           aria-label="Previous"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
         <button
           onClick={onNext}
-          className="h-9 w-9 flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground transition-colors border-l border-border"
+          className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
           aria-label="Next"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
-      <h2 className="text-base font-semibold text-foreground ml-1 tracking-tight">
+      <h2 className="text-[13px] font-semibold text-foreground ml-0.5 tracking-tight">
         {title}
       </h2>
 
       <div className="flex-1" />
 
-      <div className="flex items-center bg-card border border-border rounded-lg p-0.5">
+      <div className="flex items-center bg-muted/50 rounded-md p-0.5">
         {(['day', 'week', 'month'] as const).map((v) => (
           <button
             key={v}
             onClick={() => onViewChange(v)}
             className={cn(
-              'h-8 px-3.5 text-xs font-medium rounded-md transition-colors capitalize',
+              'h-7 px-2.5 text-[11px] font-medium rounded transition-colors capitalize',
               view === v
-                ? 'bg-foreground text-background'
+                ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >

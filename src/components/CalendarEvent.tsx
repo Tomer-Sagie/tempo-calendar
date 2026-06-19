@@ -153,10 +153,10 @@ export function DraggableEvent({
       tabIndex={0}
       aria-label={`${event.title} ${format(event.start, 'h:mma')} - ${format(event.end, 'h:mma')}`}
       className={cn(
-        'absolute text-left px-1.5 py-1 rounded-md overflow-hidden transition-shadow duration-150',
+        'absolute text-left px-1.5 py-0.5 rounded overflow-hidden transition-shadow duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        'border-l-[2.5px] leading-tight group/event',
-        !isDragging && !isGoogle && 'hover:shadow-md hover:scale-[1.015]',
+        'border-l-[2px] leading-tight group/event',
+        !isDragging && !isGoogle && 'hover:shadow-sm',
         !isDragging && isGoogle && 'hover:shadow-sm',
         small ? 'text-[10px]' : 'text-[11px]',
         isCompleted && 'line-through decoration-foreground/30',
@@ -174,7 +174,7 @@ export function DraggableEvent({
         !isGoogle && !isMissed && !isLocked && !taskColor && event.variant === 'success' && 'bg-success/12 border-success text-foreground',
         !isGoogle && !isMissed && !isLocked && !taskColor && event.variant === 'muted' && 'bg-muted/60 border-muted-foreground/20 text-foreground',
         !isGoogle && !isMissed && !isLocked && !taskColor && (!event.variant || event.variant === 'primary') && 'bg-primary/12 border-primary text-foreground',
-        isDragging && 'cursor-grabbing shadow-xl ring-2 ring-primary/40',
+        isDragging && 'cursor-grabbing shadow-lg ring-1 ring-primary/30',
         !isDragging && draggable && !isLocked && 'cursor-grab',
         isBusyBlock && !taskColor && 'bg-primary/20 border-primary font-semibold',
         // Split task connectors: dashed bracket on left/right edges

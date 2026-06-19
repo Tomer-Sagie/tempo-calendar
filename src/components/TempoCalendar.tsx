@@ -84,7 +84,7 @@ function CalendarSkeleton({ startHour, endHour }: { startHour: number; endHour: 
   const hours: number[] = [];
   for (let h = startHour; h <= endHour; h++) hours.push(h);
   return (
-    <div className="flex flex-col h-full bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+    <div className="flex flex-col h-full bg-card rounded-lg border border-border/70 overflow-hidden">
       <div className="flex-1 overflow-hidden">
         <div className="grid grid-cols-[64px_1fr]" style={{ height: (endHour - startHour) * hh }}>
           <div className="border-r border-border">

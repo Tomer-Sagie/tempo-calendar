@@ -83,7 +83,7 @@ export function TempoCalendarWeekView({
     const update = () => {
       const total = gridRef.current?.clientWidth ?? 0;
       // Grid is `64px_repeat(7,1fr)`; subtract the 64px gutter for accuracy.
-      dayColumnWidthRef.current = total > 0 ? Math.max(1, (total - 64) / 7) : 0;
+      dayColumnWidthRef.current = total > 0 ? Math.max(1, (total - 56) / 7) : 0;
     };
     update();
     const ro = new ResizeObserver(update);
@@ -166,26 +166,25 @@ export function TempoCalendarWeekView({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+    <div className="flex flex-col h-full bg-card rounded-lg border border-border/70 overflow-hidden">
       {/* Day header row */}
-      <div className={cn('grid border-b border-border bg-card/50', 'grid-cols-[64px_repeat(7,1fr)]')}>
+      <div className={cn('grid border-b border-border/70 bg-card', 'grid-cols-[56px_repeat(7,1fr)]')}>
         <div className="border-r border-border" />
         {days.map((d) => {
           const t = isToday(d);
           return (
             <div
               key={d.toISOString()}
-              className={cn(
-                'flex flex-col items-center py-3 border-r border-border/40 last:border-r-0 transition-colors',
+              className={cn(                  'flex flex-col items-center py-2.5 border-r border-border/30 last:border-r-0 transition-colors',
                 t && 'bg-primary/5',
               )}
             >
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 {format(d, 'EEE')}
               </span>
               <span
                 className={cn(
-                  'mt-0.5 text-base font-semibold tabular-nums w-7 h-7 flex items-center justify-center rounded-full transition-colors',
+                  'mt-0.5 text-sm font-semibold tabular-nums w-6 h-6 flex items-center justify-center rounded-full transition-colors',
                   t ? 'bg-primary text-primary-foreground' : 'text-foreground',
                 )}
               >
@@ -240,14 +239,13 @@ export function TempoCalendarWeekView({
         )}
         <div
           ref={gridRef}
-          className="relative grid grid-cols-[64px_repeat(7,1fr)]"
+          className="relative grid grid-cols-[56px_repeat(7,1fr)]"
           style={{ height: (endHour - startHour) * HOUR_HEIGHT }}
         >
-          {/* Hour gutter */}
-          <div className="border-r border-border">
+          {/* Hour gutter */}              <div className="border-r border-border/70">
             {hours.map((h) => (
               <div key={h} data-hour={h} className="relative border-b border-border/40" style={{ height: HOUR_HEIGHT }}>
-                <span className="absolute top-0 right-3 -translate-y-1/2 text-[10px] font-medium text-muted-foreground bg-card px-1 tabular-nums">
+                <span className="absolute top-0 right-2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground/60 bg-card px-1 tabular-nums">
                   {format(setHours(date, h), timeFormat === '24h' ? 'HH:mm' : 'h a')}
                 </span>
               </div>
@@ -262,18 +260,18 @@ export function TempoCalendarWeekView({
               <div
                 key={d.toISOString()}
                 className={cn(
-                  'relative border-r border-border/40 last:border-r-0',
+                  'relative border-r border-border/30 last:border-r-0',
                   t && 'bg-primary/[0.025]',
                 )}
                 onClick={(e) => handleGridClick(e, d)}
               >
                 {hours.map((h) => (
-                  <div key={h} data-hour={h} className="border-b border-border/30" style={{ height: HOUR_HEIGHT }} />
+                  <div key={h} data-hour={h} className="border-b border-border/20" style={{ height: HOUR_HEIGHT }} />
                 ))}
                 {hours.slice(0, -1).map((h) => (
                   <div
                     key={`half-${h}`}
-                    className="absolute left-0 right-0 h-px bg-border/20 pointer-events-none"
+                    className="absolute left-0 right-0 h-px bg-border/15 pointer-events-none"
                     style={{ top: (h - startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
                   />
                 ))}
@@ -336,8 +334,8 @@ export function TempoCalendarWeekView({
                 Math.min(visibleMaxTop - top, (durationMin / 60) * HOUR_HEIGHT),
               );
               // Position the ghost inside the target day column, just like DraggableEvent.
-              const left = `calc(64px + 3px + (100% - 64px - 6px) * ${dayIdx} / 7)`;
-              const width = `calc((100% - 64px - 6px) / 7)`;
+              const left = `calc(56px + 3px + (100% - 56px - 6px) * ${dayIdx} / 7)`;
+              const width = `calc((100% - 56px - 6px) / 7)`;
               const variantClass =
                 dragGhost.variant === 'warning'
                   ? 'bg-warning/20 border-warning text-foreground'
@@ -360,8 +358,8 @@ export function TempoCalendarWeekView({
                     className="pointer-events-none absolute z-10 transition-colors"
                     style={{
                       // Header is `64px_repeat(7,1fr)`, height matches header
-                      left: `calc(64px + (100% - 64px) * ${dayIdx} / 7)`,
-                      width: `calc((100% - 64px) / 7)`,
+                      left: `calc(56px + (100% - 56px) * ${dayIdx} / 7)`,
+                      width: `calc((100% - 56px) / 7)`,
                       top: -48,
                       height: 48,
                       background: 'oklch(var(--primary) / 0.08)',
@@ -422,8 +420,8 @@ export function TempoCalendarWeekView({
               const top = Math.max(0, (minutesFromTop / 60) * HOUR_HEIGHT);
               const visibleMaxTop = (endHour - startHour) * HOUR_HEIGHT;
               const height = Math.max(22, Math.min(visibleMaxTop - top, (durationMin / 60) * HOUR_HEIGHT));
-              const left = `calc(64px + 3px + (100% - 64px - 6px) * ${dayIdx} / 7)`;
-              const width = `calc((100% - 64px - 6px) / 7)`;
+              const left = `calc(56px + 3px + (100% - 56px - 6px) * ${dayIdx} / 7)`;
+              const width = `calc((100% - 56px - 6px) / 7)`;
               const variantClass =
                 resizeGhost.variant === 'warning'
                   ? 'bg-warning/20 border-warning text-foreground'
@@ -456,20 +454,17 @@ export function TempoCalendarWeekView({
             })()}
 
           {/* Now line — Fantastical-style red line with prominent dot */}
-          {nowOffset !== null && (
-            <div
+          {nowOffset !== null && (              <div
               ref={nowLineRef}
-              className="absolute left-16 right-0 z-[5] pointer-events-none"
+              className="absolute left-[56px] right-0 z-[5] pointer-events-none"
               style={{ top: nowOffset }}
             >
               <div className="relative flex items-center">
                 <div
-                  className="w-2.5 h-2.5 rounded-full bg-destructive border-2 border-destructive -ml-[5px] now-dot"
-                  style={{ boxShadow: '0 0 6px oklch(0.5 0.18 28 / 0.5)' }}
+                  className="w-2 h-2 rounded-full bg-primary border-2 border-primary -ml-[4px] now-dot"
                 />
                 <div
-                  className="flex-1 h-[1.5px] bg-destructive"
-                  style={{ boxShadow: '0 0 4px oklch(0.5 0.18 28 / 0.3)' }}
+                  className="flex-1 h-px bg-primary"
                 />
               </div>
             </div>
