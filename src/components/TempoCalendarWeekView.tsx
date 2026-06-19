@@ -20,6 +20,7 @@ import {
   getEventsForDay,
   getAllDayEvents,
   positionEvents,
+  getContrastText,
   type CalendarEventType,
   type DayColumnWidthRef,
   type DragGhostTarget,
@@ -195,27 +196,33 @@ export function TempoCalendarWeekView({
         })}
       </div>
 
-      {/* All-day row */}
+      {/* All-day row — compact pills like Google Calendar */}
       {hasAllDay && (
-        <div className="grid border-b border-border bg-muted/10 grid-cols-[56px_repeat(7,1fr)]">
-          <div className="border-r border-border" />
+        <div className="grid border-b border-border/70 bg-card grid-cols-[56px_repeat(7,1fr)]">
+          <div className="border-r border-border/70" />
           {days.map((d, i) => (
             <div
               key={d.toISOString()}
-              className="border-r border-border/30 last:border-r-0 p-1.5 space-y-1 min-h-[40px]"
+              className="border-r border-border/30 last:border-r-0 px-1 py-1 min-h-[28px] flex flex-wrap gap-0.5 items-start"
             >
-              {allDayPerDay[i].slice(0, 3).map((ev) => (
-                <button
-                  key={ev.id}
-                  onClick={() => onSelectEvent?.(ev)}
-                  className="w-full text-left px-1.5 py-0.5 text-[10px] font-medium rounded bg-accent hover:bg-accent/70 text-foreground truncate transition-colors"
-                >
-                  {ev.title}
-                </button>
-              ))}
-              {allDayPerDay[i].length > 3 && (
-                <span className="text-[10px] text-muted-foreground px-1.5">
-                  +{allDayPerDay[i].length - 3} more
+              {allDayPerDay[i].slice(0, 2).map((ev) => {
+                const evColor = ev.data?.color || (ev.data?.source === 'google' ? '#4285f4' : '');
+                const bgColor = evColor || 'var(--primary)';
+                const textColor = evColor ? getContrastText(evColor) : 'white';
+                return (
+                  <button
+                    key={ev.id}
+                    onClick={() => onSelectEvent?.(ev)}
+                    className="w-full text-left px-1.5 py-0.5 text-[10px] font-medium rounded-sm truncate transition-colors hover:opacity-80"
+                    style={{ backgroundColor: bgColor, color: textColor }}
+                  >
+                    {ev.title}
+                  </button>
+                );
+              })}
+              {allDayPerDay[i].length > 2 && (
+                <span className="text-[9px] font-medium text-muted-foreground px-1">
+                  +{allDayPerDay[i].length - 2}
                 </span>
               )}
             </div>

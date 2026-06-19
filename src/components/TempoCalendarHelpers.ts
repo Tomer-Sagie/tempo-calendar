@@ -11,6 +11,18 @@
 import { startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { useState, useEffect } from 'react';
 
+/**
+ * Returns '#1a1a1a' (dark) or '#ffffff' (light) depending on background
+ * luminance so text is always readable. Uses ITU-R BT.601 coefficients.
+ * Falls back to white for non-hex / CSS-variable inputs.
+ */
+export function getContrastText(hex: string): string {
+  const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})/i);
+  if (!m) return '#ffffff';
+  const lum = (0.299 * parseInt(m[1], 16) + 0.587 * parseInt(m[2], 16) + 0.114 * parseInt(m[3], 16)) / 255;
+  return lum > 0.6 ? '#1a1a1a' : '#ffffff';
+}
+
 // ============================================================
 // Public types
 // ============================================================

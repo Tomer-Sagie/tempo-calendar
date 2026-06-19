@@ -16,6 +16,7 @@ import {
   getEventsForDay,
   getAllDayEvents,
   positionEvents,
+  getContrastText,
   type CalendarEventType,
 } from './TempoCalendarHelpers';
 
@@ -123,18 +124,24 @@ export function TempoCalendarDayView({
     <div className="flex flex-col h-full bg-card rounded-lg border border-border/70 overflow-hidden">
       {/* All-day row */}
       {allDayEvents.length > 0 && (
-        <div className="border-b border-border bg-muted/20 px-4 py-2 flex items-center gap-2 overflow-x-auto">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">All day</span>
-          <div className="flex gap-1.5">
-            {allDayEvents.map((ev) => (
-              <button
-                key={ev.id}
-                onClick={() => onSelectEvent?.(ev)}
-                className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent hover:bg-accent/70 text-foreground transition-colors truncate max-w-[200px]"
-              >
-                {ev.title}
-              </button>
-            ))}
+        <div className="border-b border-border/70 bg-card px-3 py-1.5 flex items-center gap-2 overflow-x-auto">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 shrink-0">All day</span>
+          <div className="flex gap-1 flex-wrap">
+            {allDayEvents.map((ev) => {
+              const evColor = ev.data?.color || (ev.data?.source === 'google' ? '#4285f4' : '');
+              const bgColor = evColor || 'var(--primary)';
+              const textColor = evColor ? getContrastText(evColor) : 'white';
+              return (
+                <button
+                  key={ev.id}
+                  onClick={() => onSelectEvent?.(ev)}
+                  className="px-2 py-0.5 text-[11px] font-medium rounded-sm transition-colors hover:opacity-80 truncate max-w-[200px]"
+                  style={{ backgroundColor: bgColor, color: textColor }}
+                >
+                  {ev.title}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

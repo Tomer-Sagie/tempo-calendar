@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   MoreHorizontal,
   Trash2,
@@ -59,6 +60,8 @@ export function TaskRow({
   onSkipNext,
 }: TaskRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const menuRef = useRef<HTMLDivElement>(null);
   const [unscheduling, setUnscheduling] = useState(false);
 
   const isOverdue =
@@ -137,10 +140,14 @@ export function TaskRow({
       </button>
 
       {/* Actions */}
-      <div className="relative shrink-0">
+      <div className="relative shrink-0" ref={menuRef as React.RefObject<HTMLDivElement>}>
         <button
           onClick={(e) => {
             e.stopPropagation();
+            if (!menuOpen) {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+            }
             setMenuOpen(!menuOpen);
           }}
           className="p-1 rounded-md hover:bg-accent text-muted-foreground transition-colors sm:opacity-0 sm:group-hover:opacity-100"
@@ -149,12 +156,12 @@ export function TaskRow({
         >
           <MoreHorizontal className="w-4 h-4" />
         </button>
-        {menuOpen && (
+        {menuOpen && createPortal(
           <>
-            {/* Backdrop to catch outside clicks */}
             <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} />
             <div
-              className="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down"
+              className="fixed w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down"
+              style={{ top: menuPos.top, right: menuPos.right }}
             >
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit(task); setMenuOpen(false); }}
@@ -197,7 +204,8 @@ export function TaskRow({
                 Delete
               </button>
             </div>
-          </>
+          </>,
+          document.body,
         )}
       </div>
     </div>
@@ -217,6 +225,8 @@ export interface CompletedTaskRowProps {
 export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowProps) {
   const [reopening, setReopening] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const menuRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/30 transition-colors group animate-slide-up">
@@ -235,10 +245,14 @@ export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowP
       </div>
 
       {/* Actions */}
-      <div className="relative shrink-0">
+      <div className="relative shrink-0" ref={menuRef as React.RefObject<HTMLDivElement>}>
         <button
           onClick={(e) => {
             e.stopPropagation();
+            if (!menuOpen) {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+            }
             setMenuOpen(!menuOpen);
           }}
           className="p-1 rounded-md hover:bg-accent text-muted-foreground transition-colors sm:opacity-0 sm:group-hover:opacity-100"
@@ -247,10 +261,10 @@ export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowP
         >
           <MoreHorizontal className="w-4 h-4" />
         </button>
-        {menuOpen && (
+        {menuOpen && createPortal(
           <>
             <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} />
-            <div className="absolute right-0 top-full mt-1 w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down">
+            <div className="fixed w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down" style={{ top: menuPos.top, right: menuPos.right }}>
               <button
                 onClick={async (e) => {
                   e.stopPropagation();
@@ -274,7 +288,8 @@ export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowP
                 Delete
               </button>
             </div>
-          </>
+          </>,
+          document.body,
         )}
       </div>
     </div>
