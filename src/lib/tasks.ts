@@ -113,9 +113,14 @@ export async function fetchAutoScheduledTasks(): Promise<Task[]> {
 }
 
 export async function createTask(input: TaskInput): Promise<Task> {
+  // Strip fields that may not exist in the DB schema if migrations haven't
+  // been applied yet. These columns are optional for basic task creation.
+  const safeInput = { ...input };
+  if (safeInput.recurrence_end === undefined) delete safeInput.recurrence_end;
+
   const { data, error } = await requireSupabase()
     .from('tasks')
-    .insert([input])
+    .insert([safeInput])
     .select()
     .single();
 
@@ -124,9 +129,14 @@ export async function createTask(input: TaskInput): Promise<Task> {
 }
 
 export async function updateTask(id: string, updates: TaskUpdate): Promise<Task> {
+  // Strip fields that may not exist in the DB schema yet (migrations pending)
+  const safe = { ...updates };
+  if (safe.recurrence_end === undefined) delete safe.recurrence_end;
+  if (safe.occurrence_overrides === undefined) delete safe.occurrence_overrides;
+
   const { data, error } = await requireSupabase()
     .from('tasks')
-    .update(updates)
+    .update(safe)
     .eq('id', id)
     .select()
     .single();
