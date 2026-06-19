@@ -105,7 +105,7 @@ export function TempoCalendarDayView({
 
   const hours = useMemo(() => {
     const arr: number[] = [];
-    for (let h = startHour; h <= endHour; h++) arr.push(h);
+    for (let h = startHour; h < endHour; h++) arr.push(h);
     return arr;
   }, [startHour, endHour]);
 

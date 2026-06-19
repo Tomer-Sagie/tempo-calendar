@@ -98,7 +98,7 @@ export function TempoCalendarWeekView({
 
   const hours = useMemo(() => {
     const arr: number[] = [];
-    for (let h = startHour; h <= endHour; h++) arr.push(h);
+    for (let h = startHour; h < endHour; h++) arr.push(h);
     return arr;
   }, [startHour, endHour]);
 

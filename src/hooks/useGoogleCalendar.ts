@@ -182,7 +182,16 @@ export function useGoogleCalendar({
           perCalendarErrors.push(`${calId}: ${label}`);
         }
       }
-      const mapped = allGoogleEvents.map((item) => mapGoogleEvent(item.event, item.calendarId));
+      const mappedRaw = allGoogleEvents.map((item) => mapGoogleEvent(item.event, item.calendarId));
+      // Deduplicate by event ID — the same event can appear in multiple
+      // calendars (e.g. a shared calendar + primary) or via recurring
+      // instances expanded by singleEvents=true.
+      const seenIds = new Set<string>();
+      const mapped = mappedRaw.filter((ev) => {
+        if (seenIds.has(ev.id)) return false;
+        seenIds.add(ev.id);
+        return true;
+      });
       // Diff against the previous fetch to find events that disappeared.
       const newIds = new Set(mapped.map((e) => e.id));
       const deletedIds: string[] = [];

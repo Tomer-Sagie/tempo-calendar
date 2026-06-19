@@ -1155,8 +1155,8 @@ function App() {
             onEventResize={handleEventResize}
             onViewRangeChange={setVisibleRange}
             navigateToDate={navigateToDate}
-            startHour={parseInt(workingHours.start.split(':')[0], 10)}
-            endHour={parseInt(workingHours.end.split(':')[0], 10) + 2}
+            startHour={0}
+            endHour={24}
             weekStartsOn={calendarSettings.weekStartsOn}
             timeFormat={calendarSettings.timeFormat}
             className="min-h-0"

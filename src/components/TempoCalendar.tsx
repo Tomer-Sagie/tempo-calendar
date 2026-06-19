@@ -82,7 +82,7 @@ export interface TempoCalendarProps {
 function CalendarSkeleton({ startHour, endHour }: { startHour: number; endHour: number }) {
   const hh = getHourHeight();
   const hours: number[] = [];
-  for (let h = startHour; h <= endHour; h++) hours.push(h);
+  for (let h = startHour; h < endHour; h++) hours.push(h);
   return (
     <div className="flex flex-col h-full bg-card rounded-lg border border-border/70 overflow-hidden">
       <div className="flex-1 overflow-hidden">
