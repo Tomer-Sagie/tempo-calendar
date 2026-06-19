@@ -24,6 +24,7 @@ import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { ProductPreviewMock } from './components/ProductPreviewMock';
 import { AlertCircle, Link2, RefreshCw, LogIn, Zap, Settings2, Calendar, Sparkles, ArrowRight, BarChart3, Layers, WifiOff, Plus } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { format } from 'date-fns';
 import { detectConflicts } from './lib/rescheduler';
 import { isSupabaseReady } from './lib/supabase';
@@ -554,6 +555,18 @@ function App() {
     return () => clearTimeout(timer);
   }, [subtasksBatch.byTaskId, editingTask]);
 
+  // Dynamic page title (Prompt 56)
+  useEffect(() => {
+    const viewLabels: Record<string, string> = {
+      calendar: 'Calendar',
+      tasks: 'Tasks',
+      insights: 'Insights',
+      today: 'Today',
+    };
+    const viewLabel = viewLabels[activeView] || 'Calendar';
+    document.title = `${viewLabel} — Tempo`;
+  }, [activeView]);
+
   useEffect(() => {
     if (auth.isAuthenticated && !didAuthTransitionRef.current) refresh();
     didAuthTransitionRef.current = auth.isAuthenticated;
@@ -1047,9 +1060,12 @@ function App() {
           onToggleTheme={toggleTheme}
           onOpenSettings={() => setShowSettings(true)}
         />
+      <ErrorBoundary>
       <div
         className="flex-1 flex flex-col min-w-0"
         inert={focusMode.open && calendar.isAuthenticated ? true : undefined}
+        id="main-content"
+        role="main"
       >
       <Header
         isAuthenticated={calendar.isAuthenticated}
@@ -1593,6 +1609,9 @@ function App() {
 
       <VersionBadge />
 
+      </div>
+      </ErrorBoundary>
+
       {focusMode.open && calendar.isAuthenticated && (
         <FocusMode
           open={focusMode.open}
@@ -1608,7 +1627,6 @@ function App() {
           onSwitchTask={(taskId) => setFocusMode({ open: true, taskId })}
         />
       )}
-      </div>
     </div>
   );
 }

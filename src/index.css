@@ -517,6 +517,58 @@
 .text-balance { text-wrap: balance; }
 .tabular-nums { font-variant-numeric: tabular-nums; }
 
+/* Skip-to-content link (Prompt 55) — visually hidden until focused */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.skip-to-content:focus {
+  left: 8px;
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Safe area insets (Prompt 16) */
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Fluid typography (Prompt 22) — clamp between mobile and desktop sizes */
+.display-1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+}
+.display-2 {
+  font-size: clamp(1.5rem, 3.5vw, 2.5rem);
+}
+
+/* ARIA live region announcements (Prompt 52) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 /* Display heading scale */
 .display-1 {
   font-family: var(--font-display);

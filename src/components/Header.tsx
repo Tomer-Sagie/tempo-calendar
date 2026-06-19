@@ -27,7 +27,7 @@ export function Header({
   const [showAccount, setShowAccount] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 h-11 flex items-center gap-2 px-3 bg-card/90 backdrop-blur-md border-b border-border/50">
+    <header role="banner" className="sticky top-0 z-30 h-11 flex items-center gap-2 px-3 bg-card/90 backdrop-blur-md border-b border-border/50">
       {/* Brand */}
       <div className="flex items-center gap-2 mr-2">
         <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
