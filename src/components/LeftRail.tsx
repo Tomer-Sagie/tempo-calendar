@@ -69,7 +69,7 @@ export function LeftRail({
 
   return (
     <aside
-      className="w-[52px] shrink-0 h-full bg-card border-r border-border/70 flex flex-col items-center py-2 gap-0.5 z-20"
+      className="w-[52px] shrink-0 h-full bg-card/80 backdrop-blur-sm border-r border-border/50 flex flex-col items-center py-2 gap-0.5 z-20"
       aria-label="Primary navigation"
     >
       {/* Brand mark */}
@@ -296,7 +296,7 @@ function RailItem({ icon: Icon, label, active, disabled, badge, onClick }: RailI
     <button
       onClick={onClick}
       disabled={disabled}        className={cn(
-          'group relative w-9 h-9 rounded-md flex items-center justify-center transition-all',
+          'group relative w-9 h-9 rounded-lg flex items-center justify-center transition-all',
         active && 'bg-primary/10 text-primary',
         !active && !disabled && 'text-muted-foreground hover:text-foreground hover:bg-accent',
         disabled && 'text-muted-foreground/40 cursor-not-allowed',

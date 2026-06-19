@@ -8,16 +8,16 @@
 
 :root {
   /* Surfaces — pure white, clean */
-  --background: oklch(0.995 0 0);
+  --background: oklch(0.98 0.002 250);
   --foreground: oklch(0.145 0.005 250);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0.005 250);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0.005 250);
 
-  /* Brand — blue, clean */
-  --primary: oklch(0.54 0.18 260);
-  --primary-foreground: oklch(1 0 0);
+  /* Brand — refined indigo-blue */
+  --primary: oklch(0.52 0.19 264);
+  --primary-foreground: oklch(0.99 0 0);
 
   /* Secondary — subtle */
   --secondary: oklch(0.96 0.002 250);
@@ -42,11 +42,11 @@
   /* Borders — barely visible */
   --border: oklch(0.91 0.002 250);
   --input: oklch(0.93 0.002 250);
-  --ring: oklch(0.54 0.18 260);
+  --ring: oklch(0.52 0.19 264);
 
   /* Calendar events */
-  --event-task: oklch(0.93 0.04 260);
-  --event-task-border: oklch(0.54 0.18 260);
+  --event-task: oklch(0.93 0.04 264);
+  --event-task-border: oklch(0.52 0.19 264);
   --event-external: oklch(0.95 0.005 250);
   --event-external-border: oklch(0.7 0.015 250);
   --event-locked: oklch(0.92 0.03 155);
@@ -57,19 +57,18 @@
   /* Typography */
   --font-display: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-body: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-serif-italic: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", monospace;
 
   /* Calendar density — more breathing room */
   --cal-hour-height: 64px;
 
   /* Radii — tight */
-  --radius: 0.375rem;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
+  --radius: 0.5rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.25rem;
 
   /* Shadows — minimal */
   --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.04);
@@ -94,7 +93,7 @@
   --card-foreground: oklch(0.93 0.002 250);
   --popover: oklch(0.19 0.005 250);
   --popover-foreground: oklch(0.93 0.002 250);
-  --primary: oklch(0.62 0.18 260);
+  --primary: oklch(0.62 0.19 264);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.22 0.005 250);
   --secondary-foreground: oklch(0.85 0.005 250);
@@ -110,9 +109,9 @@
   --overdue: oklch(0.65 0.2 25);
   --border: oklch(0.26 0.005 250);
   --input: oklch(0.23 0.005 250);
-  --ring: oklch(0.62 0.18 260);
-  --event-task: oklch(0.28 0.06 260);
-  --event-task-border: oklch(0.55 0.15 260);
+  --ring: oklch(0.62 0.19 264);
+  --event-task: oklch(0.28 0.06 264);
+  --event-task-border: oklch(0.55 0.15 264);
   --event-external: oklch(0.24 0.01 250);
   --event-external-border: oklch(0.45 0.03 250);
   --event-locked: oklch(0.26 0.04 155);
@@ -179,8 +178,8 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
-    font-size: 13px;
-    line-height: 1.6;
+    font-size: 14px;
+    line-height: 1.55;
     margin: 0;
     font-feature-settings: "ss01", "cv11", "cv02";
     -webkit-font-smoothing: antialiased;

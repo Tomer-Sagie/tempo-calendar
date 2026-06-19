@@ -27,7 +27,7 @@ export function Header({
   const [showAccount, setShowAccount] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 h-11 flex items-center gap-2 px-3 bg-card/95 backdrop-blur-sm border-b border-border/70">
+    <header className="sticky top-0 z-30 h-11 flex items-center gap-2 px-3 bg-card/90 backdrop-blur-md border-b border-border/50">
       {/* Brand */}
       <div className="flex items-center gap-2 mr-2">
         <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
@@ -42,7 +42,7 @@ export function Header({
             <rect x="17" y="11" width="3" height="11" rx="0.6" />
           </svg>
         </div>
-        <span className="text-[13px] font-semibold text-foreground tracking-tight hidden sm:inline">Tempo</span>
+        <span className="text-sm font-semibold text-foreground tracking-tight hidden sm:inline">Tempo</span>
       </div>
 
       {/* Spacer */}
@@ -104,8 +104,8 @@ export function Header({
               onClick={() => setShowAccount(!showAccount)}
               className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg hover:bg-accent transition-colors text-xs text-muted-foreground"
             >
-              <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-[10px] font-medium text-primary">{user?.email?.charAt(0).toUpperCase() || 'U'}</span>
+              <div              className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-[11px] font-semibold text-primary">{user?.email?.charAt(0).toUpperCase() || 'U'}</span>
               </div>
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
