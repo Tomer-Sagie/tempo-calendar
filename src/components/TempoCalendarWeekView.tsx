@@ -82,7 +82,7 @@ export function TempoCalendarWeekView({
     if (!gridRef.current) return;
     const update = () => {
       const total = gridRef.current?.clientWidth ?? 0;
-      // Grid is `64px_repeat(7,1fr)`; subtract the 64px gutter for accuracy.
+      // Grid is `56px_repeat(7,1fr)`; subtract the 56px gutter for accuracy.
       dayColumnWidthRef.current = total > 0 ? Math.max(1, (total - 56) / 7) : 0;
     };
     update();
@@ -197,12 +197,12 @@ export function TempoCalendarWeekView({
 
       {/* All-day row */}
       {hasAllDay && (
-        <div className="grid border-b border-border bg-muted/10 grid-cols-[64px_repeat(7,1fr)]">
+        <div className="grid border-b border-border bg-muted/10 grid-cols-[56px_repeat(7,1fr)]">
           <div className="border-r border-border" />
           {days.map((d, i) => (
             <div
               key={d.toISOString()}
-              className="border-r border-border/40 last:border-r-0 p-1.5 space-y-1 min-h-[40px]"
+              className="border-r border-border/30 last:border-r-0 p-1.5 space-y-1 min-h-[40px]"
             >
               {allDayPerDay[i].slice(0, 3).map((ev) => (
                 <button
@@ -244,7 +244,7 @@ export function TempoCalendarWeekView({
         >
           {/* Hour gutter */}              <div className="border-r border-border/70">
             {hours.map((h) => (
-              <div key={h} data-hour={h} className="relative border-b border-border/40" style={{ height: HOUR_HEIGHT }}>
+              <div key={h} data-hour={h} className="relative border-b border-border/20" style={{ height: HOUR_HEIGHT }}>
                 <span className="absolute top-0 right-2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground/60 bg-card px-1 tabular-nums">
                   {format(setHours(date, h), timeFormat === '24h' ? 'HH:mm' : 'h a')}
                 </span>
@@ -266,12 +266,12 @@ export function TempoCalendarWeekView({
                 onClick={(e) => handleGridClick(e, d)}
               >
                 {hours.map((h) => (
-                  <div key={h} data-hour={h} className="border-b border-border/20" style={{ height: HOUR_HEIGHT }} />
+                  <div key={h} data-hour={h} className="border-b border-border/15" style={{ height: HOUR_HEIGHT }} />
                 ))}
                 {hours.slice(0, -1).map((h) => (
                   <div
                     key={`half-${h}`}
-                    className="absolute left-0 right-0 h-px bg-border/15 pointer-events-none"
+                    className="absolute left-0 right-0 h-px bg-border/10 pointer-events-none"
                     style={{ top: (h - startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
                   />
                 ))}

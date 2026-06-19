@@ -68,7 +68,7 @@ export function TaskRow({
     task.status === 'active';
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 hover:bg-accent/30 transition-colors group animate-slide-up">
+    <div className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/30 transition-colors group animate-slide-up">
       {/* Completion checkbox */}
       <button
         type="button"
@@ -77,7 +77,7 @@ export function TaskRow({
           onComplete(task.id);
         }}
         disabled={isCompleting}
-        className={`shrink-0 w-[18px] h-[18px] rounded border flex items-center justify-center transition-all duration-150 ${
+        className={`shrink-0 w-5 h-5 rounded-md border-[1.5px] flex items-center justify-center transition-all duration-150 ${
           isCompleting
             ? 'border-primary bg-primary/20'
             : 'border-muted-foreground/30 hover:border-primary hover:bg-primary/10'
@@ -103,7 +103,7 @@ export function TaskRow({
         onClick={() => onEdit(task)}
       >
         <div className="flex items-center gap-1.5">
-          <span className={`text-[13px] font-medium truncate ${isOverdue ? 'text-overdue' : 'text-foreground'}`}>
+          <span className={`text-[13px] font-medium truncate ${isOverdue ? 'text-destructive' : 'text-foreground'}`}>
             {task.title}
           </span>
           {task.is_recurring && (
@@ -118,9 +118,9 @@ export function TaskRow({
           {subtasks && <SubtaskProgressChip subtasks={subtasks} />}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[11px] text-muted-foreground">{task.duration_minutes}m</span>
+          <span className="text-[12px] text-muted-foreground">{task.duration_minutes}m</span>
           {task.due_date && !task.is_recurring && (
-            <span className="text-[11px] text-muted-foreground">{format(parseISO(task.due_date), 'MMM d')}</span>
+            <span className="text-[12px] text-muted-foreground">{format(parseISO(task.due_date), 'MMM d')}</span>
           )}
           {(() => {
             const urgency = getUrgencyBadge(task);
@@ -219,7 +219,7 @@ export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowP
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 hover:bg-accent/30 transition-colors group animate-slide-up">
+    <div className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/30 transition-colors group animate-slide-up">
       {/* Completed checkmark */}
       <div className="shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
         <Check className="w-3 h-3 text-primary-foreground" />

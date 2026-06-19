@@ -153,12 +153,12 @@ export function DraggableEvent({
       tabIndex={0}
       aria-label={`${event.title} ${format(event.start, 'h:mma')} - ${format(event.end, 'h:mma')}`}
       className={cn(
-        'absolute text-left px-1.5 py-0.5 rounded overflow-hidden transition-shadow duration-150',
+        'absolute text-left px-2 py-1 rounded-md overflow-hidden transition-shadow duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        'border-l-[2px] leading-tight group/event',
+        'border-l-[3px] leading-snug group/event',
         !isDragging && !isGoogle && 'hover:shadow-sm',
         !isDragging && isGoogle && 'hover:shadow-sm',
-        small ? 'text-[10px]' : 'text-[11px]',
+        small ? 'text-[11px]' : 'text-[12px]',
         isCompleted && 'line-through decoration-foreground/30',
         // Google events: distinctive read-only look
         isGoogle && 'bg-event-external/60 border-event-external-border text-foreground/80 cursor-default',
@@ -185,10 +185,9 @@ export function DraggableEvent({
       <div className="flex items-center gap-1">
         {isLocked && <Lock className="w-2.5 h-2.5 shrink-0 opacity-60" />}
         {isRecurring && <Repeat className="w-2.5 h-2.5 shrink-0 opacity-60" />}
-        {isGoogle && <ExternalLink className="w-2 h-2 shrink-0 opacity-40" />}
-        <span className={cn(
+        {isGoogle && <ExternalLink className="w-2 h-2 shrink-0 opacity-40" />}          <span className={cn(
           'truncate',
-          small ? 'text-[10px]' : 'text-[12px]',
+          small ? 'text-[11px]' : 'text-[13px]',
           isGoogle ? 'font-medium' : 'font-semibold',
           isCompleted && 'line-through',
         )}>
@@ -198,8 +197,8 @@ export function DraggableEvent({
           <GripVertical className="w-2.5 h-2.5 shrink-0 opacity-0 group-hover/event:opacity-50 ml-auto" />
         )}
       </div>
-      {!small && event.end.getTime() - event.start.getTime() > 30 * 60 * 1000 && (
-        <div className={cn('text-muted-foreground text-[10px] mt-0.5 num', isCompleted && 'line-through')}>
+      {!small && event.end.getTime() - event.start.getTime() > 20 * 60 * 1000 && (
+        <div className={cn('text-muted-foreground text-[11px] mt-0.5 num', isCompleted && 'line-through')}>
           {format(event.start, 'h:mma')} - {format(event.end, 'h:mma')}
         </div>
       )}

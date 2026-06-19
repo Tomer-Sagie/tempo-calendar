@@ -60,8 +60,8 @@
   --font-serif-italic: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", monospace;
 
-  /* Calendar density */
-  --cal-hour-height: 56px;
+  /* Calendar density — more breathing room */
+  --cal-hour-height: 64px;
 
   /* Radii — tight */
   --radius: 0.375rem;
@@ -180,7 +180,7 @@
     @apply bg-background text-foreground;
     font-family: var(--font-body);
     font-size: 13px;
-    line-height: 1.5;
+    line-height: 1.6;
     margin: 0;
     font-feature-settings: "ss01", "cv11", "cv02";
     -webkit-font-smoothing: antialiased;
@@ -572,11 +572,11 @@
 }
 
 .density-standard {
-  --cal-hour-height: 56px;
+  --cal-hour-height: 64px;
 }
 
 .density-comfortable {
-  --cal-hour-height: 70px;
+  --cal-hour-height: 80px;
 }
 .density-comfortable .big-calendar-wrapper [data-hour],
 .density-comfortable [data-hour] {
