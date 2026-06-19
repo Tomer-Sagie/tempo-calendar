@@ -541,7 +541,7 @@
 /* Safe area insets (Prompt 16) — applied to specific fixed/sticky elements, not body */
 @supports (padding: env(safe-area-inset-top)) {
   header[role='banner'] {
-    padding-top: max(0px, env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
   }
   .fab {
     bottom: calc(20px + env(safe-area-inset-bottom));
@@ -563,18 +563,7 @@
   font-size: clamp(1.5rem, 3.5vw, 2.5rem);
 }
 
-/* ARIA live region announcements (Prompt 52) */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
+/* ARIA live region announcements (Prompt 52) — use Tailwind's built-in sr-only utility */
 
 /* Display heading scale */
 .display-1 {
