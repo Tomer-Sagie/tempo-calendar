@@ -54,7 +54,7 @@ export function TempoCalendarHeader({
   }, [view, date, weekStartsOn]);
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-2">
       <button
         onClick={onToday}
         className={cn(
@@ -84,22 +84,22 @@ export function TempoCalendarHeader({
         </button>
       </div>
 
-      <h2 className="text-[13px] font-semibold text-foreground ml-0.5 tracking-tight">
+      <h2 className="text-sm font-semibold text-foreground ml-0.5 tracking-tight">
         {title}
       </h2>
 
       <div className="flex-1" />
 
-      <div className="flex items-center bg-muted/50 rounded-md p-0.5">
+      <div className="flex items-center bg-muted/60 rounded-lg p-0.5">
         {(['day', 'week', 'month'] as const).map((v) => (
           <button
             key={v}
             onClick={() => onViewChange(v)}
             className={cn(
-              'h-7 px-2.5 text-[11px] font-medium rounded transition-colors capitalize',
+              'h-7 px-3 text-[11px] font-medium rounded-md transition-colors capitalize',
               view === v
                 ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
+                : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
             )}
           >
             {v}

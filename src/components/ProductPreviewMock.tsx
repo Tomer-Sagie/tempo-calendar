@@ -12,7 +12,7 @@ export function ProductPreviewMock() {
   return (
     <div className="relative w-full max-w-[560px] mx-auto">
       {/* Outer browser-chrome frame */}
-      <div className="rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
+      <div className="rounded-xl border border-border/70 bg-card shadow-2xl overflow-hidden">
         {/* Top bar */}
         <div className="h-9 bg-muted/40 border-b border-border flex items-center gap-1.5 px-3.5">
           <div className="flex gap-1.5">
@@ -27,8 +27,16 @@ export function ProductPreviewMock() {
         <div className="flex h-[340px]">
           {/* Left rail */}
           <div className="w-12 bg-card border-r border-border flex flex-col items-center py-3 gap-1.5">
-            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center mb-1">
-              <span className="text-[10px] font-bold text-primary-foreground">T</span>
+          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center mb-1">
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-4 h-4 text-primary-foreground"
+            >
+              <rect x="4" y="14" width="3" height="8" rx="0.6" />
+              <rect x="10.5" y="7" width="3" height="15" rx="0.6" />
+              <rect x="17" y="11" width="3" height="11" rx="0.6" />
+            </svg>
             </div>
             <div className="w-7 h-7 rounded-md bg-primary/15 flex items-center justify-center">
               <Calendar className="w-3.5 h-3.5 text-primary" />
