@@ -236,8 +236,10 @@ export function useTasks(): UseTasksReturn {
             googleEventId = sr.googleEventId ?? null;
             if (!sr.success) recordSyncError(`"${task.title}": ${sr.error || 'Google sync failed'}`);
           }
-          if (googleEventId) await updateTaskSchedule(task.id, startISO, endISO, googleEventId);
-          scheduledCount++;
+          if (googleEventId) {
+            await updateTaskSchedule(task.id, startISO, endISO, googleEventId);
+            scheduledCount++;
+          }
         } catch (err) { recordSyncError(`"${task?.title || taskId}": ${err instanceof Error ? err.message : 'Schedule save failed'}`); }
       }
 

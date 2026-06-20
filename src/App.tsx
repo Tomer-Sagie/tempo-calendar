@@ -1217,7 +1217,6 @@ function App() {
           onConnect={handleConnectCalendar}
           onDisconnect={calendar.disconnect}
           onRefresh={calendar.refreshEvents}
-          onScheduleAll={handleScheduleAll}
           unscheduledCount={unscheduledCount}
           user={auth.user}
           onSignIn={() => setShowAuthDialog(true)}
@@ -1401,8 +1400,6 @@ function App() {
               onAddTask={() => { setEditingTask(null); setShowTaskDialog(true); }}
               onSelectTask={handleEditTask}
               onViewAllTasks={() => setActiveView('tasks')}
-              onScheduleAll={handleScheduleAll}
-              isScheduling={rescheduleLoading}
             />
           ) : activeView === 'tasks' ? (
             <TaskList

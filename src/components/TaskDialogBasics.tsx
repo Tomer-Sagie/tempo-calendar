@@ -278,35 +278,37 @@ export function TaskDialogBasics({ form, setForm, onTaskTypeChange, taskLists, s
         </div>
       </div>
 
-      {/* List + Profile — always present */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">List</label>
-          <select
-            value={form.list_id}
-            onChange={(e) => setForm((p) => ({ ...p, list_id: e.target.value }))}
-            className="w-full px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background"
-          >
-            <option value="">No list</option>
-            {taskLists.map((list) => (
-              <option key={list.id} value={list.id}>{list.name}</option>
-            ))}
-          </select>
+      {/* List + Profile — moved to Advanced */}
+      {(taskLists.length > 0 || schedulingProfiles.length > 0) && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">List</label>
+            <select
+              value={form.list_id}
+              onChange={(e) => setForm((p) => ({ ...p, list_id: e.target.value }))}
+              className="w-full px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+            >
+              <option value="">No list</option>
+              {taskLists.map((list) => (
+                <option key={list.id} value={list.id}>{list.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Schedule profile</label>
+            <select
+              value={form.scheduling_profile_id}
+              onChange={(e) => setForm((p) => ({ ...p, scheduling_profile_id: e.target.value }))}
+              className="w-full px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+            >
+              <option value="">Default</option>
+              {schedulingProfiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>{profile.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Schedule profile</label>
-          <select
-            value={form.scheduling_profile_id}
-            onChange={(e) => setForm((p) => ({ ...p, scheduling_profile_id: e.target.value }))}
-            className="w-full px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background"
-          >
-            <option value="">Default</option>
-            {schedulingProfiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>{profile.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      )}
     </section>
   );
 }

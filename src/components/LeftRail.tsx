@@ -18,7 +18,6 @@ interface LeftRailProps {
   onConnect: () => void;
   onDisconnect: () => void;
   onRefresh: () => void;
-  onScheduleAll: () => void;
   unscheduledCount: number;
   user: SupabaseUser | null;
   onSignIn: () => void;
@@ -56,7 +55,6 @@ export function LeftRail({
   onConnect,
   onDisconnect,
   onRefresh,
-  onScheduleAll,
   unscheduledCount,
   lastSyncAt,
   user,
@@ -71,7 +69,7 @@ export function LeftRail({
 
   return (
     <aside
-      className="w-[52px] shrink-0 h-full bg-card/80 backdrop-blur-sm border-r border-border/50 flex flex-col items-center py-2 gap-0.5 z-20"
+      className="w-[60px] shrink-0 h-full bg-card/80 backdrop-blur-sm border-r border-border/50 flex flex-col items-center py-2 gap-0.5 z-20"
       aria-label="Primary navigation"
     >
       {/* Brand mark */}
@@ -128,14 +126,9 @@ export function LeftRail({
           <RailItem
             icon={Sparkles}
             label="Plan inbox"
-            title="Plan inbox — schedule all unscheduled tasks"
+            title="View unscheduled tasks"
             active={false}
-            onClick={() => {
-              // Navigate to tasks view so the user can see their unscheduled
-              // items. If there are unscheduled tasks, also trigger scheduling.
-              onViewChange('tasks');
-              if (unscheduledCount > 0) onScheduleAll();
-            }}
+            onClick={() => onViewChange('tasks')}
             badge={unscheduledCount > 0 ? unscheduledCount : undefined}
           />
           <RailItem
@@ -319,7 +312,7 @@ function RailItem({ icon: Icon, label, title, active, disabled, badge, onClick }
     <button
       onClick={onClick}
       disabled={disabled}        className={cn(
-          'group relative w-9 h-9 rounded-lg flex items-center justify-center transition-all',
+          'group relative w-9 rounded-lg flex flex-col items-center justify-center gap-0.5 py-1 transition-all',
         active && 'bg-primary/10 text-primary',
         !active && !disabled && 'text-muted-foreground hover:text-foreground hover:bg-accent',
         disabled && 'text-muted-foreground/40 cursor-not-allowed',
@@ -329,6 +322,7 @@ function RailItem({ icon: Icon, label, title, active, disabled, badge, onClick }
       title={title || label}
     >
       <Icon className="w-[18px] h-[18px]" />
+      <span className="text-[9px] leading-none font-medium truncate max-w-[52px]">{label}</span>
       {badge !== undefined && badge > 0 && (
         <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center justify-center tabular-nums">
           {badge > 99 ? '99+' : badge}

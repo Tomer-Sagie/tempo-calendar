@@ -545,6 +545,20 @@ export function scheduleMultipleTasks(
   // 4. Filter to auto-schedulable tasks
   const schedulable = getAutoSchedulableTasks(sortedTasks);
 
+  // 4b. Tasks excluded from auto-scheduling: report them as unscheduled
+  //     so the caller can surface why they weren't placed.
+  const excludedFromScheduling = sortedTasks.filter(
+    (t) => !schedulable.includes(t) && !t.is_locked && !t.is_busy_block
+  );
+  for (const task of excludedFromScheduling) {
+    output.unscheduled.push({
+      taskId: task.id,
+      reason: task.auto_schedule === false
+        ? 'Auto-scheduling is turned off'
+        : 'Excluded from scheduling',
+    });
+  }
+
   // 5. Schedule each task in order
   const accumulatedBusy = [...allBusy];
 

@@ -90,7 +90,7 @@ export async function fetchUnscheduledTasks(): Promise<Task[]> {
   const { data, error } = await requireSupabase()
     .from('tasks')
     .select('*')
-    .eq('is_scheduled', false)
+    .or('is_scheduled.eq.false,is_scheduled.is.null')
     .eq('status', 'active')
     .order('priority', { ascending: true })
     .order('created_at', { ascending: false });

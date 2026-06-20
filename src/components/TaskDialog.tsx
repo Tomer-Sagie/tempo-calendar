@@ -96,7 +96,8 @@ export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = 
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [showExpertSettings, setShowExpertSettings] = useState(false);
 
   // When switching task types, preserve the date the user already picked.
   // This is done inside the setter so it never triggers a cascading render.
@@ -233,8 +234,18 @@ export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = 
               schedulingProfiles={schedulingProfiles}
             />
 
+            {/* Toggle for personalization fields */}
+            <button
+              type="button"
+              onClick={() => setShowMoreOptions(!showMoreOptions)}
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-1"
+            >
+              {showMoreOptions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {showMoreOptions ? 'Fewer options' : 'More options'}
+            </button>
+
             {/* Step 2: personalization (description, tags, color, days) */}
-            <TaskDialogAdvanced form={form} setForm={setForm} />
+            {showMoreOptions && <TaskDialogAdvanced form={form} setForm={setForm} />}
 
             {/* Task-type hint pill */}
             <div className="flex items-center gap-2">
@@ -271,14 +282,14 @@ export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = 
             {/* Expert settings (deep knobs) */}
             <button
               type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
+              onClick={() => setShowExpertSettings(!showExpertSettings)}
               className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-1"
             >
-              {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {showExpertSettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               Expert settings
             </button>
 
-            {showAdvanced && (
+            {showExpertSettings && (
               <section className="space-y-4 pt-3 border-t border-border">
                 <div className="grid grid-cols-2 gap-3">
                   {[

@@ -25,8 +25,6 @@ interface BentoSidebarProps {
   onAddTask: () => void;
   onSelectTask: (task: Task) => void;
   onViewAllTasks: () => void;
-  onScheduleAll: () => void;
-  isScheduling?: boolean;
 }
 
 // ============================================================
@@ -165,8 +163,6 @@ export function BentoSidebar({
   onAddTask,
   onSelectTask,
   onViewAllTasks,
-  onScheduleAll,
-  isScheduling,
 }: BentoSidebarProps) {
   const activeTasks = useMemo(() => tasks.filter((t) => t.status === 'active'), [tasks]);
   const unscheduled = useMemo(() => activeTasks.filter((t) => !t.is_scheduled), [activeTasks]);
@@ -198,22 +194,7 @@ export function BentoSidebar({
               <span className="text-foreground/40 tabular-nums">{unscheduled.length}</span>
             )}
           </div>
-          {unscheduled.length > 0 && (
-            <button
-              onClick={onScheduleAll}
-              disabled={isScheduling}
-              className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors disabled:opacity-50 flex items-center gap-1"
-            >
-              {isScheduling ? (
-                <>
-                  <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                  Planning
-                </>
-              ) : (
-                <>Schedule all</>
-              )}
-            </button>
-          )}
+
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-1.5 tempo-scrollbar">
