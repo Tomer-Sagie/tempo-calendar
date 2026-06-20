@@ -518,12 +518,37 @@ function App() {
   const handleScheduleAll = async () => {
     // Capture snapshot for undo before scheduling
     undoManager.capture(tasksHook.tasks, 'Scheduling tasks…');
-    const count = await tasksHook.scheduleAll(calendar.events);
-    if (count > 0) {
-      undoManager.showToast({ onRestore: refresh, label: `${count} task${count === 1 ? '' : 's'} scheduled` });
+    const result = await tasksHook.scheduleAll(calendar.events);
+    if (result.count > 0) {
+      undoManager.showToast({ onRestore: refresh, label: `${result.count} task${result.count === 1 ? '' : 's'} scheduled` });
+    } else if (result.unscheduled.length > 0) {
+      undoManager.clear();
+      // Group reasons for a clearer message
+      const noSlotCount = result.unscheduled.filter((u) => u.reason.includes('No available time slot')).length;
+      const depCount = result.unscheduled.filter((u) => u.reason.includes('dependency')).length;
+      if (noSlotCount === result.unscheduled.length) {
+        toast.error('No open slots found', {
+          description: 'Your calendar is full during working hours. Free up some time or adjust working hours in Settings.',
+        });
+      } else if (depCount > 0) {
+        toast.warning('Some tasks blocked', {
+          description: `${depCount} task${depCount === 1 ? '' : 's'} waiting on dependencies.`,
+        });
+      } else {
+        const reasonCounts = result.unscheduled.reduce<Map<string, number>>((map, u) => {
+          map.set(u.reason, (map.get(u.reason) || 0) + 1);
+          return map;
+        }, new Map());
+        const desc = Array.from(reasonCounts.entries())
+          .map(([reason, count]) => `${count} task${count === 1 ? '' : 's'}: ${reason}`)
+          .join('; ');
+        toast.info('Could not schedule tasks', { description: desc });
+      }
     } else {
       undoManager.clear();
+      toast.info('Nothing to schedule', { description: 'All tasks are already placed on your calendar.' });
     }
+    return result;
   };
 
   const handleUnschedule = async (id: string) => {
@@ -587,9 +612,9 @@ function App() {
     if (autoScheduleTimerRef.current) clearTimeout(autoScheduleTimerRef.current);
     autoScheduleTimerRef.current = setTimeout(async () => {
       if (calendarRef.current.isAuthenticated) {
-        const count = await tasksHookRef.current.scheduleAll(calendarRef.current.events);
-        if (count > 0) {
-          toast.success('Rescheduled', { description: `${count} task${count === 1 ? '' : 's'} placed into open slots.` });
+        const result = await tasksHookRef.current.scheduleAll(calendarRef.current.events);
+        if (result.count > 0) {
+          toast.success('Rescheduled', { description: `${result.count} task${result.count === 1 ? '' : 's'} placed into open slots.` });
         }
       }
     }, 500);

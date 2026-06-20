@@ -36,7 +36,7 @@ interface UseTasksReturn {
   update: (id: string, updates: TaskUpdate) => Promise<Task>;
   remove: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
-  scheduleAll: (googleEvents: CalendarEvent[], config?: SchedulerConfig) => Promise<number>;
+  scheduleAll: (googleEvents: CalendarEvent[], config?: SchedulerConfig) => Promise<{ count: number; unscheduled: Array<{ taskId: string; reason: string }> }>;
   scheduleOne: (task: Task, googleEvents: CalendarEvent[], config?: SchedulerConfig) => Promise<SchedulingSlot | null>;
   findSlots: (task: Task, googleEvents: CalendarEvent[], config?: SchedulerConfig) => Promise<SchedulingSlot[]>;
   unschedule: (id: string) => Promise<void>;
@@ -214,7 +214,7 @@ export function useTasks(): UseTasksReturn {
 
   const scheduleAll = useCallback(async (
     googleEvents: CalendarEvent[], config?: SchedulerConfig
-  ): Promise<number> => {
+  ): Promise<{ count: number; unscheduled: Array<{ taskId: string; reason: string }> }> => {
     setIsLoading(true); setError(null);
     try {
       const unscheduled = await fetchUnscheduledTasks();
@@ -247,10 +247,10 @@ export function useTasks(): UseTasksReturn {
       }
 
       const data = await fetchTasks(); if (mountedRef.current) setTasks(data);
-      return scheduledCount;
+      return { count: scheduledCount, unscheduled: output.unscheduled };
     } catch (err) {
       if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to schedule tasks');
-      return 0;
+      return { count: 0, unscheduled: [] };
     } finally { if (mountedRef.current) setIsLoading(false); }
   }, []);
 

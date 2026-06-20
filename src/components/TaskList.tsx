@@ -13,7 +13,7 @@ interface TaskListProps {
   onAddTask: () => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
-  onScheduleAll: () => Promise<void>;
+  onScheduleAll: () => void;
   onUnschedule: (id: string) => Promise<void>;
   onCompleteTask: (id: string) => Promise<void>;
   onReopenTask: (id: string) => Promise<void>;

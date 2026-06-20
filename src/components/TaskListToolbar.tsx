@@ -13,7 +13,7 @@ interface TaskListToolbarProps {
   /** Toggle the completed section. */
   onToggleCompleted: () => void;
   /** Schedule all unscheduled tasks. */
-  onScheduleAll: () => Promise<void>;
+  onScheduleAll: () => void;
   /** Add a new task. */
   onAddTask: () => void;
   /** Optional back-arrow to return to the calendar view. */

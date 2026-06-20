@@ -36,7 +36,7 @@ interface CommandPaletteProps {
   onNavigate: (view: 'day' | 'week' | 'month') => void;
   onOpenSettings: () => void;
   onToggleTheme: () => void;
-  onScheduleAll: () => Promise<void> | void;
+  onScheduleAll: () => Promise<{ count: number; unscheduled: Array<{ taskId: string; reason: string }> }> | void;
   currentView: 'day' | 'week' | 'month';
   theme: 'light' | 'dark';
 }
@@ -142,7 +142,16 @@ export function CommandPalette({
       { id: 'view-month', label: 'Month view', icon: Calendar, shortcut: 'M', current: currentView === 'month', action: () => onNavigate('month') },
     ]},
     { group: 'Actions', items: [
-      { id: 'schedule-all', label: 'Schedule everything in inbox', icon: Zap, shortcut: 'S', action: async () => { await onScheduleAll(); toast.success('Inbox planned', { description: 'Tasks placed into open slots.' }); } },
+      { id: 'schedule-all', label: 'Schedule everything in inbox', icon: Zap, shortcut: 'S', action: async () => {
+        const result = await onScheduleAll();
+        if (result && result.count > 0) {
+          toast.success('Inbox planned', { description: `${result.count} task${result.count === 1 ? '' : 's'} placed into open slots.` });
+        } else if (result && result.unscheduled.length > 0) {
+          toast.error('No open slots found', { description: 'Your calendar is full during working hours.' });
+        } else {
+          toast.info('Nothing to schedule', { description: 'All tasks are already placed on your calendar.' });
+        }
+      } },
       { id: 'settings', label: 'Open settings', icon: Settings, shortcut: ',', action: () => { onOpenSettings(); handleClose(); } },
     ]},
     { group: 'Appearance', items: [
