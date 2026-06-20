@@ -32,6 +32,9 @@ import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
 import type { OccurrenceEditScope } from './components/OccurrenceEditDialog';
 import { useUndoManager } from './hooks/useUndoManager';
+import { WelcomeWizard } from './components/WelcomeWizard';
+import { EmptyState } from './components/EmptyState';
+import { ContextualHints } from './components/ContextualHints';
 
 // Tiny Suspense fallback for lazy-loaded dialogs/panels
 function PanelSpinner() {
@@ -253,6 +256,15 @@ function App() {
   const [focusMode, setFocusMode] = useState<{ open: boolean; taskId: string | null }>({ open: false, taskId: null });
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [navigateToDate, setNavigateToDate] = useState<Date>(new Date());
+  const [showWelcomeWizard, setShowWelcomeWizard] = useState(() => {
+    try {
+      // Show wizard if user is new (no onboarding completed) and has no tasks
+      const hasOnboarded = localStorage.getItem('tempo-onboarded-v2');
+      const hasSeenWizard = localStorage.getItem('tempo-welcome-wizard');
+      return !hasOnboarded && !hasSeenWizard;
+    } catch { return false; }
+  });
+  const [replayTour, setReplayTour] = useState(false);
   const [skipCalendarGate, setSkipCalendarGate] = useState<boolean>(() => {
     try { return localStorage.getItem('tempo-skip-calendar-gate') === 'true'; } catch { return false; }
   });
@@ -732,6 +744,14 @@ function App() {
     onShowHelp: () => setShowKeyboardHelp(true),
   });
 
+  const handleCreateFirstTask = useCallback(async (title: string, duration: number) => {
+    const task = await tasksHookRef.current.create({ title, duration_minutes: duration, priority: 'NORMAL' });
+    if (calendarRef.current.isAuthenticated && !task.is_scheduled) {
+      await tasksHookRef.current.scheduleOne(task, calendarRef.current.events);
+    }
+    try { localStorage.setItem('tempo-welcome-wizard', 'done'); } catch { /* */ }
+  }, []);
+
   const handleReschedule = async () => {
     setRescheduleLoading(true);
     // Capture snapshot for undo before rescheduling
@@ -1160,7 +1180,8 @@ function App() {
 
   // Authenticated: full workspace
   return (
-    <div className="h-[100dvh] flex app-gradient">        <LeftRail
+    <div className="h-[100dvh] flex app-gradient">        <div data-onboarding="left-rail">
+        <LeftRail
           activeView={activeView}
           onViewChange={setActiveView}
           isAuthenticated={calendar.isAuthenticated}
@@ -1179,7 +1200,12 @@ function App() {
           theme={theme}
           onToggleTheme={toggleTheme}
           onOpenSettings={() => setShowSettings(true)}
+          onReplayTour={() => {
+            setReplayTour(true);
+            try { localStorage.removeItem('tempo-onboarded-v2'); } catch { /* */ }
+          }}
         />
+        </div>
       <ErrorBoundary>
       <div
         className="flex-1 flex flex-col min-w-0"
@@ -1191,6 +1217,15 @@ function App() {
         onScheduleAll={handleScheduleAll}
         unscheduledCount={unscheduledCount}
         onOpenFocus={handleOpenFocus}
+      />
+
+      <ContextualHints
+        unscheduledCount={unscheduledCount}
+        taskCount={allTasks.length}
+        hasCalendar={calendar.isAuthenticated}
+        onScheduleAll={handleScheduleAll}
+        onOpenKeyboardHelp={() => setShowKeyboardHelp(true)}
+        onConnectCalendar={handleConnectCalendar}
       />
 
       {/* Offline banner */}
@@ -1272,7 +1307,15 @@ function App() {
         <div
           data-onboarding="calendar"
           className={`flex-1 flex flex-col min-w-0 p-3 gap-3 ${activeView === 'calendar' || activeView === 'today' ? '' : activeView === 'insights' ? 'hidden' : 'hidden lg:flex'}`}
-        >            {activeView === 'today' ? (
+        >
+          {activeView === 'calendar' && allTasks.length === 0 && calendar.events.length === 0 && !tasksHook.isLoading && (
+            <EmptyState
+              variant="calendar-empty"
+              onAction={() => { setEditingTask(null); setShowTaskDialog(true); }}
+              className="flex-1"
+            />
+          )}
+          {activeView === 'today' ? (
               <Suspense fallback={<PanelSpinner />}>
               <TodayFocusView
                 tasks={allTasks}
@@ -1420,8 +1463,19 @@ function App() {
       </Suspense>
 
       <Suspense fallback={null}>
-      <OnboardingTour onComplete={() => { /* persisted in localStorage */ }} />
+      <OnboardingTour forceOpen={replayTour} onComplete={() => { setReplayTour(false); }} />
       </Suspense>
+
+      {/* Welcome wizard for first-time users */}
+      {showWelcomeWizard && calendar.isAuthenticated && allTasks.length === 0 && (
+        <WelcomeWizard
+          onCreateFirstTask={handleCreateFirstTask}
+          onDismiss={() => {
+            setShowWelcomeWizard(false);
+            try { localStorage.setItem('tempo-welcome-wizard', 'skipped'); } catch { /* */ }
+          }}
+        />
+      )}
 
       {occurrenceEdit.open && (
         <Suspense fallback={null}>

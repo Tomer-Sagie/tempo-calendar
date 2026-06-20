@@ -48,6 +48,7 @@ export function Header({
               onClick={onScheduleAll}
               className="h-8 px-3 text-xs font-medium gap-2"
               title="Schedule all unscheduled tasks (S)"
+              data-onboarding="schedule-all"
             >
               <Calendar className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Schedule all</span>

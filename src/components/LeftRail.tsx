@@ -1,4 +1,4 @@
-import { Calendar, ListTodo, BarChart3, Settings as SettingsIcon, LogOut, User, Unlink, Sun, Moon, Sparkles, RefreshCw, Link2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Calendar, ListTodo, BarChart3, Settings as SettingsIcon, LogOut, User, Unlink, Sun, Moon, Sparkles, RefreshCw, Link2, AlertCircle, ArrowLeft, Lightbulb } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useState } from 'react';
 import { cn } from '../lib/utils';
@@ -26,6 +26,7 @@ interface LeftRailProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onOpenSettings: () => void;
+  onReplayTour?: () => void;
 }
 
 /**
@@ -64,6 +65,7 @@ export function LeftRail({
   theme,
   onToggleTheme,
   onOpenSettings,
+  onReplayTour,
 }: LeftRailProps) {
   const [showAccount, setShowAccount] = useState(false);
 
@@ -255,6 +257,16 @@ export function LeftRail({
                       {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
                       {theme === 'dark' ? 'Light mode' : 'Dark mode'}
                     </button>
+                    {onReplayTour && (
+                      <button
+                        onClick={() => { onReplayTour(); setShowAccount(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"
+                        role="menuitem"
+                      >
+                        <Lightbulb className="w-3.5 h-3.5" />
+                        Replay tour
+                      </button>
+                    )}
                     {isAuthenticated && (
                       <button
                         onClick={() => { onDisconnect(); setShowAccount(false); }}

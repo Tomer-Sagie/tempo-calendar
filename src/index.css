@@ -879,6 +879,12 @@
 .z-sidebar { z-index: 20; }
 .z-command { z-index: 100; }
 
+/* Wizard backdrop */
+.wizard-backdrop {
+  background: oklch(var(--background) / 0.85);
+  backdrop-filter: blur(8px);
+}
+
 /* Command palette (cmdk) styling */
 [cmdk-root] {
   width: 100%;
