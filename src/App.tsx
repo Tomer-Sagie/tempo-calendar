@@ -57,36 +57,13 @@ const KeyboardHelpDialog = lazy(() => import('./components/KeyboardHelpDialog').
 
 /**
  * Detect whether a time string represents an all-day event.
- * Matches: date-only strings ("2024-01-15"), ISO midnight UTC ("...T00:00:00Z"),
- * and local midnight ("...T00:00:00"). Handles timezone-shifted midnight
- * (e.g. "...T05:00:00Z" = midnight EST).
+ * Only date-only strings ("2024-01-15") are all-day.
+ * Tempo's own task events always use ISO datetime strings
+ * with explicit times and should never be flagged as allDay.
+ * Google Calendar all-day events arrive as date-only strings.
  */
 function isAllDayTimeString(iso: string): boolean {
-  // Date-only: "2024-01-15"
-  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return true;
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return false;
-    // Midnight UTC or local midnight (with/without Z)
-    if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) return true;
-    // Timezone-shifted midnight: parse offset from ISO string and check if it
-    // represents midnight in that timezone (e.g. "05:00:00-05:00" = 00:00 local)
-    const offsetMatch = iso.match(/([+-])(\d{2}):(\d{2})(?::(\d{2}))?$/);
-    if (offsetMatch) {
-      const sign = offsetMatch[1] === '-' ? -1 : 1;
-      const offsetH = parseInt(offsetMatch[2], 10);
-      const offsetM = parseInt(offsetMatch[3], 10);
-      const totalOffsetMinutes = sign * (offsetH * 60 + offsetM);
-      const utcMinutes = d.getUTCHours() * 60 + d.getUTCMinutes();
-      // Check if the UTC time + offset = 00:00 (midnight in that timezone)
-      let localMinutes = utcMinutes + totalOffsetMinutes;
-      // Wrap around 24h
-      if (localMinutes < 0) localMinutes += 24 * 60;
-      if (localMinutes >= 24 * 60) localMinutes -= 24 * 60;
-      if (localMinutes === 0 && d.getUTCSeconds() === 0) return true;
-    }
-  } catch { /* not a valid date */ }
-  return false;
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso);
 }
 
 function useTheme() {
