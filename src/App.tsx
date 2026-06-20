@@ -35,6 +35,7 @@ import { useUndoManager } from './hooks/useUndoManager';
 import { WelcomeWizard } from './components/WelcomeWizard';
 import { EmptyState } from './components/EmptyState';
 import { ContextualHints } from './components/ContextualHints';
+import { GettingStartedChecklist } from './components/GettingStartedChecklist';
 
 // Tiny Suspense fallback for lazy-loaded dialogs/panels
 function PanelSpinner() {
@@ -242,6 +243,13 @@ function App() {
     } catch { return false; }
   });
   const [replayTour, setReplayTour] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(() => {
+    try {
+      const wizardSeen = localStorage.getItem('tempo-welcome-wizard');
+      const checklistDone = localStorage.getItem('tempo-checklist-done');
+      return (wizardSeen === 'done' || wizardSeen === 'skipped') && !checklistDone;
+    } catch { return false; }
+  });
   const [skipCalendarGate, setSkipCalendarGate] = useState<boolean>(() => {
     try { return localStorage.getItem('tempo-skip-calendar-gate') === 'true'; } catch { return false; }
   });
@@ -1229,6 +1237,22 @@ function App() {
         onConnectCalendar={handleConnectCalendar}
       />
 
+      {/* Getting-started checklist — shows after WelcomeWizard */}
+      {showChecklist && calendar.isAuthenticated && (allTasks.length < 3 || unscheduledCount > 0) && (
+        <GettingStartedChecklist
+          taskCount={allTasks.length}
+          unscheduledCount={unscheduledCount}
+          isOnCalendarView={activeView === 'calendar'}
+          onAddTask={() => { setEditingTask(null); setShowTaskDialog(true); }}
+          onScheduleAll={handleScheduleAll}
+          onViewCalendar={() => setActiveView('calendar')}
+          onDismiss={() => {
+            setShowChecklist(false);
+            try { localStorage.setItem('tempo-checklist-done', 'true'); } catch { /* */ }
+          }}
+        />
+      )}
+
       {/* Offline banner */}
       {isOffline && (
         <div
@@ -1468,9 +1492,13 @@ function App() {
       {/* Welcome wizard for first-time users */}
       {showWelcomeWizard && calendar.isAuthenticated && allTasks.length === 0 && (
         <WelcomeWizard
-          onCreateFirstTask={handleCreateFirstTask}
+          onCreateFirstTask={async (title, duration) => {
+            await handleCreateFirstTask(title, duration);
+            setShowChecklist(true);
+          }}
           onDismiss={() => {
             setShowWelcomeWizard(false);
+            setShowChecklist(true);
             try { localStorage.setItem('tempo-welcome-wizard', 'skipped'); } catch { /* */ }
           }}
         />
