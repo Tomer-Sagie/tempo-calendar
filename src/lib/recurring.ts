@@ -1,6 +1,7 @@
 import { addDays, parseISO, format, getDay, startOfWeek, startOfDay } from 'date-fns';
 import type { Task } from './types';
 import type { CalendarEventType } from '../components/TempoCalendarHelpers';
+import { isAllDayTimeString } from './utils';
 
 /**
  * Generate calendar event instances for a repeating task.
@@ -133,6 +134,7 @@ export function generateRecurringOccurrences(
           start: occStart,
           end: occEnd,
           variant,
+          allDay: isAllDayTimeString(occStart.toISOString(), occEnd.toISOString()),
           data: {
             description: task.description || '',
             source: 'task',
