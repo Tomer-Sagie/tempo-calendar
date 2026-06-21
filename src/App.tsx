@@ -4,13 +4,11 @@ import { useTasks } from './hooks/useTasks';
 import { useAuth } from './hooks/useAuth';
 import { useSubtasks } from './hooks/useSubtasks';
 import { useSubtasksBatch } from './hooks/useSubtasksBatch';
+import { BentoSidebar } from './components/BentoSidebar';
 import { Header } from './components/Header';
 import { TempoCalendar, type CalendarEventType } from './components/TempoCalendar';
-import { BentoSidebar } from './components/BentoSidebar';
 import { TaskList } from './components/TaskList';
-import { TaskDialog } from './components/TaskDialog';
 import { AuthDialog } from './components/AuthDialog';
-
 
 
 import { VersionBadge } from './components/VersionBadge';
@@ -19,7 +17,6 @@ import { Button } from './components/ui/button';
 import { LeftRail } from './components/LeftRail';
 import { MobileNav } from './components/MobileNav';
 
-import { ProductPreviewMock } from './components/ProductPreviewMock';
 import { AlertCircle, Link2, RefreshCw, LogIn, Zap, Settings2, Calendar, Sparkles, ArrowRight, BarChart3, Layers, WifiOff, Plus } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -32,7 +29,6 @@ import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
 import type { OccurrenceEditScope } from './components/OccurrenceEditDialog';
 import { useUndoManager } from './hooks/useUndoManager';
-import { WelcomeWizard } from './components/WelcomeWizard';
 import { EmptyState } from './components/EmptyState';
 import { ContextualHints } from './components/ContextualHints';
 import { GettingStartedChecklist } from './components/GettingStartedChecklist';
@@ -55,6 +51,9 @@ const OccurrenceEditDialog = lazy(() => import('./components/OccurrenceEditDialo
 const FocusMode = lazy(() => import('./components/FocusMode').then((m) => ({ default: m.FocusMode })));
 const TodayFocusView = lazy(() => import('./components/TodayFocusView').then((m) => ({ default: m.TodayFocusView })));
 const KeyboardHelpDialog = lazy(() => import('./components/KeyboardHelpDialog').then((m) => ({ default: m.KeyboardHelpDialog })));
+const TaskDialog = lazy(() => import('./components/TaskDialog').then((m) => ({ default: m.TaskDialog })));
+const WelcomeWizard = lazy(() => import('./components/WelcomeWizard').then((m) => ({ default: m.WelcomeWizard })));
+const ProductPreviewMock = lazy(() => import('./components/ProductPreviewMock').then((m) => ({ default: m.ProductPreviewMock })));
 
 /**
  * Detect whether a time string represents an all-day event.
@@ -1007,7 +1006,9 @@ function App() {
 
           {/* Right: product preview (desktop only) */}
           <div className="hidden lg:block">
+            <Suspense fallback={<PanelSpinner />}>
             <ProductPreviewMock />
+            </Suspense>
           </div>
           </main>
         <AuthDialog open={showAuthDialog} onClose={() => setShowAuthDialog(false)} />
@@ -1141,7 +1142,9 @@ function App() {
 
             {/* Right: product preview (desktop only) */}
             <div className="hidden lg:block">
+              <Suspense fallback={<PanelSpinner />}>
               <ProductPreviewMock />
+              </Suspense>
             </div>
           </main>
       <Suspense fallback={<PanelSpinner />}>
@@ -1487,6 +1490,7 @@ function App() {
 
       {/* Welcome wizard for first-time users */}
       {showWelcomeWizard && calendar.isAuthenticated && allTasks.length === 0 && (
+        <Suspense fallback={<PanelSpinner />}>
         <WelcomeWizard
           onCreateFirstTask={async (title, duration) => {
             await handleCreateFirstTask(title, duration);
@@ -1498,6 +1502,7 @@ function App() {
             try { localStorage.setItem('tempo-welcome-wizard', 'skipped'); } catch { /* */ }
           }}
         />
+        </Suspense>
       )}
 
       {occurrenceEdit.open && (
@@ -1721,6 +1726,7 @@ function App() {
       )}
 
       {showTaskDialog && (
+        <Suspense fallback={<PanelSpinner />}>
         <TaskDialog
           open={showTaskDialog}
           onClose={() => { setShowTaskDialog(false); setEditingTask(null); }}
@@ -1779,6 +1785,7 @@ function App() {
             },
           } : undefined}
         />
+        </Suspense>
       )}
 
       <Suspense fallback={null}>
