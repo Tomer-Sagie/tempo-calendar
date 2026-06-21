@@ -1,5 +1,7 @@
 import { Calendar, RefreshCw, Play, Settings } from 'lucide-react';
 import { cn } from '../lib/utils';
+import type { GoogleCalendar } from '../lib/google';
+import { formatDistanceToNow } from 'date-fns';
 
 export type AppView = 'calendar' | 'tasks' | 'insights' | 'today';
 
@@ -12,6 +14,11 @@ interface HeaderProps {
   unscheduledCount: number;
   onOpenFocus?: () => void;
   onOpenSettings?: () => void;
+  /** Google Calendar data for the Reclaim-style calendar dots + sync status. */
+  calendars?: GoogleCalendar[];
+  selectedCalendarIds?: string[];
+  lastSyncAt?: Date | null;
+  isSyncing?: boolean;
 }
 
 const VIEWS: { view: AppView; label: string }[] = [
@@ -30,7 +37,16 @@ export function Header({
   onRefresh, onScheduleAll, unscheduledCount,
   onOpenFocus,
   onOpenSettings,
+  calendars = [],
+  selectedCalendarIds = [],
+  lastSyncAt = null,
+  isSyncing = false,
 }: HeaderProps) {
+  const selectedSet = new Set(selectedCalendarIds);
+  const syncedAgo =
+    lastSyncAt
+      ? formatDistanceToNow(lastSyncAt, { addSuffix: true })
+      : null;
   return (
     <header role="banner" className="sticky top-0 z-30 h-10 flex items-center gap-2 px-3 bg-card/95 border-b border-border/40">
       {/* View tabs */}
@@ -57,6 +73,41 @@ export function Header({
       </div>
 
       <div className="flex-1" />
+
+      {/* Calendar dots + sync status — Reclaim-style minimal */}
+      {isAuthenticated && calendars.length > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5">
+            {calendars.slice(0, 6).map((cal) => {
+              const isSelected = selectedSet.has(cal.id);
+              const dotColor = cal.backgroundColor || '#7986cb';
+              return (
+                <span
+                  key={cal.id}
+                  className={cn(
+                    'w-2 h-2 rounded-sm ring-1 ring-inset ring-black/10 dark:ring-white/10 transition-opacity',
+                    !isSelected && 'opacity-30',
+                  )}
+                  style={{ backgroundColor: dotColor }}
+                  title={`${cal.summary}${isSelected ? '' : ' (hidden)'}`}
+                />
+              );
+            })}
+            {calendars.length > 6 && (
+              <span className="text-[9px] text-muted-foreground/50 ml-0.5">
+                +{calendars.length - 6}
+              </span>
+            )}
+          </div>
+          {syncedAgo && (
+            <span className="text-[10px] text-muted-foreground/50 whitespace-nowrap">
+              {isSyncing ? 'Syncing…' : `Synced ${syncedAgo}`}
+            </span>
+          )}
+        </div>
+      )}
+
+      {isAuthenticated && calendars.length > 0 && <div className="flex-1" />}
 
       {isAuthenticated && (
         <div className="flex items-center gap-1.5">

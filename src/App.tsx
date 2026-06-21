@@ -1092,6 +1092,10 @@ function App() {
         unscheduledCount={unscheduledCount}
         onOpenFocus={handleOpenFocus}
         onOpenSettings={() => setShowSettings(true)}
+        calendars={calendar.calendars}
+        selectedCalendarIds={calendar.selectedCalendarIds}
+        lastSyncAt={calendar.lastSyncAt}
+        isSyncing={calendar.isLoading}
       />
 
       <Suspense fallback={null}>
