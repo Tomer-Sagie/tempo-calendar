@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { memo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MoreHorizontal,
@@ -48,7 +48,7 @@ export interface TaskRowProps {
   onSkipNext?: (taskId: string) => void;
 }
 
-export function TaskRow({
+export const TaskRow = memo(function TaskRow({
   task,
   onEdit,
   onDelete,
@@ -210,7 +210,7 @@ export function TaskRow({
       </div>
     </div>
   );
-}
+});
 
 // ============================================================
 // Completed task row (read-only summary + Reopen / Delete menu).
@@ -222,7 +222,7 @@ export interface CompletedTaskRowProps {
   onDelete: (id: string) => void;
 }
 
-export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowProps) {
+export const CompletedTaskRow = memo(function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowProps) {
   const [reopening, setReopening] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
@@ -294,4 +294,4 @@ export function CompletedTaskRow({ task, onReopen, onDelete }: CompletedTaskRowP
       </div>
     </div>
   );
-}
+});
