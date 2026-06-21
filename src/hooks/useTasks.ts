@@ -313,8 +313,13 @@ export function useTasks(): UseTasksReturn {
     if (!task) return;
     setError(null);
     try {
-      // Remove from Google Calendar if synced
-      if (task.google_event_id) {
+      const todayKey = format(new Date(), 'yyyy-MM-dd');
+      const isRecurring = task.is_recurring && task.frequency !== 'once';
+
+      // For non-recurring tasks, delete the Google event since it's a one-time task.
+      // Tempo retains the muted entry locally for calendar history.
+      // For recurring tasks, keep the Google event — future occurrences still render.
+      if (task.google_event_id && !isRecurring) {
         try {
           const sr = await removeTaskFromGoogle(task);
           if (!sr.success && sr.error) recordSyncError(`"${task.title}": ${sr.error}`);
@@ -322,9 +327,6 @@ export function useTasks(): UseTasksReturn {
           recordSyncError(`"${task.title}": ${err instanceof Error ? err.message : 'Google delete failed'}`);
         }
       }
-
-      const todayKey = format(new Date(), 'yyyy-MM-dd');
-      const isRecurring = task.is_recurring && task.frequency !== 'once';
 
       // Habit streak tracking: increment streak_count and append to completion_history
       // Merge with recurring overrides into a single DB call
@@ -337,7 +339,9 @@ export function useTasks(): UseTasksReturn {
             updates.completion_history = [...history, todayKey];
           }
         }
-        // Occurrence override: mark today as completed, unschedule for next occurrence
+        // Occurrence override: mark today as completed.
+        // Do NOT clear is_scheduled/scheduled_start/scheduled_end on the base task —
+        // clearing them would immediately vanish all future occurrences from the calendar.
         const overrides = task.occurrence_overrides || {};
         updates.occurrence_overrides = {
           ...overrides,
@@ -347,18 +351,14 @@ export function useTasks(): UseTasksReturn {
             scheduled_end: task.scheduled_end ?? undefined,
           },
         };
-        updates.is_scheduled = false;
-        updates.scheduled_start = null;
-        updates.scheduled_end = null;
         await updateTaskApi(id, updates);
       } else {
-        // Non-recurring task: mark complete with streak tracking merged into single call
+        // Non-recurring task: mark complete with streak tracking merged into single call.
+        // Keep scheduling data intact so the completed task remains visible in its historical slot
+        // on both Tempo and Google calendars (muted variant, not removed).
         const updates: TaskUpdate = {
           status: 'completed',
           completed_at: new Date().toISOString(),
-          is_scheduled: false,
-          scheduled_start: null,
-          scheduled_end: null,
         };
         if (task.is_habit) {
           const history = task.completion_history || [];
@@ -380,13 +380,39 @@ export function useTasks(): UseTasksReturn {
   const reopen = useCallback(async (id: string): Promise<void> => {
     setError(null);
     try {
-      await updateTaskApi(id, { status: 'active', completed_at: null, is_scheduled: false, scheduled_start: null, scheduled_end: null, google_event_id: null });
+      const task = tasks.find((t) => t.id === id);
+      const isRecurring = task?.is_recurring && task?.frequency !== 'once';
+
+      if (isRecurring) {
+        // For recurring tasks, only reactivate status — keep the base scheduling
+        // data intact so future occurrences are not wiped. Clear just today's
+        // occurrence override so this instance re-appears as active.
+        const todayKey = format(new Date(), 'yyyy-MM-dd');
+        const overrides = { ...(task.occurrence_overrides || {}) };
+        delete overrides[todayKey];
+        await updateTaskApi(id, {
+          status: 'active',
+          completed_at: null,
+          occurrence_overrides: Object.keys(overrides).length > 0 ? overrides : null,
+        });
+      } else {
+        // For non-recurring tasks, reopen as active. Clear scheduling data
+        // since the old slot is in the past; the auto-scheduler will find a new one.
+        await updateTaskApi(id, {
+          status: 'active',
+          completed_at: null,
+          is_scheduled: false,
+          scheduled_start: null,
+          scheduled_end: null,
+          google_event_id: null,
+        });
+      }
       const data = await fetchTasks();
       if (mountedRef.current) setTasks(data);
     } catch (err) {
       if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to reopen task');
     }
-  }, []);
+  }, [tasks]);
 
   const unlinkFromGoogleEvents = useCallback(async (googleEventIds: string[]): Promise<{ count: number; titles: string[] }> => {
     if (googleEventIds.length === 0) return { count: 0, titles: [] };
