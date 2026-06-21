@@ -8,7 +8,6 @@ import { BentoSidebar } from './components/BentoSidebar';
 import { Header } from './components/Header';
 import { TempoCalendar, type CalendarEventType } from './components/TempoCalendar';
 import { TaskList } from './components/TaskList';
-import { AuthDialog } from './components/AuthDialog';
 
 
 import { VersionBadge } from './components/VersionBadge';
@@ -29,9 +28,7 @@ import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
 import type { OccurrenceEditScope } from './components/OccurrenceEditDialog';
 import { useUndoManager } from './hooks/useUndoManager';
-import { EmptyState } from './components/EmptyState';
-import { ContextualHints } from './components/ContextualHints';
-import { GettingStartedChecklist } from './components/GettingStartedChecklist';
+
 
 // Tiny Suspense fallback for lazy-loaded dialogs/panels
 function PanelSpinner() {
@@ -54,6 +51,10 @@ const KeyboardHelpDialog = lazy(() => import('./components/KeyboardHelpDialog').
 const TaskDialog = lazy(() => import('./components/TaskDialog').then((m) => ({ default: m.TaskDialog })));
 const WelcomeWizard = lazy(() => import('./components/WelcomeWizard').then((m) => ({ default: m.WelcomeWizard })));
 const ProductPreviewMock = lazy(() => import('./components/ProductPreviewMock').then((m) => ({ default: m.ProductPreviewMock })));
+const AuthDialog = lazy(() => import('./components/AuthDialog').then((m) => ({ default: m.AuthDialog })));
+const EmptyState = lazy(() => import('./components/EmptyState').then((m) => ({ default: m.EmptyState })));
+const ContextualHints = lazy(() => import('./components/ContextualHints').then((m) => ({ default: m.ContextualHints })));
+const GettingStartedChecklist = lazy(() => import('./components/GettingStartedChecklist').then((m) => ({ default: m.GettingStartedChecklist })));
 
 /**
  * Detect whether a time string represents an all-day event.
@@ -1011,7 +1012,9 @@ function App() {
             </Suspense>
           </div>
           </main>
+        <Suspense fallback={null}>
         <AuthDialog open={showAuthDialog} onClose={() => setShowAuthDialog(false)} />
+        </Suspense>
       <Suspense fallback={<PanelSpinner />}>
       <SettingsPanel
         open={showSettings}
@@ -1227,6 +1230,7 @@ function App() {
         onOpenFocus={handleOpenFocus}
       />
 
+      <Suspense fallback={null}>
       <ContextualHints
         unscheduledCount={unscheduledCount}
         taskCount={allTasks.length}
@@ -1235,9 +1239,11 @@ function App() {
         onOpenKeyboardHelp={() => setShowKeyboardHelp(true)}
         onConnectCalendar={handleConnectCalendar}
       />
+      </Suspense>
 
       {/* Getting-started checklist — shows after WelcomeWizard */}
       {showChecklist && calendar.isAuthenticated && (allTasks.length < 3 || unscheduledCount > 0) && (
+        <Suspense fallback={null}>
         <GettingStartedChecklist
           taskCount={allTasks.length}
           unscheduledCount={unscheduledCount}
@@ -1250,6 +1256,7 @@ function App() {
             try { localStorage.setItem('tempo-checklist-done', 'true'); } catch { /* */ }
           }}
         />
+        </Suspense>
       )}
 
       {/* Offline banner */}
@@ -1333,11 +1340,13 @@ function App() {
           className={`flex-1 flex flex-col min-w-0 p-3 gap-3 ${activeView === 'calendar' || activeView === 'today' ? '' : activeView === 'insights' ? 'hidden' : 'hidden lg:flex'}`}
         >
           {activeView === 'calendar' && allTasks.length === 0 && calendar.events.length === 0 && !tasksHook.isLoading && (
+            <Suspense fallback={null}>
             <EmptyState
               variant="calendar-empty"
               onAction={() => { setEditingTask(null); setShowTaskDialog(true); }}
               className="flex-1"
             />
+            </Suspense>
           )}
           {activeView === 'today' ? (
               <Suspense fallback={<PanelSpinner />}>
@@ -1445,7 +1454,9 @@ function App() {
       </div>
 
       {/* Dialogs */}
+      <Suspense fallback={null}>
       <AuthDialog open={showAuthDialog} onClose={() => setShowAuthDialog(false)} />
+      </Suspense>
 
       <Suspense fallback={<PanelSpinner />}>
       <SettingsPanel
