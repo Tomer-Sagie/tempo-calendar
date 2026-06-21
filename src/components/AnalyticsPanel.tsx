@@ -430,7 +430,7 @@ function Section({
   className?: string;
 }) {
   return (
-    <section className={cn('rounded-2xl border border-border bg-card p-5', className)}>
+    <section className={cn('contain-off-screen rounded-2xl border border-border bg-card p-5', className)}>
       <header className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-start gap-2.5 min-w-0">
           <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">

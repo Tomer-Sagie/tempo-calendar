@@ -71,7 +71,7 @@ export const TaskRow = memo(function TaskRow({
     task.status === 'active';
 
   return (
-    <div className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/30 transition-colors group animate-slide-up">
+    <div className="virtual-list-row flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/30 transition-colors group animate-slide-up">
       {/* Completion checkbox */}
       <button
         type="button"
@@ -229,7 +229,7 @@ export const CompletedTaskRow = memo(function CompletedTaskRow({ task, onReopen,
   const menuRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/30 transition-colors group animate-slide-up">
+    <div className="virtual-list-row flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/30 transition-colors group animate-slide-up">
       {/* Completed checkmark */}
       <div className="shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
         <Check className="w-3 h-3 text-primary-foreground" />

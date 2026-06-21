@@ -154,7 +154,7 @@ export function TempoCalendarMonthView({
               key={d.toISOString()}
               onClick={() => onSelectDay?.(d)}
               className={cn(
-                'flex flex-col items-stretch p-1.5 border-r border-b border-border/25 last:border-r-0 text-left transition-colors hover:bg-accent/30 min-h-0 group',
+                'month-day-cell flex flex-col items-stretch p-1.5 border-r border-b border-border/25 last:border-r-0 text-left transition-colors hover:bg-accent/30 min-h-0 group',
                 !inMonth && 'bg-muted/30 text-muted-foreground',
                 t && 'bg-primary/[0.04]',
               )}

@@ -876,6 +876,28 @@
   }
 }
 
+/* =============================================
+   CSS Containment — defer off-screen rendering
+   ============================================= */
+
+/* Off-screen panels: skip layout/paint when hidden behind other content */
+.contain-off-screen {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+
+/* Calendar month view: each day cell is self-contained */
+.month-day-cell {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
+
+/* Large scrollable lists: rows outside the viewport skip rendering */
+.virtual-list-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 56px;
+}
+
 /* Sticky z-index for header in workspaces */
 .z-header { z-index: 30; }
 .z-banner { z-index: 25; }
