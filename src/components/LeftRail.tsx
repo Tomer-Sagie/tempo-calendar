@@ -218,7 +218,7 @@ export function LeftRail({
             <>
               <button
                 onClick={() => setShowAccount(!showAccount)}        className={cn(
-          'w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold transition-colors',
+          'w-11 h-11 rounded-full flex items-center justify-center text-[11px] font-semibold transition-colors',
                   showAccount
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-primary/10 text-primary hover:bg-primary/20',
@@ -313,7 +313,7 @@ const RailItem = memo(function RailItem({ icon: Icon, label, title, active, disa
     <button
       onClick={onClick}
       disabled={disabled}        className={cn(
-          'group relative w-9 rounded-lg flex flex-col items-center justify-center gap-0.5 py-1 transition-all',
+          'group relative w-11 rounded-lg flex flex-col items-center justify-center gap-0.5 py-1 transition-all',
         active && 'bg-primary/10 text-primary',
         !active && !disabled && 'text-muted-foreground hover:text-foreground hover:bg-accent',
         disabled && 'text-muted-foreground/40 cursor-not-allowed',
