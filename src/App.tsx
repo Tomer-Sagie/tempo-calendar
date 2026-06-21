@@ -22,22 +22,18 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { format } from 'date-fns';
 import { detectConflicts } from './lib/rescheduler';
 import { isSupabaseReady } from './lib/supabase';
+import { isAllDayTimeString } from './lib/utils';
 import { generateRecurringOccurrences } from './lib/recurring';
 import { parseEnhancedTask } from './lib/enhancedParser';
 import type { Task } from './lib/types';
 import type { TaskInput } from './lib/tasks';
 import type { OccurrenceEditScope } from './components/OccurrenceEditDialog';
 import { useUndoManager } from './hooks/useUndoManager';
-
-
-// Tiny Suspense fallback for lazy-loaded dialogs/panels
-function PanelSpinner() {
-  return (
-    <div className="flex items-center justify-center p-6">
-      <div className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin" />
-    </div>
-  );
-}
+import { useTheme } from './hooks/useTheme';
+import { useWorkingHours } from './hooks/useWorkingHours';
+import { useCalendarSettings } from './hooks/useCalendarSettings';
+import { useOfflineDetection } from './hooks/useOfflineDetection';
+import { PanelSpinner } from './components/PanelSpinner';
 
 // Lazy-loaded heavy components (code splitting)
 const SettingsPanel = lazy(() => import('./components/SettingsPanel').then((m) => ({ default: m.SettingsPanel })));
@@ -55,100 +51,6 @@ const AuthDialog = lazy(() => import('./components/AuthDialog').then((m) => ({ d
 const EmptyState = lazy(() => import('./components/EmptyState').then((m) => ({ default: m.EmptyState })));
 const ContextualHints = lazy(() => import('./components/ContextualHints').then((m) => ({ default: m.ContextualHints })));
 const GettingStartedChecklist = lazy(() => import('./components/GettingStartedChecklist').then((m) => ({ default: m.GettingStartedChecklist })));
-
-/**
- * Detect whether a time string represents an all-day event.
- * Only date-only strings ("2024-01-15") are all-day.
- * Tempo's own task events always use ISO datetime strings
- * with explicit times and should never be flagged as allDay.
- * Google Calendar all-day events arrive as date-only strings.
- */
-function isAllDayTimeString(iso: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(iso);
-}
-
-function useTheme() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light';
-    const stored = localStorage.getItem('tempo-theme');
-    if (stored === 'dark' || stored === 'light') return stored;
-    return 'light'; // Default to light; user can explicitly choose dark
-  });
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') root.classList.add('dark');
-    else root.classList.remove('dark');
-    localStorage.setItem('tempo-theme', theme);
-  }, [theme]);
-
-  return {
-    theme,
-    toggleTheme: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
-    setTheme: (t: 'light' | 'dark') => setTheme(t),
-    useSystemTheme: () => {
-      try { localStorage.removeItem('tempo-theme'); } catch { /* ignore */ }
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setTheme(prefersDark ? 'dark' : 'light');
-    },
-  };
-}
-
-interface WorkingHoursState {
-  start: string;
-  end: string;
-}
-
-function useWorkingHours(): [WorkingHoursState, (h: WorkingHoursState) => void] {
-  const [state, setState] = useState<WorkingHoursState>(() => {
-    if (typeof window === 'undefined') return { start: '09:00', end: '17:00' };
-    try {
-      const stored = localStorage.getItem('tempo-working-hours');
-      if (stored) return JSON.parse(stored);
-    } catch { /* ignore */ }
-    return { start: '09:00', end: '17:00' };
-  });
-  useEffect(() => {
-    try { localStorage.setItem('tempo-working-hours', JSON.stringify(state)); } catch { /* ignore */ }
-  }, [state]);
-  return [state, setState];
-}
-
-type CalendarDensity = 'compact' | 'standard' | 'comfortable';
-
-function useCalendarSettings() {
-  const [weekStartsOn, setWeekStartsOn] = useState<0 | 1>(() => {
-    try { return (localStorage.getItem('tempo-week-start') === '0' ? 0 : 1); } catch { return 1; }
-  });
-  const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>(() => {
-    try { return (localStorage.getItem('tempo-time-format') as '12h' | '24h') || '12h'; } catch { return '12h'; }
-  });
-  const [density, setDensity] = useState<CalendarDensity>(() => {
-    try { return (localStorage.getItem('tempo-density') as CalendarDensity) || 'standard'; } catch { return 'standard'; }
-  });
-  useEffect(() => { try { localStorage.setItem('tempo-week-start', String(weekStartsOn)); } catch { /* */ } }, [weekStartsOn]);
-  useEffect(() => { try { localStorage.setItem('tempo-time-format', timeFormat); } catch { /* */ } }, [timeFormat]);
-  useEffect(() => { try { localStorage.setItem('tempo-density', density); } catch { /* */ } }, [density]);
-  // Apply density as a CSS class on the root element
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove('density-compact', 'density-standard', 'density-comfortable');
-    root.classList.add(`density-${density}`);
-  }, [density]);
-  return { weekStartsOn, setWeekStartsOn, timeFormat, setTimeFormat, density, setDensity };
-}
-
-function useOfflineDetection() {
-  const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' ? !navigator.onLine : false);
-  useEffect(() => {
-    const goOffline = () => setIsOffline(true);
-    const goOnline = () => setIsOffline(false);
-    window.addEventListener('offline', goOffline);
-    window.addEventListener('online', goOnline);
-    return () => { window.removeEventListener('offline', goOffline); window.removeEventListener('online', goOnline); };
-  }, []);
-  return isOffline;
-}
 
 function App() {
   const auth = useAuth();

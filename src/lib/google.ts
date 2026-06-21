@@ -1,5 +1,38 @@
 /// <reference types="vite/client" />
 
+// ============================================================
+// Exponential Backoff for Google Calendar API Rate Limits
+// ============================================================
+
+/**
+ * Retry a Google API call with exponential backoff on 429 (rate limit)
+ * and 5xx (server error) responses. Max 3 retries, starting at 1s delay.
+ */
+async function withBackoff<T>(fn: () => Promise<T>, context: string): Promise<T> {
+  let attempt = 0;
+  const maxRetries = 3;
+  while (true) {
+    try {
+      return await fn();
+    } catch (error) {
+      attempt++;
+      if (attempt > maxRetries) throw error;
+
+      // Only retry on rate-limit (429) or server errors (5xx)
+      if (error instanceof GoogleAuthError) {
+        const status = error.statusCode ?? 0;
+        if (status === 429 || (status >= 500 && status < 600)) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+          console.warn(`[Google API] ${context}: attempt ${attempt}/${maxRetries} failed (${status}), retrying in ${delay}ms`);
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+      }
+      throw error;
+    }
+  }
+}
+
 export interface GoogleEvent {
   id: string;
   summary: string;
@@ -41,9 +74,11 @@ let accessToken: string | null = null;
  * `new Error(...)`) so consumers can `instanceof` check.
  */
 export class GoogleAuthError extends Error {
-  constructor(message: string) {
+  statusCode?: number;
+  constructor(message: string, statusCode?: number) {
     super(message);
     this.name = 'GoogleAuthError';
+    this.statusCode = statusCode;
   }
 }
 
@@ -102,23 +137,20 @@ export async function fetchCalendarEvents(
 
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`;
 
-  try {
-    const response = await fetch(url, {
-      headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new GoogleAuthError(`Calendar API error: ${response.status} - ${errorText}`);
+  return withBackoff(async () => {
+    try {
+      const response = await fetch(url, { headers: getAuthHeaders() });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new GoogleAuthError(`Calendar API error: ${response.status} - ${errorText}`, response.status);
+      }
+      const data = await response.json();
+      return data.items || [];
+    } catch (error) {
+      if (error instanceof GoogleAuthError) throw error;
+      throw new GoogleAuthError(error instanceof Error ? error.message : 'Failed to fetch calendar events');
     }
-
-    const data = await response.json();
-    return data.items || [];
-  } catch (error) {
-    if (error instanceof GoogleAuthError) throw error;
-    // Failed to fetch calendar events — error surfaced via throw
-    throw new GoogleAuthError(error instanceof Error ? error.message : 'Failed to fetch calendar events');
-  }
+  }, 'fetchCalendarEvents');
 }
 
 export async function createCalendarEvent(event: {
@@ -133,27 +165,24 @@ export async function createCalendarEvent(event: {
   }
 
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
-  // Creating event in Google Calendar
 
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(event),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new GoogleAuthError(`Create event error: ${response.status} - ${errorText}`);
+  return withBackoff(async () => {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(event),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new GoogleAuthError(`Create event error: ${response.status} - ${errorText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof GoogleAuthError) throw error;
+      throw new GoogleAuthError(error instanceof Error ? error.message : 'Failed to create event');
     }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    if (error instanceof GoogleAuthError) throw error;
-    // Failed to create event — error surfaced via throw
-    throw new GoogleAuthError(error instanceof Error ? error.message : 'Failed to create event');
-  }
+  }, 'createCalendarEvent');
 }
 
 export async function updateCalendarEvent(
@@ -172,27 +201,24 @@ export async function updateCalendarEvent(
   }
 
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`;
-  // Updating event in Google Calendar
 
-  try {
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(event),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new GoogleAuthError(`Update event error: ${response.status} - ${errorText}`);
+  return withBackoff(async () => {
+    try {
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(event),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new GoogleAuthError(`Update event error: ${response.status} - ${errorText}`, response.status);
+      }
+      return await response.json();
+    } catch (error) {
+      if (error instanceof GoogleAuthError) throw error;
+      throw new GoogleAuthError(error instanceof Error ? error.message : 'Failed to update event');
     }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    if (error instanceof GoogleAuthError) throw error;
-    // Failed to update event — error surfaced via throw
-    throw new GoogleAuthError(error instanceof Error ? error.message : 'Failed to update event');
-  }
+  }, 'updateCalendarEvent');
 }
 
 export async function deleteCalendarEvent(eventId: string, calendarId: string = 'primary'): Promise<void> {
@@ -201,23 +227,22 @@ export async function deleteCalendarEvent(eventId: string, calendarId: string = 
   }
 
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`;
-  // Deleting event from Google Calendar
 
-  try {
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new GoogleAuthError(`Delete event error: ${response.status} - ${errorText}`);
+  return withBackoff(async () => {
+    try {
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new GoogleAuthError(`Delete event error: ${response.status} - ${errorText}`, response.status);
+      }
+    } catch (error) {
+      if (error instanceof GoogleAuthError) throw error;
+      throw new GoogleAuthError(error instanceof Error ? error.message : 'Failed to delete event');
     }
-  } catch (error) {
-    if (error instanceof GoogleAuthError) throw error;
-    // Failed to delete event — error surfaced via throw
-    throw new GoogleAuthError(error instanceof Error ? error.message : 'Failed to delete event');
-  }
+  }, 'deleteCalendarEvent');
 }
 
 // ============================================================
@@ -241,19 +266,20 @@ export async function fetchCalendarList(): Promise<GoogleCalendar[]> {
   }
 
   const url = 'https://www.googleapis.com/calendar/v3/users/me/calendarList';
-  // Fetching calendar list
 
-  try {
-    const response = await fetch(url, { headers: getAuthHeaders() });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new GoogleAuthError(`Calendar list error: ${response.status} - ${errorText}`);
+  return withBackoff(async () => {
+    try {
+      const response = await fetch(url, { headers: getAuthHeaders() });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new GoogleAuthError(`Calendar list error: ${response.status} - ${errorText}`, response.status);
+      }
+      const data = await response.json();
+      return (data.items || []) as GoogleCalendar[];
+    } catch (error) {
+      if (error instanceof GoogleAuthError) throw error;
+      throw new GoogleAuthError(error instanceof Error ? error.message : 'Failed to fetch calendar list');
     }
-    const data = await response.json();
-    return (data.items || []) as GoogleCalendar[];
-  } catch (error) {
-    if (error instanceof GoogleAuthError) throw error;
-    throw new GoogleAuthError(error instanceof Error ? error.message : 'Failed to fetch calendar list');
-  }
+  }, 'fetchCalendarList');
 }
 
