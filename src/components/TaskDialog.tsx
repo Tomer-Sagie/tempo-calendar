@@ -49,6 +49,7 @@ interface TaskDialogProps {
  */
 export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = [], schedulingProfiles = [], subtasksProps, taskId, onDelete }: TaskDialogProps) {
   const titleId = useId();
+  const descriptionId = useId();
   const deriveTaskType = (): TaskFormState['task_type'] => {
     if (initial?.is_recurring || initial?.frequency === 'daily' || initial?.frequency === 'weekly') return 'repeating';
     if (initial?.is_busy_block) return 'fixed';
@@ -208,6 +209,7 @@ export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = 
         <Dialog.Content
           className="dialog-content p-0"
           aria-labelledby={titleId}
+          aria-describedby={descriptionId}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-border/70">
@@ -215,6 +217,9 @@ export function TaskDialog({ open, onClose, onSave, initial, title, taskLists = 
               <Dialog.Title id={titleId} className="text-[13px] font-semibold text-foreground">
                 {title || 'New task'}
               </Dialog.Title>
+              <Dialog.Description id={descriptionId} className="text-[11px] text-muted-foreground mt-0.5">
+                {initial ? 'Edit task details and scheduling preferences.' : 'Create a task and let Tempo find the best time for it.'}
+              </Dialog.Description>
             </div>
             <Dialog.Close
               className="p-0.5 rounded hover:bg-accent text-muted-foreground transition-colors"
