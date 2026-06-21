@@ -633,6 +633,7 @@ function App() {
         }
       })();
     } catch { /* best-effort */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- tasksHook.createList is the actual dependency; tasksHook identity would cause unnecessary re-runs
   }, [calendar.isAuthenticated, calendar.calendars, tasksHook.createList]);
 
   // Auto-schedule on calendar changes: detect new Google events and reschedule
@@ -721,7 +722,6 @@ function App() {
 
   useEffect(() => {
     if (auth.isAuthenticated && !didAuthTransitionRef.current) refresh();
-    // eslint-disable-next-line react-hooks/immutability -- tracking previous auth state via ref
     didAuthTransitionRef.current = auth.isAuthenticated;
   }, [auth.isAuthenticated, refresh]);
 
