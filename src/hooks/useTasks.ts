@@ -5,6 +5,7 @@ import {
   fetchTasks, fetchUnscheduledTasks,
   createTask as createTaskApi, updateTask as updateTaskApi,
   deleteTask as deleteTaskApi, updateTaskSchedule, unscheduleTask as unscheduleTaskApi,
+  toggleTaskLock as toggleTaskLockApi,
   fetchTaskLists, fetchSchedulingProfiles,
   unlinkTasksFromGoogleEvents,
   createTaskList as createTaskListApi,
@@ -60,6 +61,8 @@ interface UseTasksReturn {
    * the tasks that were updated so the caller can show a toast.
    */
   unlinkFromGoogleEvents: (googleEventIds: string[]) => Promise<{ count: number; titles: string[] }>;
+  /** Toggle the `is_locked` flag on a task. */
+  toggleLock: (id: string) => Promise<void>;
 }
 
 export function useTasks(): UseTasksReturn {
@@ -473,6 +476,14 @@ export function useTasks(): UseTasksReturn {
     }
   }, []);
 
+  const toggleLock = useCallback(async (id: string): Promise<void> => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    const newLocked = !task.is_locked;
+    const updated = await toggleTaskLockApi(id, newLocked);
+    if (mountedRef.current) setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+  }, [tasks]);
+
   const clearSyncErrors = useCallback(() => setSyncErrors([]), []);
 
   return {
@@ -485,5 +496,6 @@ export function useTasks(): UseTasksReturn {
     createList, updateList, deleteList,
     createProfile, updateProfile, deleteProfile,
     unlinkFromGoogleEvents,
+    toggleLock,
   };
 }

@@ -10,6 +10,8 @@ import {
   Flame,
   Repeat,
   SkipForward,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { SubtaskProgressChip } from './SubtasksEditor';
 import type { Task, Subtask } from '../lib/types';
@@ -46,6 +48,8 @@ export interface TaskRowProps {
   subtasks?: Subtask[];
   /** Called when the user skips the next occurrence of a recurring task. */
   onSkipNext?: (taskId: string) => void;
+  /** Toggle the `is_locked` flag on a task. */
+  onToggleLock?: (id: string) => Promise<void>;
 }
 
 export const TaskRow = memo(function TaskRow({
@@ -58,10 +62,12 @@ export const TaskRow = memo(function TaskRow({
   isCompleting,
   subtasks,
   onSkipNext,
+  onToggleLock,
 }: TaskRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const [unscheduling, setUnscheduling] = useState(false);
+  const [locking, setLocking] = useState(false);
 
   const isOverdue =
     task.is_scheduled &&
@@ -99,6 +105,9 @@ export const TaskRow = memo(function TaskRow({
           <span className={`text-[12px] font-medium truncate ${isOverdue ? 'text-destructive' : 'text-foreground'}`}>
             {task.title}
           </span>
+          {task.is_locked && (
+            <Lock className="w-2.5 h-2.5 text-muted-foreground/40 shrink-0" />
+          )}
           {task.is_recurring && (
             <Repeat className="w-2.5 h-2.5 text-muted-foreground/40 shrink-0" />
           )}
@@ -183,6 +192,34 @@ export const TaskRow = memo(function TaskRow({
                 >
                   <SkipForward className="w-3.5 h-3.5" />
                   Skip next
+                </button>
+              )}
+              {onToggleLock && (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setLocking(true);
+                    try {
+                      await onToggleLock(task.id);
+                      setMenuOpen(false);
+                    } finally {
+                      setLocking(false);
+                    }
+                  }}
+                  disabled={locking}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                >
+                  {task.is_locked ? (
+                    <>
+                      <Unlock className="w-3.5 h-3.5" />
+                      Unlock
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5" />
+                      Lock
+                    </>
+                  )}
                 </button>
               )}
               <div className="border-t border-border/40 my-0.5" />

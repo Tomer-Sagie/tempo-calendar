@@ -1276,6 +1276,7 @@ function App() {
                   pendingUpdate: null,
                 });
               }}
+              onToggleLock={async (id) => { await tasksHook.toggleLock(id); }}
             />
           ) : null)}
         </div>

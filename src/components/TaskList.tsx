@@ -29,6 +29,8 @@ interface TaskListProps {
   onDeleteList?: (id: string) => Promise<void>;
   /** Skip the next occurrence of a recurring task. */
   onSkipNext?: (taskId: string) => void;
+  /** Toggle the `is_locked` flag on a task. */
+  onToggleLock?: (id: string) => Promise<void>;
 }
 
 const NO_LIST_KEY = '__none__';
@@ -64,6 +66,7 @@ export function TaskList({
   onUpdateList,
   onDeleteList,
   onSkipNext,
+  onToggleLock,
 }: TaskListProps) {
   // Extract unique lists from tasks
   const listCounts = useMemo(() => {
@@ -248,6 +251,7 @@ export function TaskList({
                 isCompleting={completingIds.has(task.id)}
                 subtasks={subtasksByTaskId?.get(task.id)}
                 onSkipNext={onSkipNext}
+                onToggleLock={onToggleLock}
               />
             ))}
             </div>
@@ -272,6 +276,7 @@ export function TaskList({
                 isCompleting={completingIds.has(task.id)}
                 subtasks={subtasksByTaskId?.get(task.id)}
                 onSkipNext={onSkipNext}
+                onToggleLock={onToggleLock}
               />
             ))}
             </div>
