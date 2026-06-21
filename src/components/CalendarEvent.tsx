@@ -190,8 +190,8 @@ export function DraggableEvent({
         'absolute text-left px-2 py-1 rounded overflow-hidden transition-shadow duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'border-l-[3px] leading-snug group/event',
-        !isDragging && !isGoogle && 'hover:brightness-95',
-        !isDragging && isGoogle && 'hover:brightness-95',
+        !isDragging && !isGoogle && 'hover:shadow-[inset_0_0_0_9999px_rgba(0,0,0,0.05)]',
+        !isDragging && isGoogle && 'hover:shadow-[inset_0_0_0_9999px_rgba(0,0,0,0.05)]',
         small ? 'text-[11px]' : 'text-[12px]',
         isCompleted && 'line-through decoration-foreground/30',
         // Google events: subtle, muted, read-only look

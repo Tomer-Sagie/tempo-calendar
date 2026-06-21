@@ -289,10 +289,11 @@ export function TempoCalendarDayView({
                     : 'bg-primary/20 border-primary text-foreground';
                 return (
                   <div
+                    data-resize-ghost="true"
                     className={cn(
                       'absolute z-30 rounded-md border-2 border-dashed pointer-events-none flex flex-col px-1.5 py-1 overflow-hidden',
                       variantClass,
-                      'backdrop-blur-[1px] shadow-lg',
+                      'shadow-lg',
                     )}
                     style={{ top, height, left, width }}
                     aria-hidden
@@ -300,7 +301,7 @@ export function TempoCalendarDayView({
                     <div className="flex items-center gap-1">
                       <span className="font-semibold truncate text-[10px]">{resizeGhost.title}</span>
                     </div>
-                    <div className="text-[9px] opacity-75 num">
+                    <div data-ghost-time className="text-[9px] opacity-75 num">
                       {format(resizeGhost.newStart, timeFormat === '24h' ? 'HH:mm' : 'h:mma')} - {format(resizeGhost.newEnd, timeFormat === '24h' ? 'HH:mm' : 'h:mma')}
                     </div>
                   </div>

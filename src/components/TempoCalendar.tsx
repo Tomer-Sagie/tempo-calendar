@@ -214,64 +214,130 @@ export function TempoCalendar({
     startY: number;
     hourHeight: number;
   } | null>(null);
+  // Resize ghost: rendered via direct DOM manipulation instead of React state
+  // to avoid re-rendering the entire calendar on every mousemove frame.
+  const resizeStateRef = useRef<{
+    eventId: string;
+    initialStart: Date;
+    initialEnd: Date;
+    startY: number;
+    hourHeight: number;
+    direction: 'top' | 'bottom';
+  } | null>(null);
   const [resizeGhost, setResizeGhost] = useState<DragGhostTarget | null>(null);
-  const resizeGhostRef = useRef(resizeGhost);
-  useEffect(() => { resizeGhostRef.current = resizeGhost; }, [resizeGhost]);
+
+  // Sync the React state for the initial mount/unmount of the ghost DOM
+  const resizeGhostDataRef = useRef(resizeGhost);
+  useEffect(() => { resizeGhostDataRef.current = resizeGhost; }, [resizeGhost]);
 
   const handleResizeStart = useCallback((eventId: string, direction: 'top' | 'bottom', clientY: number) => {
     const ev = events.find((e) => e.id === eventId);
     if (!ev) return;
+    const hh = getHourHeight();
+    resizeStateRef.current = {
+      eventId,
+      direction,
+      initialStart: new Date(ev.start),
+      initialEnd: new Date(ev.end),
+      startY: clientY,
+      hourHeight: hh,
+    };
+    // Trigger the effect that attaches mousemove/mouseup handlers
     setResizeState({
       eventId,
       direction,
       initialStart: new Date(ev.start),
       initialEnd: new Date(ev.end),
       startY: clientY,
-      hourHeight: getHourHeight(),
+      hourHeight: hh,
+    });
+    // Show the ghost element initially
+    setResizeGhost({
+      eventId,
+      newStart: new Date(ev.start),
+      newEnd: new Date(ev.end),
+      title: ev.title,
+      variant: ev.variant,
     });
   }, [events]);
 
-  // Document-level mousemove/mouseup for resize — stays active even when
-  // the cursor leaves the calendar grid.
+  // Document-level mousemove/mouseup for resize — updates the ghost position
+  // via direct DOM manipulation (style.top/style.height) instead of React state
+  // to avoid re-rendering the entire calendar on every frame.
   useEffect(() => {
     if (!resizeState) return;
-    const MIN_DURATION_MINUTES = 15;    const onMouseMove = (e: MouseEvent) => {
-      const deltaY = e.clientY - resizeState.startY;
-      const deltaMinutes = Math.round(deltaY / resizeState.hourHeight * 60 / 15) * 15;
-      let newStart = new Date(resizeState.initialStart);
-      let newEnd = new Date(resizeState.initialEnd);
-      if (resizeState.direction === 'top') {
-        // Dragging the top edge down (positive delta) moves start later (shorter).
-        // Dragging up (negative delta) moves start earlier (longer).
-        newStart = new Date(resizeState.initialStart.getTime() + deltaMinutes * 60 * 1000);
-        // Clamp: start cannot go past end minus minimum duration
-        const maxStart = new Date(resizeState.initialEnd.getTime() - MIN_DURATION_MINUTES * 60 * 1000);
-        if (newStart > maxStart) newStart = maxStart;
-      } else {
-        // Dragging the bottom edge down (positive delta) moves end later (longer).
-        // Dragging up (negative delta) moves end earlier (shorter).
-        newEnd = new Date(resizeState.initialEnd.getTime() + deltaMinutes * 60 * 1000);
-        // Clamp: end cannot go before start plus minimum duration
-        const minEnd = new Date(resizeState.initialStart.getTime() + MIN_DURATION_MINUTES * 60 * 1000);
-        if (newEnd < minEnd) newEnd = minEnd;
-      }
-      const ev = events.find((e) => e.id === resizeState.eventId);
-      if (ev) {
-        setResizeGhost({
-          eventId: resizeState.eventId,
-          newStart,
-          newEnd,
-          title: ev.title,
-          variant: ev.variant,
-        });
-      }
+    const MIN_DURATION_MINUTES = 15;
+    let rafId: number | null = null;
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (rafId !== null) return; // throttle to one frame
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const rs = resizeStateRef.current;
+        if (!rs) return;
+        const deltaY = e.clientY - rs.startY;
+        const deltaMinutes = Math.round(deltaY / rs.hourHeight * 60 / 15) * 15;
+        let newStartIso: string;
+        let newEndIso: string;
+        if (rs.direction === 'top') {
+          const newStart = new Date(rs.initialStart.getTime() + deltaMinutes * 60 * 1000);
+          const maxStart = new Date(rs.initialEnd.getTime() - MIN_DURATION_MINUTES * 60 * 1000);
+          newStartIso = (newStart > maxStart ? maxStart : newStart).toISOString();
+          newEndIso = rs.initialEnd.toISOString();
+        } else {
+          const newEnd = new Date(rs.initialEnd.getTime() + deltaMinutes * 60 * 1000);
+          const minEnd = new Date(rs.initialStart.getTime() + MIN_DURATION_MINUTES * 60 * 1000);
+          newStartIso = rs.initialStart.toISOString();
+          newEndIso = (newEnd < minEnd ? minEnd : newEnd).toISOString();
+        }
+        // Update the ghost position directly in the DOM
+        const ghostEl = document.querySelector('[data-resize-ghost]') as HTMLDivElement | null;
+        if (!ghostEl) return;
+        const newStartDate = new Date(newStartIso);
+        const newEndDate = new Date(newEndIso);
+        // Compute position based on hourHeight and visible window (0-24h)
+        const startHour = 0;
+        const dayStart = new Date(newStartDate);
+        dayStart.setHours(startHour, 0, 0, 0);
+        const minutesFromTop = Math.max(0, (newStartDate.getTime() - dayStart.getTime()) / 60_000);
+        const durationMin = Math.max(15, (newEndDate.getTime() - newStartDate.getTime()) / 60_000);
+        const top = (minutesFromTop / 60) * rs.hourHeight;
+        const height = (durationMin / 60) * rs.hourHeight;
+        ghostEl.style.top = `${top}px`;
+        ghostEl.style.height = `${Math.max(22, height)}px`;
+        // Update time labels
+        const timeEl = ghostEl.querySelector('[data-ghost-time]');
+        if (timeEl) {
+          const fmt = (d: Date) => {
+            const h = d.getHours();
+            const m = d.getMinutes();
+            const ampm = h >= 12 ? 'pm' : 'am';
+            const h12 = h % 12 || 12;
+            return `${h12}:${m.toString().padStart(2, '0')}${ampm}`;
+          };
+          timeEl.textContent = `${fmt(newStartDate)} - ${fmt(newEndDate)}`;
+        }
+      });
     };
     const onMouseUp = () => {
-      const ghost = resizeGhostRef.current;
-      if (ghost && resizeState) {
-        const durationMin = (ghost.newEnd.getTime() - ghost.newStart.getTime()) / (60 * 1000);
+      const rs = resizeStateRef.current;
+      const ghostEl = document.querySelector('[data-resize-ghost]') as HTMLDivElement | null;
+      if (rs && ghostEl) {
+        const topPx = parseFloat(ghostEl.style.top) || 0;
+        const heightPx = parseFloat(ghostEl.style.height) || 0;
+        const dayStart = new Date(rs.initialStart);
+        dayStart.setHours(0, 0, 0, 0);
+        const newStartMs = dayStart.getTime() + (topPx / rs.hourHeight) * 60 * 60 * 1000;
+        const durationMs = (heightPx / rs.hourHeight) * 60 * 60 * 1000;
+        const newStart = new Date(newStartMs);
+        const newEnd = new Date(newStartMs + durationMs);
+        const durationMin = (newEnd.getTime() - newStart.getTime()) / (60 * 1000);
         if (durationMin >= MIN_DURATION_MINUTES) {
-          onEventResize?.(resizeState.eventId, ghost.newStart, ghost.newEnd);
+          // Capture current values before async callback
+          const eventId = rs.eventId;
+          const finalNewStart = newStart;
+          const finalNewEnd = newEnd;
+          onEventResize?.(eventId, finalNewStart, finalNewEnd);
         }
       }
       setResizeState(null);

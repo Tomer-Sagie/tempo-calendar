@@ -1171,7 +1171,7 @@ function App() {
       )}
 
       {/* Main workspace — skip-to-content target */}
-      <div id="main-content" className="flex-1 flex overflow-hidden">
+      <div id="main-content" className="flex-1 flex overflow-hidden [overflow-clip-margin:0px]">
         {/* Calendar workspace */}
         <div
           data-onboarding="calendar"
@@ -1237,7 +1237,7 @@ function App() {
         )}
         <div
           data-onboarding="quick-add"
-          className={`${sidebarCollapsed ? 'w-0 overflow-hidden border-l-0' : 'w-80 lg:w-[340px] border-l border-border/40'} flex flex-col shrink-0 bg-card/50 transition-all duration-200 ${activeView === 'calendar' ? '' : 'hidden lg:flex'} ${activeView === 'insights' ? 'lg:hidden' : ''}`}
+          className={`${sidebarCollapsed ? '-mr-80 lg:-mr-[340px] opacity-0 pointer-events-none' : 'mr-0 opacity-100 border-l border-border/40'} w-80 lg:w-[340px] flex flex-col shrink-0 bg-card/50 transition-[margin-right,opacity] duration-200 ease-out ${activeView === 'calendar' ? '' : 'hidden lg:flex'} ${activeView === 'insights' ? 'lg:hidden' : ''}`}
         >
           {activeView === 'calendar' ? (
             <BentoSidebar
