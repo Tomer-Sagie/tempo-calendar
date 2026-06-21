@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { type LucideIcon, Calendar, ListTodo, Inbox, Sparkles, Plus, CalendarDays } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
@@ -62,7 +63,7 @@ const CONFIG: Record<EmptyStateProps['variant'], {
   },
 };
 
-export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
+export const EmptyState = memo(function EmptyState({ variant, onAction, className }: EmptyStateProps) {
   const config = CONFIG[variant];
   const Icon = config.icon;
 
@@ -87,4 +88,4 @@ export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
       )}
     </div>
   );
-}
+});

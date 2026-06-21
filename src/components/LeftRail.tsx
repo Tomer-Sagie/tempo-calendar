@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Calendar, ListTodo, BarChart3, Settings as SettingsIcon, LogOut, User, Unlink, Sun, Moon, Sparkles, RefreshCw, Link2, AlertCircle, ArrowLeft, Lightbulb } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useState } from 'react';
@@ -307,7 +308,7 @@ interface RailItemProps {
   onClick: () => void;
 }
 
-function RailItem({ icon: Icon, label, title, active, disabled, badge, onClick }: RailItemProps) {
+const RailItem = memo(function RailItem({ icon: Icon, label, title, active, disabled, badge, onClick }: RailItemProps) {
   return (
     <button
       onClick={onClick}
@@ -334,11 +335,11 @@ function RailItem({ icon: Icon, label, title, active, disabled, badge, onClick }
       )}
     </button>
   );
-}
+});
 
-function RailDivider() {
+const RailDivider = memo(function RailDivider() {
   return <div className="w-6 h-px bg-border my-1" />;
-}
+});
 
 // Re-export the ArrowLeft icon so the workspace can use it for a "back to calendar" button.
 export { ArrowLeft };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import { Check, Plus, Calendar, LayoutList, X, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -26,7 +26,7 @@ interface Step {
  * essential actions. Appears after the WelcomeWizard is dismissed.
  * Dismissed permanently via localStorage key.
  */
-export function GettingStartedChecklist({
+export const GettingStartedChecklist = memo(function GettingStartedChecklist({
   taskCount,
   unscheduledCount,
   isOnCalendarView,
@@ -171,4 +171,4 @@ export function GettingStartedChecklist({
       </div>
     </div>
   );
-}
+});

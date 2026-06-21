@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles, X, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { TEMPO_VERSION, CHANGELOG } from '../lib/version';
@@ -11,7 +11,7 @@ const LAST_SEEN_KEY = 'tempo-last-seen-version';
  * Click to open a popover with the full changelog.
  * Focus is restored to the trigger on close (Escape, click-outside, X).
  */
-export function VersionBadge() {
+export const VersionBadge = memo(function VersionBadge() {
   const [open, setOpen] = useState(false);
   // Read the "last seen" version from localStorage in the lazy initializer
   // so we only read it once on mount and never need a setState-in-effect.
@@ -166,4 +166,4 @@ export function VersionBadge() {
       )}
     </div>
   );
-}
+});
