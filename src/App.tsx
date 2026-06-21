@@ -495,10 +495,10 @@ function App() {
     setFocusMode({ open: true, taskId: sorted[0].id });
   }, [allTasks]);
 
-  const handleEditTask = (task: Task) => {
+  const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task);
     setShowTaskDialog(true);
-  };
+  }, []);
 
   const handleScheduleAll = async () => {
     // Capture snapshot for undo before scheduling
@@ -795,10 +795,10 @@ function App() {
     }
   };
 
-  const handleSelectSlot = () => {
+  const handleSelectSlot = useCallback(() => {
     setEditingTask(null);
     setShowTaskDialog(true);
-  };
+  }, []);
 
   const handleEventDrop = async (eventId: string, newStart: Date, newEnd: Date) => {
     if (!eventId.startsWith('task-')) {
@@ -890,16 +890,13 @@ function App() {
     }
   };
 
-  const handleSelectEvent = (event: CalendarEventType) => {
+  const handleSelectEvent = useCallback((event: CalendarEventType) => {
     if (!event.id.startsWith('task-')) return;
     const m = event.id.match(/^task-(.+?)(?:-occ-.+)?$/);
     const taskId = m?.[1] ?? '';
-    const task = allTasks.find((t) => t.id === taskId);
+    const task = allTasksRef.current.find((t) => t.id === taskId);
     if (!task) return;
 
-    // Recurring occurrences: open the task editor directly.
-    // The scope dialog (this/this+after/all) will appear AFTER the user
-    // saves changes, not before.
     if (event.id.includes('-occ-')) {
       setOccurrenceEdit({
         open: false,
@@ -910,8 +907,9 @@ function App() {
       });
     }
 
-    handleEditTask(task);
-  };
+    setEditingTask(task);
+    setShowTaskDialog(true);
+  }, []);
 
   // Supabase not configured: configuration error screen
   if (!isSupabaseReady()) {
