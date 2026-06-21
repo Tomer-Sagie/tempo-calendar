@@ -1,8 +1,8 @@
 import { Calendar, CheckSquare, Sun, BarChart3 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import type { LeftRailView } from './LeftRail';
+import type { AppView } from './Header';
 
-type MobileNavView = LeftRailView;
+type MobileNavView = AppView;
 
 interface MobileNavProps {
   activeView: MobileNavView;

@@ -13,10 +13,9 @@ import { TaskList } from './components/TaskList';
 import { VersionBadge } from './components/VersionBadge';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { Button } from './components/ui/button';
-import { LeftRail } from './components/LeftRail';
 import { MobileNav } from './components/MobileNav';
 
-import { AlertCircle, Link2, RefreshCw, LogIn, Zap, Settings2, Calendar, Sparkles, ArrowRight, BarChart3, Layers, WifiOff, Plus } from 'lucide-react';
+import { AlertCircle, Link2, LogIn, Settings2, Calendar, Sparkles, ArrowRight, BarChart3, Layers, WifiOff, Plus } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { format } from 'date-fns';
@@ -118,7 +117,6 @@ function App() {
     pendingUpdate: { scheduled_start?: string; scheduled_end?: string; duration_minutes?: number } | null;
   }>({ open: false, taskId: '', occurrenceDate: new Date(), changeType: 'move', pendingUpdate: null });
   const [activeView, setActiveView] = useState<'calendar' | 'tasks' | 'insights' | 'today'>('calendar');
-  const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [tempoView, setTempoView] = useState<'day' | 'week' | 'month'>('week');
   const [visibleRange, setVisibleRange] = useState<{ start: Date; end: Date }>(() => {
@@ -543,11 +541,11 @@ function App() {
   // Mirror frequently-changing values into refs so callbacks and effects
   // can read the latest without listing them in dependency arrays.
   const allTasksRef = useRef(tasksHook.tasks);
-  /* eslint-disable react-hooks/immutability -- intentional ref mutation to cache latest values for event handlers */
+  // eslint-disable-next-line react-hooks/immutability
   useEffect(() => { allTasksRef.current = tasksHook.tasks; }, [tasksHook.tasks]);
   const tasksHookRef = useRef(tasksHook);
+  // eslint-disable-next-line react-hooks/immutability
   useEffect(() => { tasksHookRef.current = tasksHook; }, [tasksHook]);
-  /* eslint-enable react-hooks/immutability */
   useEffect(() => {
     if (!calendar.isAuthenticated) return;
     const prev = prevCalendarEventsRef.current;
@@ -568,19 +566,16 @@ function App() {
           curr,
         );
         if (conflicts.length > 0) {
-          toast.warning(`${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'} detected`, {
-            description: 'Google Calendar changed. Check the banner to reschedule.',
-          });
+          // Auto-resolve conflicts silently
+          void (async () => {
+            try {
+              await tasksHookRef.current.reschedule(curr);
+            } catch { /* best-effort */ }
+          })();
         }
       }
     }
   }, [calendar.events, calendar.isAuthenticated]);
-
-  const conflictCount = useMemo(() => {
-    if (!calendar.isAuthenticated || allEvents.length === 0) return 0;
-    const scheduled = allTasks.filter((t) => t.is_scheduled);
-    return detectConflicts(scheduled, allEvents).length;
-  }, [allEvents, calendar.isAuthenticated, allTasks]);
 
   // Auto-complete the parent task when all its subtasks are done.
   // Triggers only when the batch's subtask map or the editing task id
@@ -662,23 +657,6 @@ function App() {
     try { localStorage.setItem('tempo-welcome-wizard', 'done'); } catch { /* */ }
   }, []);
 
-  const handleReschedule = async () => {
-    setRescheduleLoading(true);
-    // Capture snapshot for undo before rescheduling
-    undoManager.capture(tasksHook.tasks, 'Tasks rescheduled');
-    try {
-      const results = await tasksHook.reschedule(calendar.events);
-      const movedCount = results.filter((r) => r.success).length;
-      if (movedCount > 0) {
-        undoManager.showToast({ onRestore: refresh, label: `${movedCount} task${movedCount === 1 ? '' : 's'} rescheduled` });
-      } else {
-        undoManager.clear();
-      }
-    } finally {
-      setRescheduleLoading(false);
-    }
-  };
-
   /**
    * Trigger a Supabase Google OAuth re-auth with Calendar scopes. The
    * page will redirect to Google; on return, the session will include
@@ -734,9 +712,8 @@ function App() {
         is_scheduled: true,
         scheduled_start: newStart.toISOString(),
         scheduled_end: newEnd.toISOString(),
-        is_locked: true,
       });
-      toast.success('Moved & locked', { description: `Rescheduled to ${format(newStart, 'EEE h:mm a')} — locked in place` });
+      toast.success('Moved', { description: `Rescheduled to ${format(newStart, 'EEE h:mm a')}` });
     } catch (err) {
       toast.error('Could not reschedule', { description: err instanceof Error ? err.message : 'Unknown error' });
     }
@@ -816,6 +793,8 @@ function App() {
     return (
       <div className="min-h-[100dvh] flex flex-col app-gradient">
         <Header
+          activeView="calendar"
+          onViewChange={() => {}}
           isAuthenticated={false}
           onRefresh={() => {}}
           onScheduleAll={() => {}}
@@ -853,6 +832,8 @@ function App() {
     return (
       <div className="min-h-[100dvh] flex flex-col app-gradient">
         <Header
+          activeView="calendar"
+          onViewChange={() => {}}
           isAuthenticated={false}
           onRefresh={calendar.refreshEvents}
           onScheduleAll={handleScheduleAll}
@@ -973,6 +954,8 @@ function App() {
     return (
       <div className="min-h-[100dvh] flex flex-col app-gradient">
         <Header
+          activeView="calendar"
+          onViewChange={() => {}}
           isAuthenticated={false}
           onRefresh={calendar.refreshEvents}
           onScheduleAll={handleScheduleAll}
@@ -1094,45 +1077,21 @@ function App() {
 
   // Authenticated: full workspace
   return (
-    <div className="h-[100dvh] flex app-gradient">        <div data-onboarding="left-rail">
-        <LeftRail
-          activeView={activeView}
-          onViewChange={setActiveView}
-          isAuthenticated={calendar.isAuthenticated}
-          isLoaded={calendar.isLoaded}
-          isLoading={calendar.isLoading}
-          error={calendar.error?.message ?? null}
-          lastSyncAt={calendar.lastSyncAt}
-          onConnect={handleConnectCalendar}
-          onDisconnect={calendar.disconnect}
-          onRefresh={calendar.refreshEvents}
-          unscheduledCount={unscheduledCount}
-          user={auth.user}
-          onSignIn={() => setShowAuthDialog(true)}
-          onSignOut={auth.signOut}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          onOpenSettings={() => setShowSettings(true)}
-          onReplayTour={() => {
-            setReplayTour(true);
-            try { localStorage.removeItem('tempo-onboarded-v2'); } catch { /* */ }
-          }}
-          calendars={calendar.calendars}
-          selectedCalendarIds={calendar.selectedCalendarIds}
-          onToggleCalendar={calendar.toggleCalendarSelection}
-        />
-        </div>
+    <div className="h-[100dvh] flex flex-col app-gradient">
       <ErrorBoundary>
       <div
         className="flex-1 flex flex-col min-w-0"
         inert={focusMode.open && calendar.isAuthenticated ? true : undefined}
       >
       <Header
+        activeView={activeView}
+        onViewChange={setActiveView}
         isAuthenticated={calendar.isAuthenticated}
         onRefresh={calendar.refreshEvents}
         onScheduleAll={handleScheduleAll}
         unscheduledCount={unscheduledCount}
         onOpenFocus={handleOpenFocus}
+        onOpenSettings={() => setShowSettings(true)}
       />
 
       <Suspense fallback={null}>
@@ -1204,36 +1163,6 @@ function App() {
               : `${tasksHook.syncErrors.length} sync errors`}
           </span>
           <span className="text-[10px] font-medium opacity-70">Click to dismiss</span>
-        </div>
-      )}
-
-      {/* Smart recalc banner */}
-      {conflictCount > 0 && (
-        <div
-          role="status"
-          aria-live="polite"
-          data-onboarding="conflict-banner"
-          className="flex items-center gap-3 px-4 py-2.5 bg-warning/5 border-b border-warning/20 animate-slide-down animate-conflict-glow"
-        >
-          <div className="w-7 h-7 rounded-lg bg-warning/15 flex items-center justify-center shrink-0">
-            <Zap className="w-3.5 h-3.5 text-warning" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-sm text-warning font-semibold">
-              {conflictCount} scheduling {conflictCount === 1 ? 'conflict' : 'conflicts'} detected
-            </span>
-            <p className="text-xs text-muted-foreground leading-snug">
-              We can rebuild a clean plan in one click.
-            </p>
-          </div>
-          <button
-            onClick={handleReschedule}
-            disabled={rescheduleLoading}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-warning px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-warning/90 disabled:opacity-60 transition-colors shadow-sm"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${rescheduleLoading ? 'animate-spin' : ''}`} />
-            Recalculate
-          </button>
         </div>
       )}
 
