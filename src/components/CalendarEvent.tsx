@@ -96,13 +96,20 @@ export function DraggableEvent({
     ...(isLocked || isBusyBlock ? { borderStyle: 'solid' } : {}),
   };
 
-  // Google event popover state
+  // Google event popover state — minimal Reclaim-style
   const [showPopover, setShowPopover] = useState(false);
   const [popoverPos, setPopoverPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const eventRef = useRef<HTMLDivElement | null>(null);
 
-  // Close popover on outside click
+  // Task click: brief pressed state before dialog opens
+  const [taskPressed, setTaskPressed] = useState(false);
+  const taskPressedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (taskPressedTimer.current) clearTimeout(taskPressedTimer.current); }, []);
+
+  // Stable ref for scroll handler so removeEventListener works correctly
+  const scrollCloseRef = useRef<() => void>(() => setShowPopover(false));
+
   useEffect(() => {
     if (!showPopover) return;
     const handler = (e: MouseEvent) => {
@@ -111,14 +118,24 @@ export function DraggableEvent({
         setShowPopover(false);
       }
     };
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowPopover(false);
+    };
+    const scrollClose = scrollCloseRef.current;
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('keydown', keyHandler);
+    window.addEventListener('scroll', scrollClose, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', keyHandler);
+      window.removeEventListener('scroll', scrollClose);
+    };
   }, [showPopover]);
 
   const togglePopover = () => {
     if (!showPopover && eventRef.current) {
       const rect = eventRef.current.getBoundingClientRect();
-      const popoverWidth = 256; // w-64
+      const popoverWidth = 240; // w-60
       const left = rect.right + 8 + popoverWidth > window.innerWidth
         ? rect.left - popoverWidth - 8
         : rect.right + 8;
@@ -155,7 +172,13 @@ export function DraggableEvent({
           togglePopover();
           return;
         }
-        if (!isDragging) onClick(event);
+        if (!isDragging) {
+          // Brief pressed state then open dialog
+          setTaskPressed(true);
+          if (taskPressedTimer.current) clearTimeout(taskPressedTimer.current);
+          taskPressedTimer.current = setTimeout(() => setTaskPressed(false), 150);
+          onClick(event);
+        }
       }}
       onKeyDown={handleKeyDown}
       data-event-id={event.id}
@@ -193,6 +216,8 @@ export function DraggableEvent({
         isSplitChunk && splitPosition !== 'first' && splitPosition !== 'only' && 'split-connector-left',
         // Reclaim-style: dashed border for flexible tasks
         isFlexible && 'border-dashed',
+        // Brief pressed state on click before dialog opens
+        taskPressed && 'brightness-90',
       )}
     >
       <div className="flex items-center gap-1">
@@ -216,30 +241,32 @@ export function DraggableEvent({
         </div>
       )}
 
-      {/* Google event popover — rendered via portal to escape overflow-hidden */}
+      {/* Google event popover — minimal Reclaim-style, portal to escape overflow */}
       {isGoogle && showPopover && createPortal(
         <div
           ref={popoverRef}
-          className="fixed z-[100] w-64 rounded-xl bg-popover border border-border shadow-xl p-3.5 animate-scale-in pointer-events-auto"
+          className="fixed z-[100] w-60 rounded-lg bg-popover border border-border/50 shadow-md p-3 animate-scale-in pointer-events-auto"
           style={{ left: popoverPos.left, top: popoverPos.top }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-start justify-between gap-2">
-            <h4 className="text-sm font-semibold text-foreground leading-tight">{event.title}</h4>
+          <div className="flex items-start gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-event-external-border mt-1.5 shrink-0" />
+            <h4 className="text-[13px] font-semibold text-foreground leading-snug">{event.title}</h4>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="w-3 h-3" />
-            <span className="num">{format(event.start, 'h:mm a')} - {format(event.end, 'h:mm a')}</span>
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Clock className="w-3 h-3 shrink-0" />
+            <span className="num">
+              {event.allDay
+                ? format(event.start, 'MMM d')
+                : `${format(event.start, 'h:mm a')} - ${format(event.end, 'h:mm a')}`
+              }
+            </span>
           </div>
           {event.data?.description && (
-            <p className="mt-2.5 text-xs text-muted-foreground leading-relaxed line-clamp-3">
+            <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
               {event.data.description}
             </p>
           )}
-          <div className="mt-2.5 pt-2 border-t border-border">
-            <span className="text-[10px] text-muted-foreground/50 font-medium uppercase tracking-wider">Google Calendar</span>
-          </div>
         </div>,
         document.body,
       )}
