@@ -220,7 +220,7 @@ function App() {
         calendar: 'tasks',
         source: 'task' as const,
         color: t.color,
-        allDay: isAllDayTimeString(t.scheduled_start!) && isAllDayTimeString(t.scheduled_end!),
+        allDay: isAllDayTimeString(t.scheduled_start!, t.scheduled_end!),
       }));
     return [...googleEvents, ...taskEvents];
   }, [calendar.events, allTasks]);
