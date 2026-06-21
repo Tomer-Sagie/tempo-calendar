@@ -151,7 +151,7 @@ export function TempoCalendarMonthView({
           const dayEvents = eventsByDay.get(d.toDateString()) || [];
           const inMonth = isSameMonth(d, date);
           const t = isToday(d);
-          const visible = dayEvents.slice(0, 3);
+          const visible = dayEvents.slice(0, 5);
           const more = dayEvents.length - visible.length;
 
           return (

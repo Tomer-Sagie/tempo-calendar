@@ -137,6 +137,24 @@ export function getAllDayEvents(events: CalendarEventType[]): CalendarEventType[
 }
 
 /**
+ * Returns true when an event is a short (<6h) timed event that ends exactly
+ * at midnight (00:00:00). These are late-night tasks that happen to touch
+ * the day boundary — not genuine multi-day events. They should stay in the
+ * time grid instead of being hoisted into the all-day strip as spanning bars.
+ */
+export function isShortMidnightCrossing(ev: CalendarEventType): boolean {
+  if (ev.allDay) return false;
+  const durationMs = ev.end.getTime() - ev.start.getTime();
+  if (durationMs < 0) return false;
+  const endsAtMidnight =
+    ev.end.getHours() === 0 &&
+    ev.end.getMinutes() === 0 &&
+    ev.end.getSeconds() === 0 &&
+    ev.end.getMilliseconds() === 0;
+  return durationMs < 6 * 60 * 60 * 1000 && endsAtMidnight;
+}
+
+/**
  * Events that span multiple days — either flagged `allDay` or timed events
  * whose start and end fall on different calendar days. These should render
  * in the all-day strip as spanning bars rather than in the time grid.
@@ -157,7 +175,8 @@ export function getMultiDayEvents(
     // Include events flagged as allDay, PLUS timed events that span
     // multiple calendar days (e.g. a task from 11 PM to 1 AM should
     // render as a spanning bar, not a clipped box in the time grid).
-    const isMultiDay = ev.allDay || !isSameDay(ev.start, ev.end);
+    // Exception: short midnight-crossing events stay in the time grid.
+    const isMultiDay = ev.allDay || (!isSameDay(ev.start, ev.end) && !isShortMidnightCrossing(ev));
     if (!isMultiDay) continue;
 
     // Clamp to the visible range

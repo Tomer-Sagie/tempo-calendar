@@ -18,6 +18,7 @@ import {
   getAllDayEvents,
   positionEvents,
   getContrastText,
+  isShortMidnightCrossing,
   type CalendarEventType,
 } from './TempoCalendarHelpers';
 
@@ -61,10 +62,11 @@ export function TempoCalendarDayView({
   const dayEvents = useMemo(() => getEventsForDay(events, date), [events, date]);
   // Multi-day events that aren't allDay but span multiple days should also
   // appear in the all-day strip rather than being clipped into the time grid.
+  // Exception: short midnight-crossing events stay in the time grid.
   const allDayEvents = useMemo(() => {
     const allDay = getAllDayEvents(dayEvents);
     const multiDayTimed = dayEvents.filter(
-      (e) => !e.allDay && !isSameDay(e.start, e.end),
+      (e) => !e.allDay && !isSameDay(e.start, e.end) && !isShortMidnightCrossing(e),
     );
     // Deduplicate (an event could match both) — don't mutate the cached array
     const seen = new Set(allDay.map((e) => e.id));
