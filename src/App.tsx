@@ -1117,6 +1117,9 @@ function App() {
             setReplayTour(true);
             try { localStorage.removeItem('tempo-onboarded-v2'); } catch { /* */ }
           }}
+          calendars={calendar.calendars}
+          selectedCalendarIds={calendar.selectedCalendarIds}
+          onToggleCalendar={calendar.toggleCalendarSelection}
         />
         </div>
       <ErrorBoundary>

@@ -1,9 +1,10 @@
 import { memo } from 'react';
-import { Calendar, ListTodo, BarChart3, Settings as SettingsIcon, LogOut, User, Unlink, Sun, Moon, RefreshCw, Link2, AlertCircle, Lightbulb } from 'lucide-react';
+import { Calendar, ListTodo, BarChart3, Settings as SettingsIcon, LogOut, User, Unlink, Sun, Moon, RefreshCw, Link2, AlertCircle, Lightbulb, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useState } from 'react';
 import { cn } from '../lib/utils';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { GoogleCalendar } from '../lib/google';
 
 export type LeftRailView = 'calendar' | 'tasks' | 'insights' | 'today';
 
@@ -26,6 +27,10 @@ interface LeftRailProps {
   onToggleTheme: () => void;
   onOpenSettings: () => void;
   onReplayTour?: () => void;
+  /** Google calendars for the sidebar list (Reclaim-style). */
+  calendars?: GoogleCalendar[];
+  selectedCalendarIds?: string[];
+  onToggleCalendar?: (calendarId: string) => void;
 }
 
 /**
@@ -51,6 +56,9 @@ export function LeftRail({
   onToggleTheme,
   onOpenSettings,
   onReplayTour,
+  calendars = [],
+  selectedCalendarIds = [],
+  onToggleCalendar,
 }: LeftRailProps) {
   const [showAccount, setShowAccount] = useState(false);
 
@@ -114,7 +122,7 @@ export function LeftRail({
       {/* Connected calendars section (Reclaim-style) */}
       {isAuthenticated && (
         <div className="px-3 py-2.5">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Calendars</span>
             <button
               onClick={onRefresh}
@@ -131,8 +139,42 @@ export function LeftRail({
               <span className="truncate">Sync error</span>
             </div>
           )}
+          {/* Calendar list items with colored dots */}
+          {calendars.length > 0 && (
+            <div className="space-y-0.5 mb-1">
+              {calendars.map((cal) => {
+                const isSelected = selectedCalendarIds.includes(cal.id);
+                return (
+                  <button
+                    key={cal.id}
+                    onClick={() => onToggleCalendar?.(cal.id)}
+                    className="w-full flex items-center gap-2 px-2 py-1 rounded text-left hover:bg-accent transition-colors group"
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-sm shrink-0 ring-1 ring-inset ring-black/10 dark:ring-white/10"
+                      style={{ backgroundColor: cal.backgroundColor || '#999' }}
+                    />
+                    <span
+                      className={cn(
+                        'flex-1 text-[11px] truncate',
+                        isSelected ? 'text-foreground font-medium' : 'text-muted-foreground',
+                      )}
+                    >
+                      {cal.summary}
+                    </span>
+                    {cal.primary && (
+                      <span className="text-[9px] text-muted-foreground/40 shrink-0">primary</span>
+                    )}
+                    {isSelected && (
+                      <Check className="w-3 h-3 text-primary shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {lastSyncAt && (
-            <div className="text-[9px] text-muted-foreground mb-2">
+            <div className="text-[9px] text-muted-foreground">
               Updated {formatDistanceToNow(lastSyncAt)} ago
             </div>
           )}
