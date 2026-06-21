@@ -1239,7 +1239,7 @@ function App() {
           data-onboarding="quick-add"
           className={`${sidebarCollapsed ? '-mr-80 lg:-mr-[340px] opacity-0 pointer-events-none' : 'mr-0 opacity-100 border-l border-border/40'} w-80 lg:w-[340px] flex flex-col shrink-0 bg-card/50 transition-[margin-right,opacity] duration-200 ease-out ${activeView === 'calendar' ? '' : 'hidden lg:flex'} ${activeView === 'insights' ? 'lg:hidden' : ''}`}
         >
-          {activeView === 'calendar' ? (
+          {!sidebarCollapsed && (activeView === 'calendar' ? (
             <BentoSidebar
               tasks={allTasks}
               isLoading={tasksHook.isLoading}
@@ -1277,7 +1277,7 @@ function App() {
                 });
               }}
             />
-          ) : null}
+          ) : null)}
         </div>
 
         {/* Insights view — full-screen analytics panel */}

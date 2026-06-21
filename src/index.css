@@ -394,21 +394,19 @@
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 .animate-number-tick { animation: number-tick 320ms var(--ease-spring); }
 
-/* Stagger utility: add --stagger-index as a CSS variable on children */
+/* Stagger utility: subtle fade-in, no transform to avoid layout shifts */
 .stagger-children > * {
-  animation: slide-up 350ms var(--ease-spring) both;
+  animation: fade-in 200ms var(--ease-in-out-smooth) both;
 }
 .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-children > *:nth-child(2) { animation-delay: 40ms; }
-.stagger-children > *:nth-child(3) { animation-delay: 80ms; }
-.stagger-children > *:nth-child(4) { animation-delay: 120ms; }
-.stagger-children > *:nth-child(5) { animation-delay: 160ms; }
-.stagger-children > *:nth-child(6) { animation-delay: 200ms; }
-.stagger-children > *:nth-child(7) { animation-delay: 240ms; }
-.stagger-children > *:nth-child(8) { animation-delay: 280ms; }
-.stagger-children > *:nth-child(9) { animation-delay: 320ms; }
-.stagger-children > *:nth-child(10) { animation-delay: 360ms; }
-.stagger-children > *:nth-child(n+11) { animation-delay: 400ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 20ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 40ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 80ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 140ms; }
+.stagger-children > *:nth-child(n+9) { animation-delay: 160ms; }
 
 /* =============================================
    Dialog overlay + content (Radix) — enter & exit
@@ -852,9 +850,8 @@
   justify-content: space-around;
   height: 56px;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: var(--card);
+  background: oklch(var(--background) / 0.92);
   border-top: 1px solid var(--border);
-  backdrop-filter: blur(12px);
 }
 
 .mobile-nav-item {
@@ -900,8 +897,7 @@
 
 /* Calendar month view: each day cell is self-contained */
 .month-day-cell {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 120px;
+  contain: layout style;
 }
 
 /* Large scrollable lists: rows outside the viewport skip rendering */
@@ -919,8 +915,7 @@
 
 /* Wizard backdrop */
 .wizard-backdrop {
-  background: oklch(var(--background) / 0.85);
-  backdrop-filter: blur(8px);
+  background: oklch(var(--background) / 0.92);
 }
 
 /* Command palette (cmdk) styling */

@@ -436,6 +436,7 @@ export function TempoCalendarWeekView({
                 <>
                   {/* Column header highlight */}
                   <div
+                    data-drag-ghost-header="true"
                     className="pointer-events-none absolute z-10 transition-colors"
                     style={{
                       // Header is `64px_repeat(7,1fr)`, height matches header
@@ -454,10 +455,11 @@ export function TempoCalendarWeekView({
                   </div>
                   {/* Ghost rectangle */}
                   <div
+                    data-drag-ghost="true"
                     className={cn(
                       'absolute z-30 rounded-md border-2 border-dashed pointer-events-none flex flex-col px-1.5 py-1 overflow-hidden',
                       variantClass,
-                      'backdrop-blur-[1px] shadow-lg',
+                      'shadow-lg',
                     )}
                     style={{ top, height, left, width }}
                     aria-hidden

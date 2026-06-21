@@ -373,15 +373,52 @@ export function TempoCalendar({
         setDragGhost(null);
         return;
       }
-      setDragGhost({
-        eventId: ev.id,
-        newStart: result.newStart,
-        newEnd: result.newEnd,
-        title: ev.title,
-        variant: ev.variant,
+      // Only set React state once to mount the ghost element; subsequent
+      // position updates are done via direct DOM manipulation in WeekView's
+      // useEffect that watches dragGhost.
+      // Check if ghost is brand new (no previous) or position changed significantly.
+      setDragGhost((prev) => {
+        if (!prev || prev.eventId !== ev.id) {
+          return {
+            eventId: ev.id,
+            newStart: result.newStart,
+            newEnd: result.newEnd,
+            title: ev.title,
+            variant: ev.variant,
+          };
+        }
+        // Ghost already mounted — update position directly in DOM
+        const ghostEl = document.querySelector('[data-drag-ghost]') as HTMLDivElement | null;
+        if (ghostEl) {
+          const hh = getHourHeight();
+          const weekStart = new Date(result.newStart);
+          const dayOfWeek = weekStart.getDay();
+          weekStart.setDate(weekStart.getDate() - dayOfWeek + weekStartsOn);
+          weekStart.setHours(0, 0, 0, 0);
+          const dayIdx = Math.floor((result.newStart.getTime() - weekStart.getTime()) / 86400000);
+          const dayClamped = Math.max(0, Math.min(6, dayIdx));
+          const dayDate = new Date(weekStart.getTime() + dayClamped * 86400000);
+          dayDate.setHours(0, 0, 0, 0);
+          const minutesFromTop = (result.newStart.getHours() * 60 + result.newStart.getMinutes()) - 0;
+          const durationMin = Math.max(15, (result.newEnd.getTime() - result.newStart.getTime()) / 60000);
+          const top = (minutesFromTop / 60) * hh;
+          const height = (durationMin / 60) * hh;
+          ghostEl.style.top = `${Math.max(0, top)}px`;
+          ghostEl.style.height = `${Math.max(22, Math.min((24 - 0) * hh - Math.max(0, top), height))}px`;
+          ghostEl.style.left = `calc(56px + 3px + (100% - 56px - 6px) * ${dayClamped} / 7)`;
+          ghostEl.style.width = `calc((100% - 56px - 6px) / 7)`;
+          // Update header highlight
+          const headerEl = document.querySelector('[data-drag-ghost-header]') as HTMLDivElement | null;
+          if (headerEl) {
+            headerEl.style.left = `calc(56px + (100% - 56px) * ${dayClamped} / 7)`;
+            headerEl.style.width = `calc((100% - 56px) / 7)`;
+          }
+        }
+        // Return same ref to avoid re-render
+        return prev;
       });
     },
-    [events, view],
+    [events, view, weekStartsOn],
   );
 
   const handleDragEnd = useCallback(
@@ -439,7 +476,7 @@ export function TempoCalendar({
       >
         <div className="flex-1 min-h-0">
           {view === 'day' && (
-            <div className="h-full animate-view-enter" key="day">
+            <div className="h-full" key="day">
               <TempoCalendarDayView
                 date={date}
                 events={events}
@@ -454,7 +491,7 @@ export function TempoCalendar({
             </div>
           )}
           {view === 'week' && (
-            <div className="h-full animate-view-enter" key="week">
+            <div className="h-full" key="week">
               <TempoCalendarWeekView
                 date={date}
                 events={events}
@@ -472,7 +509,7 @@ export function TempoCalendar({
             </div>
           )}
           {view === 'month' && (
-            <div className="h-full animate-view-enter" key="month">
+            <div className="h-full" key="month">
               <TempoCalendarMonthView
                 date={date}
                 events={events}
