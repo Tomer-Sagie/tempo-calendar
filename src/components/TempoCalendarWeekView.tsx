@@ -228,10 +228,11 @@ export function TempoCalendarWeekView({
                 const ev = span.event;
                 const row = multiDayRows[idx];
                 const evColor = ev.data?.color || '';
-                const bgColor = evColor || '#6366f1';
+                const isLocked = ev.data?.is_locked;
+                const isGoogle = ev.data?.source === 'google';
+                const isFlexible = !isLocked && !isGoogle && ev.data?.source === 'task';
+                const bgColor = evColor || '#7c8aff';
                 const textColor = evColor ? getContrastText(evColor) : '#ffffff';
-                // Grid is 56px gutter + 7 equal 1fr columns.
-                // Use calc() to account for the fixed gutter width.
                 const left = `calc(56px + (100% - 56px) * ${span.startCol} / 7)`;
                 const width = `calc((100% - 56px) * ${span.endCol - span.startCol + 1} / 7)`;
                 const topPx = row * 24 + 2;
@@ -239,7 +240,11 @@ export function TempoCalendarWeekView({
                   <button
                     key={ev.id}
                     onClick={() => onSelectEvent?.(ev)}
-                    className="absolute h-[22px] text-[10px] font-medium rounded-sm truncate transition-colors hover:opacity-80 px-1.5 flex items-center border-l-[3px]"
+                    className={cn(
+                      'absolute h-[22px] text-[10px] font-medium rounded truncate transition-colors hover:brightness-95 px-1.5 flex items-center border-l-[3px]',
+                      isFlexible && 'all-day-flexible border-dashed',
+                      !isFlexible && 'border-solid',
+                    )}
                     style={{
                       backgroundColor: bgColor,
                       color: textColor,
@@ -267,14 +272,21 @@ export function TempoCalendarWeekView({
                 >
                   {allDayPerDay[i].slice(0, 2).map((ev) => {
                     const evColor = ev.data?.color || '';
-                    const bgColor = evColor || '#6366f1';
+                    const isLocked = ev.data?.is_locked;
+                    const isGoogle = ev.data?.source === 'google';
+                    const isFlexible = !isLocked && !isGoogle && ev.data?.source === 'task';
+                    const bgColor = evColor || '#7c8aff';
                     const textColor = evColor ? getContrastText(evColor) : '#ffffff';
                     return (
                       <button
                         key={ev.id}
                         onClick={() => onSelectEvent?.(ev)}
-                        className="w-full text-left px-1.5 py-0.5 text-[10px] font-medium rounded-sm truncate transition-colors hover:opacity-80"
-                        style={{ backgroundColor: bgColor, color: textColor }}
+                        className={cn(
+                          'w-full text-left px-1.5 py-0.5 text-[10px] font-medium rounded truncate transition-colors hover:brightness-95',
+                          isFlexible && 'all-day-flexible border border-dashed border-muted-foreground/15',
+                          !isFlexible && 'border border-solid',
+                        )}
+                        style={{ backgroundColor: bgColor, color: textColor, borderColor: evColor ? `${evColor}40` : 'var(--border)' }}
                       >
                         {ev.title}
                       </button>

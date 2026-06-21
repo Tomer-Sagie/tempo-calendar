@@ -95,14 +95,15 @@ export function TempoCalendarMonthView({
 
       {/* Multi-day spanning event bars — positioned over the day grid */}
       {multiDaySpans.length > 0 && (
-        <div className="relative border-b border-border/30" style={{ minHeight: (Math.max(0, ...multiDayRows) + 1) * 22 + 2 }}>
-          {multiDaySpans.map((span, idx) => {
+        <div className="relative border-b border-border/30" style={{ minHeight: (Math.max(0, ...multiDayRows) + 1) * 22 + 2 }}>              {multiDaySpans.map((span, idx) => {
             const ev = span.event;
             const row = multiDayRows[idx];
             const evColor = ev.data?.color || '';
-            const bgColor = evColor || '#6366f1';
+            const isLocked = ev.data?.is_locked;
+            const isGoogle = ev.data?.source === 'google';
+            const isFlexible = !isLocked && !isGoogle && ev.data?.source === 'task';
+            const bgColor = evColor || '#7c8aff';
             const textColor = evColor ? getContrastText(evColor) : '#ffffff';
-            // Each column is 1/7 of the grid; offset by 0 for the first col
             const leftPct = (span.startCol / 7) * 100;
             const widthPct = ((span.endCol - span.startCol + 1) / 7) * 100;
             const topPx = row * 22 + 2;
@@ -110,7 +111,11 @@ export function TempoCalendarMonthView({
               <button
                 key={ev.id}
                 onClick={() => onSelectEvent?.(ev)}
-                className="absolute h-[20px] text-[9px] font-medium rounded-sm truncate transition-colors hover:opacity-80 px-1.5 flex items-center border-l-[3px] z-10"
+                className={cn(
+                  'absolute h-[20px] text-[9px] font-medium rounded truncate transition-colors hover:brightness-95 px-1.5 flex items-center border-l-[3px] z-10',
+                  isFlexible && 'all-day-flexible border-dashed',
+                  !isFlexible && 'border-solid',
+                )}
                 style={{
                   backgroundColor: bgColor,
                   color: textColor,

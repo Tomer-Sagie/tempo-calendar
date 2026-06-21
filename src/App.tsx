@@ -1290,7 +1290,7 @@ function App() {
           <button
             type="button"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="self-start mt-3 -mr-2 z-10 w-6 h-8 rounded-l-md border border-r-0 border-border bg-card hover:bg-accent text-muted-foreground flex items-center justify-center transition-colors shrink-0"
+            className="self-start mt-3 z-10 w-5 h-8 rounded-l border border-r-0 border-border/40 bg-card hover:bg-accent text-muted-foreground flex items-center justify-center transition-colors shrink-0"
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
@@ -1301,7 +1301,7 @@ function App() {
         )}
         <div
           data-onboarding="quick-add"
-          className={`${sidebarCollapsed ? 'w-0 overflow-hidden border-l-0' : 'w-80 lg:w-[360px] border-l border-border'} flex flex-col shrink-0 bg-card transition-all duration-200 ${activeView === 'calendar' ? '' : 'hidden lg:flex'} ${activeView === 'insights' ? 'lg:hidden' : ''}`}
+          className={`${sidebarCollapsed ? 'w-0 overflow-hidden border-l-0' : 'w-80 lg:w-[340px] border-l border-border/40'} flex flex-col shrink-0 bg-card/50 transition-all duration-200 ${activeView === 'calendar' ? '' : 'hidden lg:flex'} ${activeView === 'insights' ? 'lg:hidden' : ''}`}
         >
           {activeView === 'calendar' ? (
             <BentoSidebar

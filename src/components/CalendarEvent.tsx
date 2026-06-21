@@ -82,6 +82,8 @@ export function DraggableEvent({
   const colorBorder = effectiveColor ? { borderLeftColor: effectiveColor } : {};
   const colorBg = effectiveColor ? { backgroundColor: `${effectiveColor}18` } : {};
 
+  // Reclaim-style: dashed border for flexible (non-locked) tasks, solid for fixed/locked
+  const isFlexible = !isLocked && !isBusyBlock && !isGoogle;
   const style: React.CSSProperties = {
     ...positionStyle,
     ...colorBorder,
@@ -89,6 +91,9 @@ export function DraggableEvent({
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.4 : isCompleted ? 0.55 : 1,
     zIndex: isDragging ? 50 : isGoogle ? 5 : 10,
+    // Dashed border for flexible tasks (free to move), solid for fixed/locked
+    ...(isFlexible ? { borderStyle: 'dashed', borderWidth: '2px' } : {}),
+    ...(isLocked || isBusyBlock ? { borderStyle: 'solid' } : {}),
   };
 
   // Google event popover state
@@ -159,33 +164,35 @@ export function DraggableEvent({
       aria-label={`${event.title} ${format(event.start, 'h:mma')} - ${format(event.end, 'h:mma')}`}
       title={event.title}
       className={cn(
-        'absolute text-left px-2 py-1 rounded-md overflow-hidden transition-shadow duration-150',
+        'absolute text-left px-2 py-1 rounded overflow-hidden transition-shadow duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'border-l-[3px] leading-snug group/event',
-        !isDragging && !isGoogle && 'hover:shadow-sm',
-        !isDragging && isGoogle && 'hover:shadow-sm',
+        !isDragging && !isGoogle && 'hover:brightness-95',
+        !isDragging && isGoogle && 'hover:brightness-95',
         small ? 'text-[11px]' : 'text-[12px]',
         isCompleted && 'line-through decoration-foreground/30',
-        // Google events: distinctive read-only look
-        isGoogle && 'bg-event-external/60 border-event-external-border text-foreground/80 cursor-default',
-        // Missed tasks: warm red tint with alert feel
-        isMissed && !isGoogle && 'bg-event-overdue/50 border-event-overdue-border text-foreground',
-        // Locked tasks: green tint with lock feel
+        // Google events: subtle, muted, read-only look
+        isGoogle && 'bg-event-external/70 border-event-external-border text-foreground/85 cursor-default',
+        // Missed tasks: destructive tint
+        isMissed && !isGoogle && 'bg-event-overdue/40 border-event-overdue-border text-foreground',
+        // Locked tasks: solid green border, subtle fill
         isLocked && !isGoogle && 'bg-event-locked/40 border-event-locked-border text-foreground',
-        // Task variants (when no task color override)
-        !isGoogle && !isMissed && !isLocked && !taskColor && event.variant === 'primary' && 'bg-primary/12 border-primary text-foreground',
-        !isGoogle && !isMissed && !isLocked && !taskColor && event.variant === 'secondary' && 'bg-event-task/35 border-event-task-border text-foreground',
-        !isGoogle && !isMissed && !isLocked && !taskColor && event.variant === 'warning' && 'bg-warning/12 border-warning text-foreground',
-        !isGoogle && !isMissed && !isLocked && !taskColor && event.variant === 'destructive' && 'bg-destructive/12 border-destructive text-foreground',
-        !isGoogle && !isMissed && !isLocked && !taskColor && event.variant === 'success' && 'bg-success/12 border-success text-foreground',
-        !isGoogle && !isMissed && !isLocked && !taskColor && event.variant === 'muted' && 'bg-muted/60 border-muted-foreground/20 text-foreground',
-        !isGoogle && !isMissed && !isLocked && !taskColor && (!event.variant || event.variant === 'primary') && 'bg-primary/12 border-primary text-foreground',
+        // Busy blocks: solid primary border, stronger fill
+        isBusyBlock && !taskColor && 'bg-primary/18 border-primary font-semibold',
+        // Task variants (when no task color override): subtle, light
+        !isGoogle && !isMissed && !isLocked && !isBusyBlock && !taskColor && event.variant === 'secondary' && 'bg-event-task/30 border-event-task-border text-foreground',
+        !isGoogle && !isMissed && !isLocked && !isBusyBlock && !taskColor && event.variant === 'warning' && 'bg-warning/10 border-warning text-foreground',
+        !isGoogle && !isMissed && !isLocked && !isBusyBlock && !taskColor && event.variant === 'destructive' && 'bg-destructive/10 border-destructive text-foreground',
+        !isGoogle && !isMissed && !isLocked && !isBusyBlock && !taskColor && event.variant === 'success' && 'bg-success/10 border-success text-foreground',
+        !isGoogle && !isMissed && !isLocked && !isBusyBlock && !taskColor && event.variant === 'muted' && 'bg-muted/50 border-muted-foreground/20 text-foreground',
+        !isGoogle && !isMissed && !isLocked && !isBusyBlock && !taskColor && (!event.variant || event.variant === 'primary') && 'bg-primary/10 border-primary text-foreground',
         isDragging && 'cursor-grabbing shadow-lg ring-1 ring-primary/30',
         !isDragging && draggable && !isLocked && 'cursor-grab',
-        isBusyBlock && !taskColor && 'bg-primary/20 border-primary font-semibold',
         // Split task connectors: dashed bracket on left/right edges
         isSplitChunk && splitPosition !== 'last' && splitPosition !== 'only' && 'split-connector-right',
         isSplitChunk && splitPosition !== 'first' && splitPosition !== 'only' && 'split-connector-left',
+        // Reclaim-style: dashed border for flexible tasks
+        isFlexible && 'border-dashed',
       )}
     >
       <div className="flex items-center gap-1">

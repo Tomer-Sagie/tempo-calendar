@@ -1,5 +1,4 @@
 import { Calendar, RefreshCw, Play } from 'lucide-react';
-import { Button } from './ui/button';
 
 interface HeaderProps {
   isAuthenticated: boolean;
@@ -10,10 +9,8 @@ interface HeaderProps {
 }
 
 /**
- * Top action bar. Brand logo, settings, and account menu have been moved
- * to the LeftRail so there is a single, consistent place for those controls.
- * The Header now renders only contextual action buttons (Focus, Schedule All,
- * Refresh) when authenticated.
+ * Top action bar — minimal Reclaim-style. Brand, focus button, schedule-all,
+ * and refresh. No heavy chrome, just essential actions.
  */
 export function Header({
   isAuthenticated,
@@ -21,55 +18,42 @@ export function Header({
   onOpenFocus,
 }: HeaderProps) {
   return (
-    <header role="banner" className="sticky top-0 z-30 h-11 flex items-center gap-2 px-3 bg-card/90 backdrop-blur-md border-b border-border/50">
+    <header role="banner" className="sticky top-0 z-30 h-10 flex items-center gap-2 px-3 bg-card/95 border-b border-border/40">
       <div className="flex-1" />
 
       {isAuthenticated && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {onOpenFocus && (
-            <Button
-              variant="default"
-              size="sm"
+            <button
               onClick={onOpenFocus}
-              className="h-8 px-3 text-xs font-medium gap-2"
+              className="h-7.5 px-2.5 flex items-center gap-1.5 rounded text-[11px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               title="Start focus mode (F8)"
             >
-              <Play className="w-3.5 h-3.5" />
+              <Play className="w-3 h-3" />
               <span className="hidden sm:inline">Focus</span>
-              <kbd className="hidden sm:inline-flex items-center h-4 px-1 font-mono text-[9px] font-medium bg-primary-foreground/20 rounded">
-                F8
-              </kbd>
-            </Button>
+            </button>
           )}
           {unscheduledCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={onScheduleAll}
-              className="h-8 px-3 text-xs font-medium gap-2"
+              className="h-7.5 px-2.5 flex items-center gap-1.5 rounded text-[11px] font-medium text-foreground hover:bg-accent transition-colors"
               title="Schedule all unscheduled tasks (S)"
               data-onboarding="schedule-all"
             >
-              <Calendar className="w-3.5 h-3.5" />
+              <Calendar className="w-3 h-3" />
               <span className="hidden sm:inline">Schedule all</span>
-              <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-md text-xs font-semibold">
+              <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-semibold">
                 {unscheduledCount}
               </span>
-              <kbd className="hidden lg:inline-flex items-center h-4 px-1 font-mono text-[9px] font-medium bg-muted text-muted-foreground border border-border rounded">
-                S
-              </kbd>
-            </Button>
+            </button>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
             onClick={onRefresh}
-            className="h-8 w-8"
+            className="h-7.5 w-7.5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="Refresh calendar events"
           >
-            <RefreshCw className="w-4 h-4" />
-          </Button>
-
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
     </header>

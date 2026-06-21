@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Calendar, ListTodo, BarChart3, Settings as SettingsIcon, LogOut, User, Unlink, Sun, Moon, Sparkles, RefreshCw, Link2, AlertCircle, ArrowLeft, Lightbulb } from 'lucide-react';
+import { Calendar, ListTodo, BarChart3, Settings as SettingsIcon, LogOut, User, Unlink, Sun, Moon, RefreshCw, Link2, AlertCircle, Lightbulb } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useState } from 'react';
 import { cn } from '../lib/utils';
@@ -14,7 +14,6 @@ interface LeftRailProps {
   isLoaded: boolean;
   isLoading: boolean;
   error: string | null;
-  /** Timestamp of the most recent successful sync. */
   lastSyncAt: Date | null;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -30,21 +29,8 @@ interface LeftRailProps {
 }
 
 /**
- * Left navigation rail. 64px wide, full height, sits flush against the left
- * edge. Replaces the old top "Calendar / Tasks" pill toggle (which was
- * ambiguous and took header real estate). Pattern matches Linear / Cron /
- * Notion's left-rail navigation.
- *
- * Structure:
- *   - Brand mark (top)
- *   - Primary nav (Calendar / Tasks) with active indicator + badge
- *   - Quick actions (Plan inbox, Refresh)
- *   - Settings link
- *   - Account avatar with popover (theme, disconnect, sign out)
- *
- * When not authenticated to a calendar, the rail collapses to brand + status
- * (loading spinner / error icon / connect CTA) + account, so it still feels
- * alive instead of empty.
+ * Left sidebar — Reclaim-inspired wider panel with calendar list,
+ * navigation, and account. 220px wide, full height.
  */
 export function LeftRail({
   activeView,
@@ -70,164 +56,142 @@ export function LeftRail({
 
   return (
     <aside
-      className="w-[60px] shrink-0 h-full bg-card/80 backdrop-blur-sm border-r border-border/50 flex flex-col items-center py-2 gap-0.5 z-20"
+      className="w-[220px] shrink-0 h-full bg-card border-r border-border/60 flex flex-col z-20 overflow-y-auto"
       aria-label="Primary navigation"
     >
-      {/* Brand mark */}
-      <div
-        className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center mb-2"
-        title="Tempo Calendar"
-      >
-        {/* Tempo mark: three vertical bars of different heights.
-            A rhythm/equalizer pattern that says "tempo" without being a letter. */}
-        <svg
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          className="w-5 h-5 text-primary-foreground"
-          aria-hidden
+      {/* Brand header */}
+      <div className="px-4 py-3.5 flex items-center gap-2.5 border-b border-border/40">
+        <div
+          className="w-7 h-7 rounded-md bg-primary flex items-center justify-center shrink-0"
+          title="Tempo Calendar"
         >
-          <rect x="4" y="14" width="3" height="8" rx="0.6" />
-          <rect x="10.5" y="7" width="3" height="15" rx="0.6" />
-          <rect x="17" y="11" width="3" height="11" rx="0.6" />
-        </svg>
+          <svg
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="w-4 h-4 text-primary-foreground"
+            aria-hidden
+          >
+            <rect x="4" y="14" width="3" height="8" rx="0.6" />
+            <rect x="10.5" y="7" width="3" height="15" rx="0.6" />
+            <rect x="17" y="11" width="3" height="11" rx="0.6" />
+          </svg>
+        </div>
+        <span className="text-sm font-semibold text-foreground tracking-tight">Tempo</span>
       </div>
 
-      {/* Primary nav + actions (only when authenticated) */}
+      {/* Nav section */}
+      <div className="px-3 py-3 space-y-0.5">
+        <SidebarItem
+          icon={Calendar}
+          label="Calendar"
+          active={activeView === 'calendar'}
+          onClick={() => onViewChange('calendar')}
+        />
+        <SidebarItem
+          icon={Sun}
+          label="Today"
+          active={activeView === 'today'}
+          onClick={() => onViewChange('today')}
+        />
+        <SidebarItem
+          icon={ListTodo}
+          label="Tasks"
+          active={activeView === 'tasks'}
+          onClick={() => onViewChange('tasks')}
+          badge={unscheduledCount > 0 ? unscheduledCount : undefined}
+        />
+        <SidebarItem
+          icon={BarChart3}
+          label="Insights"
+          active={activeView === 'insights'}
+          onClick={() => onViewChange('insights')}
+        />
+      </div>
+
+      {/* Separator */}
+      <div className="h-px bg-border/40 mx-3" />
+
+      {/* Connected calendars section (Reclaim-style) */}
       {isAuthenticated && (
-        <div className="flex flex-col items-center gap-1 flex-1 w-full px-2">
-          <RailItem
-            icon={Calendar}
-            label="Calendar"
-            title="Calendar — W (week) · D (day) · M (month)"
-            active={activeView === 'calendar'}
-            onClick={() => onViewChange('calendar')}
-          />
-          <RailItem
-            icon={ListTodo}
-            label="Tasks"
-            title="Tasks — S to schedule all"
-            active={activeView === 'tasks'}
-            onClick={() => onViewChange('tasks')}
-            badge={unscheduledCount > 0 ? unscheduledCount : undefined}
-          />
-          <RailItem
-            icon={Sun}
-            label="Today"
-            title="Today — T to jump here"
-            active={activeView === 'today'}
-            onClick={() => onViewChange('today')}
-          />
-          <RailItem
-            icon={BarChart3}
-            label="Insights"
-            active={activeView === 'insights'}
-            onClick={() => onViewChange('insights')}
-          />
-          <RailDivider />
-          <RailItem
-            icon={Sparkles}
-            label="Plan inbox"
-            title="View unscheduled tasks"
-            active={false}
-            onClick={() => onViewChange('tasks')}
-            badge={unscheduledCount > 0 ? unscheduledCount : undefined}
-          />
-          <RailItem
-            icon={RefreshCw}
-            label="Refresh"
-            title="Refresh calendar events"
-            active={false}
-            onClick={onRefresh}
-            disabled={isLoading}
-          />
-          {/* Sync status indicator */}
-          <div
-            className={cn(
-              'w-full flex items-center justify-center py-1 text-[9px] font-medium transition-colors',
-              error ? 'text-destructive' : isLoading ? 'text-primary' : 'text-muted-foreground',
-            )}
-            title={error ? `Sync error: ${error}` : lastSyncAt ? `Last synced ${formatDistanceToNow(lastSyncAt)} ago` : 'Never synced'}
-          >
-            {error ? (
-              <span className="flex items-center gap-0.5">
-                <AlertCircle className="w-3 h-3" />
-                Error
-              </span>
-            ) : isLoading ? (
-              <span className="flex items-center gap-0.5">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                Syncing...
-              </span>
-            ) : lastSyncAt ? (
-              <span>{formatDistanceToNow(lastSyncAt)} ago</span>
-            ) : (
-              <span>Never synced</span>
-            )}
+        <div className="px-3 py-2.5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Calendars</span>
+            <button
+              onClick={onRefresh}
+              disabled={isLoading}
+              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              title="Refresh calendars"
+            >
+              <RefreshCw className={cn('w-3 h-3', isLoading && 'animate-spin')} />
+            </button>
           </div>
+          {error && (
+            <div className="flex items-center gap-1.5 text-[10px] text-destructive mb-1.5">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              <span className="truncate">Sync error</span>
+            </div>
+          )}
+          {lastSyncAt && (
+            <div className="text-[9px] text-muted-foreground mb-2">
+              Updated {formatDistanceToNow(lastSyncAt)} ago
+            </div>
+          )}
         </div>
       )}
 
-      {/* Unauthenticated: status + connect CTA so the rail still feels alive */}
+      {/* Unauthenticated: connect CTA */}
       {!isAuthenticated && (
-        <div className="flex-1 w-full px-2 flex flex-col items-center gap-1.5">
+        <div className="px-3 py-3">
           {error && (
-            <div
-              className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center"
-              title={error}
-              aria-label={error}
-            >
-              <AlertCircle className="w-4 h-4 text-destructive" />
+            <div className="flex items-center gap-1.5 mb-2 text-[10px] text-destructive">
+              <AlertCircle className="w-3 h-3" />
+              <span className="truncate">{error}</span>
             </div>
           )}
-          {!error && !isLoaded && (
-            <div
-              className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center"
-              title="Loading"
-            >
-              <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />
+          {!isLoaded ? (
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              Loading...
             </div>
-          )}
-          {isLoaded && !error && (
+          ) : (
             <button
               onClick={onConnect}
               disabled={isLoading}
-              className="w-10 h-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm"
-              title={isLoading ? 'Connecting…' : 'Connect Google Calendar'}
-              aria-label="Connect Google Calendar"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-primary text-primary-foreground text-[12px] font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              <Link2 className="w-4 h-4" />
+              <Link2 className="w-3.5 h-3.5" />
+              Connect calendar
             </button>
           )}
         </div>
       )}
 
-      {/* Bottom: settings + account */}
-      <div className="flex flex-col items-center gap-1 w-full px-2 mt-2">
-        {isAuthenticated && (
-          <RailItem
-            icon={SettingsIcon}
-            label="Settings"
-            active={false}
-            onClick={onOpenSettings}
-          />
-        )}
+      <div className="flex-1" />
 
-        {/* Account menu */}
-        <div className="relative w-full flex justify-center">
+      {/* Bottom: settings + account */}
+      <div className="px-3 py-2 border-t border-border/40 space-y-0.5">
+        <SidebarItem
+          icon={SettingsIcon}
+          label="Settings"
+          active={false}
+          onClick={onOpenSettings}
+          compact
+        />
+
+        {/* Account */}
+        <div className="relative">
           {user ? (
             <>
               <button
-                onClick={() => setShowAccount(!showAccount)}        className={cn(
-          'w-11 h-11 rounded-full flex items-center justify-center text-[11px] font-semibold transition-colors',
-                  showAccount
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-primary/10 text-primary hover:bg-primary/20',
-                )}
+                onClick={() => setShowAccount(!showAccount)}
+                className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[12px] font-medium text-foreground hover:bg-accent transition-colors"
                 aria-label="Account menu"
                 aria-expanded={showAccount}
-                title={user.email || 'Account'}
               >
-                {user.email?.charAt(0).toUpperCase() || 'U'}
+                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold shrink-0">
+                  {user.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <span className="truncate text-[11px]">{user.email}</span>
               </button>
               {showAccount && (
                 <>
@@ -237,47 +201,44 @@ export function LeftRail({
                     aria-hidden
                   />
                   <div
-                    className="absolute left-full ml-2 bottom-0 w-56 bg-popover border border-border rounded-lg shadow-xl z-50 py-1 animate-slide-in-right"
+                    className="absolute left-2 bottom-full mb-1 w-52 bg-popover border border-border/60 rounded-md shadow-lg z-50 py-0.5 animate-slide-in-up"
                     role="menu"
                   >
-                    <div className="px-3 py-2 text-xs text-muted-foreground border-b border-border truncate">
-                      {user.email}
-                    </div>
                     <button
                       onClick={() => { onToggleTheme(); }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-foreground hover:bg-accent transition-colors"
                       role="menuitem"
                     >
-                      {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                      {theme === 'dark' ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
                       {theme === 'dark' ? 'Light mode' : 'Dark mode'}
                     </button>
                     {onReplayTour && (
                       <button
                         onClick={() => { onReplayTour(); setShowAccount(false); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-foreground hover:bg-accent transition-colors"
                         role="menuitem"
                       >
-                        <Lightbulb className="w-3.5 h-3.5" />
+                        <Lightbulb className="w-3 h-3" />
                         Replay tour
                       </button>
                     )}
                     {isAuthenticated && (
                       <button
                         onClick={() => { onDisconnect(); setShowAccount(false); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-foreground hover:bg-accent transition-colors"
                         role="menuitem"
                       >
-                        <Unlink className="w-3.5 h-3.5" />
+                        <Unlink className="w-3 h-3" />
                         Disconnect calendar
                       </button>
                     )}
-                    <div className="border-t border-border my-0.5" />
+                    <div className="border-t border-border/40 my-0.5" />
                     <button
                       onClick={() => { onSignOut(); setShowAccount(false); }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/5 transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-destructive hover:bg-destructive/5 transition-colors"
                       role="menuitem"
                     >
-                      <LogOut className="w-3.5 h-3.5" />
+                      <LogOut className="w-3 h-3" />
                       Sign out
                     </button>
                   </div>
@@ -285,12 +246,13 @@ export function LeftRail({
               )}
             </>
           ) : (
-            <RailItem
-              icon={User}
-              label="Sign in"
-              active={false}
+            <button
               onClick={onSignIn}
-            />
+              className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[12px] font-medium text-muted-foreground hover:bg-accent transition-colors"
+            >
+              <User className="w-4 h-4" />
+              Sign in
+            </button>
           )}
         </div>
       </div>
@@ -298,48 +260,46 @@ export function LeftRail({
   );
 }
 
-interface RailItemProps {
+interface SidebarItemProps {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  title?: string;
   active?: boolean;
   disabled?: boolean;
   badge?: number;
+  compact?: boolean;
   onClick: () => void;
 }
 
-const RailItem = memo(function RailItem({ icon: Icon, label, title, active, disabled, badge, onClick }: RailItemProps) {
+const SidebarItem = memo(function SidebarItem({
+  icon: Icon,
+  label,
+  active,
+  disabled,
+  badge,
+  compact,
+  onClick,
+}: SidebarItemProps) {
   return (
     <button
       onClick={onClick}
-      disabled={disabled}        className={cn(
-          'group relative w-11 rounded-lg flex flex-col items-center justify-center gap-0.5 py-1 transition-all',
-        active && 'bg-primary/10 text-primary',
-        !active && !disabled && 'text-muted-foreground hover:text-foreground hover:bg-accent',
+      disabled={disabled}
+      className={cn(
+        'w-full flex items-center gap-2.5 rounded-md transition-colors text-left',
+        compact ? 'px-2.5 py-1.5 text-[11px]' : 'px-3 py-1.5 text-[12px]',
+        active && 'bg-primary/8 text-primary font-medium',
+        !active && !disabled && 'text-foreground hover:bg-accent',
         disabled && 'text-muted-foreground/40 cursor-not-allowed',
       )}
       aria-label={label}
       aria-current={active ? 'page' : undefined}
-      title={title || label}
     >
-      <Icon className="w-[18px] h-[18px]" />
-      <span className="text-[9px] leading-none font-medium truncate max-w-[52px]">{label}</span>
+      <Icon className={cn('shrink-0', compact ? 'w-3.5 h-3.5' : 'w-4 h-4')} />
+      <span className="flex-1 truncate">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold flex items-center justify-center tabular-nums">
+        <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold flex items-center justify-center tabular-nums shrink-0">
           {badge > 99 ? '99+' : badge}
         </span>
-      )}
-      {/* Active indicator: small left bar */}
-      {active && (
-        <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-primary" />
       )}
     </button>
   );
 });
-
-const RailDivider = memo(function RailDivider() {
-  return <div className="w-6 h-px bg-border my-1" />;
-});
-
-// Re-export the ArrowLeft icon so the workspace can use it for a "back to calendar" button.
-export { ArrowLeft };

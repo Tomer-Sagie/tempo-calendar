@@ -141,19 +141,28 @@ export function TempoCalendarDayView({
     <div className="flex flex-col h-full bg-card rounded-xl border border-border/50 overflow-hidden">
       {/* All-day row */}
       {allDayEvents.length > 0 && (
-        <div className="border-b border-border/70 bg-card px-3 py-1.5 flex items-center gap-2 overflow-x-auto">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 shrink-0">All day</span>
+        <div className="border-b border-border/40 bg-card/50 px-3 py-1.5 flex items-center gap-2 overflow-x-auto">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 shrink-0">All day</span>
           <div className="flex gap-1 flex-wrap">
             {allDayEvents.map((ev) => {
               const evColor = ev.data?.color || '';
-              const bgColor = evColor || 'var(--primary)';
-              const textColor = evColor ? getContrastText(evColor) : 'white';
+              const isLocked = ev.data?.is_locked;
+              const isGoogle = ev.data?.source === 'google';
+              const isFlexible = !isLocked && !isGoogle && ev.data?.source === 'task';
               return (
                 <button
                   key={ev.id}
                   onClick={() => onSelectEvent?.(ev)}
-                  className="px-2 py-0.5 text-[11px] font-medium rounded-sm transition-colors hover:opacity-80 truncate max-w-[200px]"
-                  style={{ backgroundColor: bgColor, color: textColor }}
+                  className={cn(
+                    'px-2 py-0.5 text-[11px] font-medium rounded transition-colors hover:brightness-95 truncate max-w-[200px]',
+                    isFlexible && 'all-day-flexible border border-dashed border-muted-foreground/20',
+                    !isFlexible && 'border border-solid',
+                  )}
+                  style={{
+                    backgroundColor: evColor ? `${evColor}14` : (isLocked ? 'var(--event-locked)' : 'var(--muted)'),
+                    color: evColor ? getContrastText(evColor) : 'var(--foreground)',
+                    borderColor: evColor ? `${evColor}40` : (isLocked ? 'var(--event-locked-border)' : 'var(--border)'),
+                  }}
                 >
                   {ev.title}
                 </button>
