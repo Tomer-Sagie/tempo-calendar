@@ -496,6 +496,10 @@
   top: 0;
   bottom: 0;
   z-index: 50;
+  /* will-change applied only during animation via [data-state] to avoid permanent GPU layer cost */
+}
+.panel-slide[data-state='open'],
+.panel-slide[data-state='closed'] {
   will-change: transform;
 }
 .panel-slide[data-state='open'] {
