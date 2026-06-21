@@ -1,33 +1,18 @@
-import { Plus, AlertTriangle, ArrowLeft } from 'lucide-react';
-import { Button } from './ui/button';
+import { Plus, AlertTriangle } from 'lucide-react';
 
 interface TaskListToolbarProps {
-  /** Number of unscheduled active tasks (shown as primary badge; gates "Schedule all"). */
   unscheduledCount: number;
-  /** Number of overdue tasks (shown as overdue badge; hidden when 0). */
   overdueCount: number;
-  /** Number of completed tasks (shown as toggle button; hidden when 0). */
   completedCount: number;
-  /** Whether the completed section is currently expanded. */
   showCompleted: boolean;
-  /** Toggle the completed section. */
   onToggleCompleted: () => void;
-  /** Schedule all unscheduled tasks. */
   onScheduleAll: () => void;
-  /** Add a new task. */
   onAddTask: () => void;
-  /** Optional back-arrow to return to the calendar view. */
   onBackToCalendar?: () => void;
 }
 
 /**
- * Toolbar strip at the top of the TaskList sidebar.
- *
- * Pure presentational: receives counts + handlers as props, renders the
- * back arrow (optional), heading, count badges, the "Schedule all"
- * button (only when there are unscheduled tasks), and the "+" add
- * button. The completed-section toggle is a local-state setter that
- * lives in the orchestrator.
+ * Minimal Reclaim-style toolbar — thin border, plain buttons, no heavy chrome.
  */
 export function TaskListToolbar({
   unscheduledCount,
@@ -40,28 +25,25 @@ export function TaskListToolbar({
   onBackToCalendar,
 }: TaskListToolbarProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-      <div className="flex items-center gap-2.5 min-w-0">
+    <div className="flex items-center justify-between px-3 py-2 border-b border-border/40">
+      <div className="flex items-center gap-2 min-w-0">
         {onBackToCalendar && (
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
             onClick={onBackToCalendar}
-            className="h-8 w-8 -ml-1.5 shrink-0"
-            title="Back to calendar"
+            className="p-1 -ml-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Back to calendar"
           >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
         )}
-        <h2 className="text-sm font-semibold text-foreground">Tasks</h2>
+        <h2 className="text-[13px] font-semibold text-foreground">Tasks</h2>
         {unscheduledCount > 0 && (
-          <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-md">
+          <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
             {unscheduledCount}
           </span>
         )}
         {overdueCount > 0 && (
-          <span className="text-xs font-medium bg-overdue/10 text-overdue px-2 py-0.5 rounded-md flex items-center gap-1">
+          <span className="text-[11px] font-medium text-destructive flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" />
             {overdueCount}
           </span>
@@ -70,7 +52,7 @@ export function TaskListToolbar({
           <button
             onClick={onToggleCompleted}
             aria-expanded={showCompleted}
-            className="text-xs font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded-md hover:bg-accent transition-colors"
+            className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             {completedCount} done
           </button>
@@ -78,13 +60,20 @@ export function TaskListToolbar({
       </div>
       <div className="flex items-center gap-1">
         {unscheduledCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={onScheduleAll} className="h-8 px-3 text-xs">
+          <button
+            onClick={onScheduleAll}
+            className="h-7 px-2.5 text-[11px] font-medium rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
             Schedule all
-          </Button>
+          </button>
         )}
-        <Button variant="ghost" size="icon" onClick={onAddTask} className="h-8 w-8" title="Add task">
+        <button
+          onClick={onAddTask}
+          className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          title="Add task"
+        >
           <Plus className="w-4 h-4" />
-        </Button>
+        </button>
       </div>
     </div>
   );

@@ -233,7 +233,7 @@ export function TaskList({
 
         {unscheduled.length > 0 && (
           <div>
-            <div className="px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
+            <div className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
               Unscheduled
             </div>
             <div className="stagger-children">
@@ -256,7 +256,7 @@ export function TaskList({
 
         {scheduled.length > 0 && (
           <div>
-            <div className="px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
+            <div className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
               Scheduled
             </div>
             <div className="stagger-children">
@@ -280,7 +280,7 @@ export function TaskList({
 
         {showCompleted && completedTasks.length > 0 && (
           <div>
-            <div className="px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
+            <div className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
               Completed
             </div>
             {completedTasks.map((task) => (

@@ -1,4 +1,4 @@
-import { memo, useState, useRef } from 'react';
+import { memo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MoreHorizontal,
@@ -61,7 +61,6 @@ export const TaskRow = memo(function TaskRow({
 }: TaskRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
-  const menuRef = useRef<HTMLDivElement>(null);
   const [unscheduling, setUnscheduling] = useState(false);
 
   const isOverdue =
@@ -71,8 +70,8 @@ export const TaskRow = memo(function TaskRow({
     task.status === 'active';
 
   return (
-    <div className="virtual-list-row flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/30 transition-colors group animate-slide-up">
-      {/* Completion checkbox */}
+    <div className="virtual-list-row flex items-center gap-2 px-3 py-2 hover:bg-accent/30 transition-colors group animate-slide-up">
+      {/* Inline complete button — subtle, hover-revealed */}
       <button
         type="button"
         onClick={(e) => {
@@ -80,24 +79,15 @@ export const TaskRow = memo(function TaskRow({
           onComplete(task.id);
         }}
         disabled={isCompleting}
-        className={`shrink-0 w-5 h-5 rounded-md border-[1.5px] flex items-center justify-center transition-all duration-150 ${
+        className={`shrink-0 w-4 h-4 rounded-full border-[1.5px] flex items-center justify-center transition-all duration-150 ${
           isCompleting
-            ? 'border-primary bg-primary/20'
-            : 'border-muted-foreground/30 hover:border-primary hover:bg-primary/10'
+            ? 'border-primary bg-primary/30 scale-110'
+            : 'border-muted-foreground/20 opacity-0 group-hover:opacity-100 hover:border-primary hover:bg-primary/15'
         }`}
         aria-label="Complete task"
       >
-        {isCompleting ? (
-          <svg className="w-4 h-4 animate-checkmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" fill="oklch(var(--primary) / 0.15)" stroke="var(--primary)" />
-            <polyline points="7 12 10.5 15.5 17 9" stroke="var(--primary)" />
-          </svg>
-        ) : (
-          <Check className="w-3 h-3 text-primary opacity-0 group-hover:opacity-50 transition-opacity" />
-        )}
+        {isCompleting && <Check className="w-2.5 h-2.5 text-primary" />}
       </button>
-
-
 
       {/* Content */}
       <button
@@ -106,41 +96,41 @@ export const TaskRow = memo(function TaskRow({
         onClick={() => onEdit(task)}
       >
         <div className="flex items-center gap-1.5">
-          <span className={`text-[13px] font-medium truncate ${isOverdue ? 'text-destructive' : 'text-foreground'}`}>
+          <span className={`text-[12px] font-medium truncate ${isOverdue ? 'text-destructive' : 'text-foreground'}`}>
             {task.title}
           </span>
           {task.is_recurring && (
-            <Repeat className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+            <Repeat className="w-2.5 h-2.5 text-muted-foreground/40 shrink-0" />
           )}
           {task.is_habit && task.streak_count > 0 && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-warning">
-              <Flame className="w-2.5 h-2.5 fill-warning/40" />
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-warning/60">
+              <Flame className="w-2 h-2" />
               {task.streak_count}
             </span>
           )}
           {subtasks && <SubtaskProgressChip subtasks={subtasks} />}
         </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[12px] text-muted-foreground">{task.duration_minutes}m</span>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-[10px] text-muted-foreground/60">{task.duration_minutes}m</span>
           {task.due_date && !task.is_recurring && (
-            <span className="text-[12px] text-muted-foreground">{format(parseISO(task.due_date), 'MMM d')}</span>
+            <span className="text-[10px] text-muted-foreground/60">{format(parseISO(task.due_date), 'MMM d')}</span>
+          )}
+          {isScheduled && task.scheduled_start && (
+            <span className="text-[10px] text-success/70">{format(parseISO(task.scheduled_start), 'h:mm a')}</span>
           )}
           {(() => {
             const urgency = getUrgencyBadge(task);
             return urgency ? (
-              <span className={`text-[10px] font-medium px-1 py-0.5 rounded ${urgency.className}`}>
+              <span className="text-[10px] text-muted-foreground/60">
                 {urgency.label}
               </span>
             ) : null;
           })()}
-          {isScheduled && task.scheduled_start && (
-            <span className="text-[11px] text-success">{format(parseISO(task.scheduled_start), 'h:mm a')}</span>
-          )}
         </div>
       </button>
 
-      {/* Actions */}
-      <div className="relative shrink-0" ref={menuRef as React.RefObject<HTMLDivElement>}>
+      {/* Actions — hover-only, portal menu */}
+      <div className="relative shrink-0">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -150,24 +140,24 @@ export const TaskRow = memo(function TaskRow({
             }
             setMenuOpen(!menuOpen);
           }}
-          className="p-1 rounded-md hover:bg-accent text-muted-foreground transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+          className="p-0.5 rounded text-muted-foreground/40 hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
           aria-label="More actions"
           aria-expanded={menuOpen}
         >
-          <MoreHorizontal className="w-4 h-4" />
+          <MoreHorizontal className="w-3.5 h-3.5" />
         </button>
         {menuOpen && createPortal(
           <>
             <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} />
             <div
-              className="fixed w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down"
+              className="fixed w-40 bg-popover border border-border/50 rounded-md shadow-md z-50 py-0.5 animate-scale-in"
               style={{ top: menuPos.top, right: menuPos.right }}
             >
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit(task); setMenuOpen(false); }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-foreground hover:bg-accent transition-colors"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="w-3.5 h-3.5" />
                 Edit
               </button>
               {isScheduled && (
@@ -180,27 +170,27 @@ export const TaskRow = memo(function TaskRow({
                     setMenuOpen(false);
                   }}
                   disabled={unscheduling}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-foreground hover:bg-accent transition-colors disabled:opacity-50"
                 >
-                  <XCircle className="w-4 h-4" />
+                  <XCircle className="w-3.5 h-3.5" />
                   Unschedule
                 </button>
               )}
               {task.is_recurring && onSkipNext && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onSkipNext(task.id); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-foreground hover:bg-accent transition-colors"
                 >
-                  <SkipForward className="w-4 h-4" />
+                  <SkipForward className="w-3.5 h-3.5" />
                   Skip next
                 </button>
               )}
-              <div className="border-t border-border my-1" />
+              <div className="border-t border-border/40 my-0.5" />
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(task.id); setMenuOpen(false); }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-destructive hover:bg-destructive/5 transition-colors"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" />
                 Delete
               </button>
             </div>
@@ -226,26 +216,18 @@ export const CompletedTaskRow = memo(function CompletedTaskRow({ task, onReopen,
   const [reopening, setReopening] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
-  const menuRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="virtual-list-row flex items-center gap-2.5 px-3 py-2.5 hover:bg-accent/30 transition-colors group animate-slide-up">
-      {/* Completed checkmark */}
-      <div className="shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-        <Check className="w-3 h-3 text-primary-foreground" />
+    <div className="virtual-list-row flex items-center gap-2 px-3 py-2 hover:bg-accent/30 transition-colors group animate-slide-up">
+      <div className="shrink-0 w-4 h-4 rounded-full bg-success/30 flex items-center justify-center">
+        <Check className="w-2.5 h-2.5 text-success" />
       </div>
-
-      {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm font-medium truncate text-muted-foreground line-through">
-            {task.title}
-          </span>
-        </div>
+        <span className="text-[12px] text-muted-foreground/60 line-through truncate block">
+          {task.title}
+        </span>
       </div>
-
-      {/* Actions */}
-      <div className="relative shrink-0" ref={menuRef as React.RefObject<HTMLDivElement>}>
+      <div className="relative shrink-0">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -255,16 +237,16 @@ export const CompletedTaskRow = memo(function CompletedTaskRow({ task, onReopen,
             }
             setMenuOpen(!menuOpen);
           }}
-          className="p-1 rounded-md hover:bg-accent text-muted-foreground transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+          className="p-0.5 rounded text-muted-foreground/30 hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
           aria-label="More actions"
           aria-expanded={menuOpen}
         >
-          <MoreHorizontal className="w-4 h-4" />
+          <MoreHorizontal className="w-3.5 h-3.5" />
         </button>
         {menuOpen && createPortal(
           <>
             <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} />
-            <div className="fixed w-44 bg-popover border border-border rounded-lg shadow-lg z-50 py-1 animate-slide-down" style={{ top: menuPos.top, right: menuPos.right }}>
+            <div className="fixed w-36 bg-popover border border-border/50 rounded-md shadow-md z-50 py-0.5 animate-scale-in" style={{ top: menuPos.top, right: menuPos.right }}>
               <button
                 onClick={async (e) => {
                   e.stopPropagation();
@@ -274,17 +256,17 @@ export const CompletedTaskRow = memo(function CompletedTaskRow({ task, onReopen,
                   setMenuOpen(false);
                 }}
                 disabled={reopening}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-foreground hover:bg-accent transition-colors disabled:opacity-50"
               >
-                <RotateCcw className="w-4 h-4" />
+                <RotateCcw className="w-3.5 h-3.5" />
                 Reopen
               </button>
-              <div className="border-t border-border my-1" />
+              <div className="border-t border-border/40 my-0.5" />
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(task.id); setMenuOpen(false); }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-destructive hover:bg-destructive/5 transition-colors"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" />
                 Delete
               </button>
             </div>

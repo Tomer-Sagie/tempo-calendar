@@ -140,7 +140,7 @@ export function TaskFilters({
   };
 
   return (
-    <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border overflow-x-auto tempo-scrollbar">
+    <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/40 overflow-x-auto tempo-scrollbar">
       <button
         onClick={() => setActiveListId(null)}
         className={`shrink-0 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
