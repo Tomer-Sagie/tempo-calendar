@@ -101,13 +101,16 @@ export function OnboardingTour({ forceOpen, onComplete }: OnboardingTourProps) {
 
   // Sync open state when forceOpen changes after mount
   const prevForceOpenRef = useRef(forceOpen);
-  if (forceOpen !== prevForceOpenRef.current) {
-    prevForceOpenRef.current = forceOpen;
-    if (forceOpen) {
-      setOpen(true);
-      setStepIndex(0);
+  useEffect(() => {
+    if (forceOpen !== prevForceOpenRef.current) {
+      prevForceOpenRef.current = forceOpen;
+      if (forceOpen) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional state reset on forceOpen change
+        setOpen(true);
+        setStepIndex(0);
+      }
     }
-  }
+  }, [forceOpen]);
 
   const finish = useCallback(() => {
     try { localStorage.setItem(STORAGE_KEY, 'true'); } catch { /* ignore */ }

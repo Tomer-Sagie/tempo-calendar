@@ -258,18 +258,14 @@ function App() {
   }, [skipCalendarGate]);
   // Clear the skip flag once Google Calendar is connected so the gate
   // reappears if the user disconnects and signs in fresh later.
-  // Uses ref-during-render pattern (same as OnboardingTour/CommandPalette)
-  // to avoid setState-in-effect lint rule.
-  /* eslint-disable react-hooks/refs */
   const prevCalAuthRef = useRef(calendar.isAuthenticated);
-  if (calendar.isAuthenticated && !prevCalAuthRef.current && skipCalendarGate) {
-    setSkipCalendarGate(false);
-    try { localStorage.removeItem('tempo-skip-calendar-gate'); } catch { /* */ }
-  }
-  if (calendar.isAuthenticated !== prevCalAuthRef.current) {
+  useEffect(() => {
+    if (calendar.isAuthenticated && !prevCalAuthRef.current && skipCalendarGate) {
+      setSkipCalendarGate(false);
+      try { localStorage.removeItem('tempo-skip-calendar-gate'); } catch { /* */ }
+    }
     prevCalAuthRef.current = calendar.isAuthenticated;
-  }
-  /* eslint-enable react-hooks/refs */
+  }, [calendar.isAuthenticated, skipCalendarGate]);
   // Keep the ref in sync so the deletion handler can read it without
   // being rebuilt on every focus-mode open/close.
   useEffect(() => {
@@ -587,7 +583,7 @@ function App() {
         duration: 8000,
       });
     }
-  }, []);
+  }, [refresh]);
 
   // Debounced auto-schedule: batches rapid task completions into a single
   // scheduleAll call so we don't fire the scheduler N times in quick succession.
@@ -725,6 +721,7 @@ function App() {
 
   useEffect(() => {
     if (auth.isAuthenticated && !didAuthTransitionRef.current) refresh();
+    // eslint-disable-next-line react-hooks/immutability -- tracking previous auth state via ref
     didAuthTransitionRef.current = auth.isAuthenticated;
   }, [auth.isAuthenticated, refresh]);
 
@@ -733,6 +730,7 @@ function App() {
   // Mirror `calendar` into a ref so the effect can call `refreshEvents`
   // without listing the whole `calendar` object in its deps.
   const calendarRef = useRef(calendar);
+  // eslint-disable-next-line react-hooks/immutability -- holding a cached ref to avoid effect deps on calendar object
   useEffect(() => { calendarRef.current = calendar; }, [calendar]);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Sparkles, Calendar, Zap, Keyboard, Lightbulb } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -50,23 +50,16 @@ export function ContextualHints({
   const [dismissed, setDismissed] = useState<Set<string>>(getDismissed);
   const [entered, setEntered] = useState(false);
 
-  // Mirror callbacks into refs so we don't recompute hints when parent re-renders
-  const callbacksRef = useRef({ onScheduleAll, onOpenKeyboardHelp, onConnectCalendar });
-  useEffect(() => {
-    callbacksRef.current = { onScheduleAll, onOpenKeyboardHelp, onConnectCalendar };
-  }, [onScheduleAll, onOpenKeyboardHelp, onConnectCalendar]);
-
-  // Compute hints based only on scalar state (stable across re-renders)
+  // Compute hints based on scalar state and stable callbacks.
   const hints = useMemo((): Hint[] => {
     const list: Hint[] = [];
-    const cbs = callbacksRef.current;
 
     if (!hasCalendar) {
       list.push({
         id: 'connect-calendar',
         icon: <Calendar className="w-3.5 h-3.5" />,
         message: 'Connect your Google Calendar to see meetings and find open time slots.',
-        action: { label: 'Connect', onClick: cbs.onConnectCalendar },
+        action: { label: 'Connect', onClick: onConnectCalendar },
         dismissKey: 'hint-connect-calendar',
         priority: 'high',
       });
@@ -77,7 +70,7 @@ export function ContextualHints({
         id: 'many-unscheduled',
         icon: <Sparkles className="w-3.5 h-3.5" />,
         message: `You have ${unscheduledCount} unscheduled tasks. Let Tempo place them automatically.`,
-        action: { label: 'Schedule all', onClick: cbs.onScheduleAll },
+        action: { label: 'Schedule all', onClick: onScheduleAll },
         dismissKey: 'hint-many-unscheduled',
         priority: 'high',
       });
@@ -98,7 +91,7 @@ export function ContextualHints({
         id: 'keyboard-shortcuts',
         icon: <Keyboard className="w-3.5 h-3.5" />,
         message: 'Press Q to quick-add, S to schedule all, or ? for all shortcuts.',
-        action: { label: 'View shortcuts', onClick: cbs.onOpenKeyboardHelp },
+        action: { label: 'View shortcuts', onClick: onOpenKeyboardHelp },
         dismissKey: 'hint-keyboard-shortcuts',
         priority: 'medium',
       });
@@ -106,21 +99,24 @@ export function ContextualHints({
 
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     return list.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-  }, [unscheduledCount, taskCount, hasCalendar]);
+  }, [unscheduledCount, taskCount, hasCalendar, onScheduleAll, onOpenKeyboardHelp, onConnectCalendar]);
 
   const currentHint = useMemo(() => {
     return hints.find((h) => !dismissed.has(h.dismissKey)) ?? null;
   }, [hints, dismissed]);
 
-  // Entrance animation
+  // Entrance animation — delay entrance by 100ms for spring feel.
+  const currentDismissKey = currentHint?.dismissKey ?? null;
   useEffect(() => {
-    if (currentHint) {
+    if (currentDismissKey) {
       const timer = setTimeout(() => setEntered(true), 100);
       return () => clearTimeout(timer);
-    } else {
-      setEntered(false);
     }
-  }, [currentHint?.dismissKey]);
+    // Only reset entered when no hint is active; skip during transitions
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional animation reset
+    if (!currentHint) setEntered(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reset when hint goes away
+  }, [currentDismissKey]);
 
   const handleDismiss = useCallback((key: string) => {
     saveDismissed(key);

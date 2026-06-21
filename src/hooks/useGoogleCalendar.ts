@@ -304,6 +304,7 @@ export function useGoogleCalendar({
     } else {
       // No Google access token in session — clearing
       clearAccessToken();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on sign-out, batched in React 18+
       setEvents([]);
       setLastSyncAt(null);
     }
