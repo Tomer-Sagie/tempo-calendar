@@ -329,7 +329,7 @@ export function TempoCalendarWeekView({
               {/* +N overflow indicators */}
               {allDayPerDay.map((dayEvents, colIdx) => {
                 if (dayEvents.length <= 2) return null;
-                const left = `calc(56px + (100% - 56px - ${SCROLLBAR_W}px) * ${colIdx} / 7)`;
+                const left = `calc(56px + (100% - 56px - ${SCROLLBAR_W}px) * ${colIdx} / 7 + 1px)`;
                 return (
                   <span
                     key={`overflow-${colIdx}`}
