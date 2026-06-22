@@ -286,8 +286,12 @@ export function TempoCalendarWeekView({
               {days.map((d, i) => (
                 <div
                   key={d.toISOString()}
-                  className="border-r border-border/30 last:border-r-0 px-1 py-0.5 min-h-[24px] flex flex-wrap gap-0.5 items-start"
+                  className="border-r border-border/30 last:border-r-0 px-1 py-0.5 min-h-[24px] flex flex-wrap gap-0.5 items-start relative"
                 >
+                  {/* DEBUG: column label overlay to verify alignment */}
+                  <span className="absolute bottom-0.5 right-0.5 text-[7px] text-muted-foreground/30 pointer-events-none tabular-nums select-none z-10">
+                    {format(d, 'EEE d')}
+                  </span>
                   {allDayPerDay[i].slice(0, 2).map((ev) => {
                     const evColor = ev.data?.color || '';
                     const isLocked = ev.data?.is_locked;
