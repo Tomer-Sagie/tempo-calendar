@@ -111,12 +111,20 @@ export function generateRecurringOccurrences(
         const occStart = override?.scheduled_start
           ? parseISO(override.scheduled_start)
           : new Date(candidate);
-        const occEnd = override?.scheduled_end
+        const rawOccEnd = override?.scheduled_end
           ? parseISO(override.scheduled_end)
           : addMinutes(occStart, Math.round(durationMs / 60000));
 
         // All-day detection (midnight-to-midnight spans)
-        const isAllDay = isAllDayTimeString(occStart.toISOString(), occEnd.toISOString());
+        const isAllDay = isAllDayTimeString(occStart.toISOString(), rawOccEnd.toISOString());
+
+        // Both the scheduler and Google API use exclusive end dates for
+        // all-day events. Subtract 1 ms so the end falls on the actual
+        // last day — prevents the event from appearing in two day columns
+        // via getEventsForDay and getMultiDayEvents.
+        const occEnd = isAllDay
+          ? new Date(rawOccEnd.getTime() - 1)
+          : rawOccEnd;
 
         // Determine status: override status wins, then base task status
         const occurrenceStatus = override?.status || task.status;

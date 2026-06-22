@@ -274,7 +274,13 @@ function App() {
         id: ev.id,
         title: ev.title,
         start: parseEventTime(ev.startTime, isAllDay),
-        end: parseEventTime(ev.endTime, isAllDay),
+        // Google Calendar uses exclusive end dates for all-day events
+        // (midnight of the day *after* the last day). Subtract 1 ms so
+        // the end falls on the actual last day — prevents the event from
+        // appearing in two day columns via getEventsForDay.
+        end: isAllDay
+          ? new Date(parseEventTime(ev.endTime, true).getTime() - 1)
+          : parseEventTime(ev.endTime, false),
         variant,
         allDay: isAllDay,
         data: {

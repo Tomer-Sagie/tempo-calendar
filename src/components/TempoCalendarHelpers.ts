@@ -170,15 +170,13 @@ export function getMultiDayEvents(
   const lastDay = days[days.length - 1];
 
   for (const ev of events) {
-    // All-day events use exclusive end dates (midnight of the day *after*
-    // the last day).  A single-day all-day event has start=Day N 00:00 and
-    // end=Day N+1 00:00.  Instead of trying to fix the dates, simply check
-    // isSameDay(start, end - 1s): for a single-day event this always lands
-    // on the same calendar day as start, regardless of timezone, DST, or
-    // any date manipulation applied earlier in the pipeline.
-    const ONE_SECOND_MS = 1000;
+    // All-day events: both the data pipeline (baseEvents, recurring) and
+    // the isMultiDay check below handle exclusive-end convention (end =
+    // midnight of day after).  The -1ms adjustment in the data pipeline
+    // makes single-day events pass isSameDay here; true multi-day events
+    // still fail it and render as spanning bars.
     const isMultiDay = ev.allDay
-      ? !isSameDay(ev.start, new Date(ev.end.getTime() - ONE_SECOND_MS))
+      ? !isSameDay(ev.start, ev.end)
       : (!isSameDay(ev.start, ev.end) && !isShortMidnightCrossing(ev));
     if (!isMultiDay) continue;
 
