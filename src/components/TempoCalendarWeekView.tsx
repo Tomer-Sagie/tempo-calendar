@@ -300,9 +300,9 @@ export function TempoCalendarWeekView({
                 const isFlexible = !isLocked && !isGoogle && ev.data?.source === 'task';
                 const bgColor = evColor || '#7c8aff';
                 const textColor = evColor ? getContrastText(evColor) : '#ffffff';
-                // Column width = (full width - 56px gutter - scrollbar) / 7 columns
-                const left = `calc(56px + (100% - 56px - ${SCROLLBAR_W}px) * ${colIdx} / 7)`;
-                const width = `calc((100% - 56px - ${SCROLLBAR_W}px) / 7)`;
+                // Column width with 1px gap on each side so pills don't touch
+                const left = `calc(56px + (100% - 56px - ${SCROLLBAR_W}px) * ${colIdx} / 7 + 1px)`;
+                const width = `calc((100% - 56px - ${SCROLLBAR_W}px) / 7 - 2px)`;
                 const topPx = rowIdx * 24 + 2;
                 return (
                   <button
