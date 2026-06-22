@@ -255,8 +255,8 @@ export function TempoCalendarWeekView({
                 const isFlexible = !isLocked && !isGoogle && ev.data?.source === 'task';
                 const bgColor = evColor || '#7c8aff';
                 const textColor = evColor ? getContrastText(evColor) : '#ffffff';
-                const left = `calc(56px + (100% - 56px) * ${span.startCol} / 7)`;
-                const width = `calc((100% - 56px) * ${span.endCol - span.startCol + 1} / 7)`;
+                const left = `calc(56px + (100% - 56px - ${SCROLLBAR_W}px) * ${span.startCol} / 7 + 1px)`;
+                const width = `calc((100% - 56px - ${SCROLLBAR_W}px) * ${span.endCol - span.startCol + 1} / 7 - 2px)`;
                 const topPx = row * 24 + 2;
                 return (
                   <button
