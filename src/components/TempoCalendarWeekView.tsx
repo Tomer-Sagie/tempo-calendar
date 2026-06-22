@@ -134,9 +134,6 @@ export function TempoCalendarWeekView({
   );
   const hasAllDay = multiDaySpans.length > 0 || allDayPerDay.some((d) => d.length > 0);
 
-  // Scrollbar width matching .tempo-scrollbar::-webkit-scrollbar { width: 5px }
-  const SCROLLBAR_W = 5;
-
   // Max rows needed for stacking all-day pills vertically (capped at 2 visible + overflow)
   const allDayMaxRows = useMemo(
     () => Math.max(0, ...allDayPerDay.map((d) => Math.min(d.length, 2))),
@@ -151,6 +148,18 @@ export function TempoCalendarWeekView({
       ),
     [allDayPerDay],
   );
+
+  // Drag ghost day info — computed once so header highlight and ghost rectangle share it
+  const ghostDayInfo = useMemo(() => {
+    if (!dragGhost) return null;
+    const weekStartMidnight = startOfDay(weekStart);
+    const ghostStartMidnight = startOfDay(dragGhost.newStart);
+    const rawDayIdx = Math.round(
+      (ghostStartMidnight.getTime() - weekStartMidnight.getTime()) / (24 * 60 * 60_000),
+    );
+    const dayIdx = Math.max(0, Math.min(6, rawDayIdx));
+    return { rawDayIdx, dayIdx, isOffWeek: rawDayIdx !== dayIdx };
+  }, [dragGhost, weekStart]);
 
   // Scroll to current time on mount and update now-line via RAF (no React re-render)
   useEffect(() => {
@@ -204,46 +213,70 @@ export function TempoCalendarWeekView({
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-card rounded-xl border border-border/50 calendar-view-clip">
-      {/* Single scroll container — header + all-day pinned via sticky, only time grid scrolls */}
-      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto tempo-scrollbar calendar-scroll-host">
-        {/* Sticky header + all-day block — stays pinned at top like Google Calendar */}
-        <div className="calendar-sticky-header">
-          {/* Day header row */}
-          <div className={cn('grid border-b border-border/50', 'grid-cols-[56px_repeat(7,1fr)]')}>
-            <div className="border-r border-border" />
-            {days.map((d) => {
-              const t = isToday(d);
-              return (
-                <div
-                  key={d.toISOString()}
-                  className={cn('flex flex-col items-center py-2.5 border-r border-border/30 last:border-r-0 transition-colors',
-                    t && 'bg-primary/5',
+    <div className="flex-1 min-h-0 flex flex-col bg-card rounded-xl border border-border/50 overflow-hidden">
+      {/* ============================================================
+           FIXED HEADER — day titles + all-day strip. Never scrolls.
+           Uses flex-shrink:0 to stay pinned at top. No sticky needed.
+           Both header and time grid use the same grid template for
+           perfect column alignment: grid-cols-[56px_repeat(7,1fr)]
+           ============================================================ */}
+      <div className="shrink-0 bg-card relative">
+        {/* Day header row */}
+        <div className={cn('grid border-b border-border/50', 'grid-cols-[56px_repeat(7,1fr)]')}>
+          <div className="border-r border-border" />
+          {days.map((d) => {
+            const t = isToday(d);
+            return (
+              <div
+                key={d.toISOString()}
+                className={cn('flex flex-col items-center py-2.5 border-r border-border/30 last:border-r-0 transition-colors',
+                  t && 'bg-primary/5',
+                )}
+              >
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  {format(d, 'EEE')}
+                </span>
+                <span
+                  className={cn(
+                    'mt-0.5 text-sm font-semibold tabular-nums w-6 h-6 flex items-center justify-center rounded-full transition-colors',
+                    t ? 'bg-primary text-primary-foreground' : 'text-foreground',
                   )}
                 >
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    {format(d, 'EEE')}
-                  </span>
-                  <span
-                    className={cn(
-                      'mt-0.5 text-sm font-semibold tabular-nums w-6 h-6 flex items-center justify-center rounded-full transition-colors',
-                      t ? 'bg-primary text-primary-foreground' : 'text-foreground',
-                    )}
-                  >
-                    {format(d, 'd')}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                  {format(d, 'd')}
+                </span>
+              </div>
+            );
+          })}
+        </div>
 
-          {/* All-day row */}
-          {hasAllDay && (
-            <div className="border-b border-border/50 bg-card">
-          {/* Multi-day spanning events — each gets its own row spanning columns */}
+        {/* Drag ghost header highlight — rendered in fixed header so it's not clipped by scroll */}
+        {dragGhost && ghostDayInfo && (
+          <div
+            data-drag-ghost-header="true"
+            className="pointer-events-none absolute z-30 transition-colors"
+            style={{
+              left: `calc(56px + (100% - 56px) * ${ghostDayInfo.dayIdx} / 7)`,
+              width: `calc((100% - 56px) / 7)`,
+              top: 0,
+              height: '100%',
+              background: 'oklch(var(--primary) / 0.08)',
+              borderTop: '2px solid oklch(var(--primary))',
+            }}
+            aria-hidden
+          >
+            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-semibold uppercase tracking-wider text-primary">
+              Drop on {format(days[ghostDayInfo.dayIdx], 'EEE d')}
+            </div>
+          </div>
+        )}
+
+        {/* All-day row */}
+        {hasAllDay && (
+          <div className="border-b border-border/50 bg-card">
+          {/* Multi-day spanning events */}
           {multiDaySpans.length > 0 && (
             <div className="relative" style={{ minHeight: (Math.max(...multiDayRows, 0) + 1) * 24 + 4 }}>
-              {/* Grid column lines for positioning reference. pr-[5px] matches scrollbar. */}
+              {/* Grid column lines for positioning reference */}
               <div className="absolute inset-0 grid grid-cols-[56px_repeat(7,1fr)] pointer-events-none">
                 <div />
                 {days.map((d) => (
@@ -259,8 +292,8 @@ export function TempoCalendarWeekView({
                 const isFlexible = !isLocked && !isGoogle && ev.data?.source === 'task';
                 const bgColor = evColor || '#7c8aff';
                 const textColor = evColor ? getContrastText(evColor) : '#ffffff';
-                const left = `calc(56px + (100% - 56px - ${SCROLLBAR_W}px) * ${span.startCol} / 7 + 1px)`;
-                const width = `calc((100% - 56px - ${SCROLLBAR_W}px) * ${span.endCol - span.startCol + 1} / 7 - 2px)`;
+                const left = `calc(56px + (100% - 56px) * ${span.startCol} / 7 + 1px)`;
+                const width = `calc((100% - 56px) * ${span.endCol - span.startCol + 1} / 7 - 2px)`;
                 const topPx = row * 24 + 2;
                 return (
                   <button
@@ -287,10 +320,9 @@ export function TempoCalendarWeekView({
               })}
             </div>
           )}
-          {/* Single-day all-day events — absolutely positioned, bypassing grid/flex alignment issues */}
+          {/* Single-day all-day events */}
           {allDayPills.length > 0 && (
             <div className="relative" style={{ minHeight: allDayMaxRows * 24 + 4 }}>
-              {/* Column guide lines — match scrollbar-compensated pill positions */}
               <div className="absolute inset-0 grid grid-cols-[56px_repeat(7,1fr)] pointer-events-none">
                 <div />
                 {days.map((d) => (
@@ -304,9 +336,8 @@ export function TempoCalendarWeekView({
                 const isFlexible = !isLocked && !isGoogle && ev.data?.source === 'task';
                 const bgColor = evColor || '#7c8aff';
                 const textColor = evColor ? getContrastText(evColor) : '#ffffff';
-                // Column width with 1px gap on each side so pills don't touch
-                const left = `calc(56px + (100% - 56px - ${SCROLLBAR_W}px) * ${colIdx} / 7 + 1px)`;
-                const width = `calc((100% - 56px - ${SCROLLBAR_W}px) / 7 - 2px)`;
+                const left = `calc(56px + (100% - 56px) * ${colIdx} / 7 + 1px)`;
+                const width = `calc((100% - 56px) / 7 - 2px)`;
                 const topPx = rowIdx * 24 + 2;
                 return (
                   <button
@@ -333,7 +364,7 @@ export function TempoCalendarWeekView({
               {/* +N overflow indicators */}
               {allDayPerDay.map((dayEvents, colIdx) => {
                 if (dayEvents.length <= 2) return null;
-                const left = `calc(56px + (100% - 56px - ${SCROLLBAR_W}px) * ${colIdx} / 7 + 1px)`;
+                const left = `calc(56px + (100% - 56px) * ${colIdx} / 7 + 1px)`;
                 return (
                   <span
                     key={`overflow-${colIdx}`}
@@ -348,9 +379,14 @@ export function TempoCalendarWeekView({
           )}
         </div>
       )}
-        </div>{/* end sticky header+all-day block */}
+      </div>{/* end fixed header */}
 
-        {/* Time grid — scrolls underneath the sticky header */}
+      {/* ============================================================
+           SCROLLABLE TIME GRID — the only part that scrolls.
+           Uses the same grid template as the fixed header for
+           perfect column alignment.
+           ============================================================ */}
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto tempo-scrollbar">
         <div
           ref={gridRef}
           className="relative grid grid-cols-[56px_repeat(7,1fr)]"
@@ -435,17 +471,10 @@ export function TempoCalendarWeekView({
             );
           })}
 
-          {/* Drag ghost — translucent preview at the target day/time */}
-          {dragGhost &&
+          {/* Drag ghost — translucent preview at the target day/time. Header highlight is rendered in the fixed header above. */}
+          {dragGhost && ghostDayInfo &&
             (() => {
-              const weekStartMidnight = startOfDay(weekStart);
-              const ghostStartMidnight = startOfDay(dragGhost.newStart);
-              const rawDayIdx = Math.round(
-                (ghostStartMidnight.getTime() - weekStartMidnight.getTime()) / (24 * 60 * 60_000),
-              );
-              // Clamp to visible week (0..6) so the ghost stays on-screen
-              // even if the user drags past the edge.
-              const dayIdx = Math.max(0, Math.min(6, rawDayIdx));
+              const dayIdx = ghostDayInfo.dayIdx;
               const dayDate = addDays(weekStart, dayIdx);
               const visibleStart = setMilliseconds(
                 setSeconds(setMinutes(setHours(dayDate, startHour), 0), 0),
@@ -453,15 +482,12 @@ export function TempoCalendarWeekView({
               );
               const minutesFromTop = differenceInMinutes(dragGhost.newStart, visibleStart);
               const durationMin = differenceInMinutes(dragGhost.newEnd, dragGhost.newStart);
-              // Top is clamped to the visible window; the ghost extends out
-              // of the top/bottom as needed so the user sees "this won't fit".
               const top = Math.max(0, (minutesFromTop / 60) * HOUR_HEIGHT);
               const visibleMaxTop = (endHour - startHour) * HOUR_HEIGHT;
               const height = Math.max(
                 22,
                 Math.min(visibleMaxTop - top, (durationMin / 60) * HOUR_HEIGHT),
               );
-              // Position the ghost inside the target day column, just like DraggableEvent.
               const left = `calc(56px + 3px + (100% - 56px - 6px) * ${dayIdx} / 7)`;
               const width = `calc((100% - 56px - 6px) / 7)`;
               const variantClass =
@@ -476,30 +502,8 @@ export function TempoCalendarWeekView({
                   : dragGhost.variant === 'muted'
                   ? 'bg-muted border-muted-foreground/30 text-foreground'
                   : 'bg-primary/20 border-primary text-foreground';
-              // Highlight the target column header
-              const targetDay = days[dayIdx];
-              const isOffWeek = rawDayIdx !== dayIdx;
               return (
                 <>
-                  {/* Column header highlight */}
-                  <div
-                    data-drag-ghost-header="true"
-                    className="pointer-events-none absolute z-30 transition-colors"
-                    style={{
-                      // Header is `64px_repeat(7,1fr)`, height matches header
-                      left: `calc(56px + (100% - 56px) * ${dayIdx} / 7)`,
-                      width: `calc((100% - 56px) / 7)`,
-                      top: -48,
-                      height: 48,
-                      background: 'oklch(var(--primary) / 0.08)',
-                      borderTop: '2px solid oklch(var(--primary))',
-                    }}
-                    aria-hidden
-                  >
-                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                      Drop on {format(targetDay, 'EEE d')}
-                    </div>
-                  </div>
                   {/* Ghost rectangle */}
                   <div
                     data-drag-ghost="true"
@@ -519,12 +523,12 @@ export function TempoCalendarWeekView({
                     </div>
                   </div>
                   {/* Edge indicator: ghost is clamped (drag went past visible week) */}
-                  {isOffWeek && (
+                  {ghostDayInfo.isOffWeek && (
                     <div
                       className="absolute z-30 top-1 right-2 px-1.5 py-0.5 rounded bg-primary text-primary-foreground text-[9px] font-semibold pointer-events-none"
                       aria-hidden
                     >
-                      {rawDayIdx < 0 ? '<- past week' : 'past week ->'}
+                      {ghostDayInfo.rawDayIdx < 0 ? '<- past week' : 'past week ->'}
                     </div>
                   )}
                 </>

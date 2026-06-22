@@ -418,6 +418,8 @@ export function TempoCalendar({
           if (headerEl) {
             headerEl.style.left = `calc(56px + (100% - 56px) * ${dayClamped} / 7)`;
             headerEl.style.width = `calc((100% - 56px) / 7)`;
+            headerEl.style.top = '0';
+            headerEl.style.height = '100%';
           }
         }
         // Return same ref to avoid re-render
