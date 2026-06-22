@@ -266,8 +266,15 @@ function App() {
       return {
         id: ev.id,
         title: ev.title,
-        start: new Date(ev.startTime),
-        end: new Date(ev.endTime),
+        // For allDay task events, parse the date-only portion so the browser
+        // interprets it as local midnight regardless of timezone (avoids
+        // UTC→local shifts that push the event a day backward).
+        start: ev.allDay && ev.source === 'task'
+          ? new Date(ev.startTime.slice(0, 10))
+          : new Date(ev.startTime),
+        end: ev.allDay && ev.source === 'task'
+          ? new Date(ev.endTime.slice(0, 10))
+          : new Date(ev.endTime),
         variant,
         allDay: ev.allDay || false,
         data: {
