@@ -134,6 +134,24 @@ export function TempoCalendarWeekView({
   );
   const hasAllDay = multiDaySpans.length > 0 || allDayPerDay.some((d) => d.length > 0);
 
+  // Scrollbar width matching .tempo-scrollbar::-webkit-scrollbar { width: 5px }
+  const SCROLLBAR_W = 5;
+
+  // Max rows needed for stacking all-day pills vertically (capped at 2 visible + overflow)
+  const allDayMaxRows = useMemo(
+    () => Math.max(0, ...allDayPerDay.map((d) => Math.min(d.length, 2))),
+    [allDayPerDay],
+  );
+
+  // Flatten all-day pills into absolute-positioned items with col/row indices
+  const allDayPills = useMemo(
+    () =>
+      allDayPerDay.flatMap((dayEvents, colIdx) =>
+        dayEvents.slice(0, 2).map((ev, rowIdx) => ({ ev, colIdx, rowIdx })),
+      ),
+    [allDayPerDay],
+  );
+
   // Scroll to current time on mount and update now-line via RAF (no React re-render)
   useEffect(() => {
     if (!containerRef.current) return;
@@ -265,44 +283,63 @@ export function TempoCalendarWeekView({
               })}
             </div>
           )}
-          {/* Single-day all-day events — compact pills per day column. pr-[5px] matches scrollbar. */}
-          {allDayPerDay.some((d) => d.length > 0) && (
-            <div className="grid grid-cols-[56px_repeat(7,1fr)] pr-[5px]">
-              <div className="border-r border-border/70" />
-              {days.map((d, i) => (
-                <div
-                  key={d.toISOString()}
-                  className="border-r border-border/30 last:border-r-0 py-0.5 px-1 min-h-[24px] flex flex-col gap-0.5"
-                >
-                  {allDayPerDay[i].slice(0, 2).map((ev) => {
-                    const evColor = ev.data?.color || '';
-                    const isLocked = ev.data?.is_locked;
-                    const isGoogle = ev.data?.source === 'google';
-                    const isFlexible = !isLocked && !isGoogle && ev.data?.source === 'task';
-                    const bgColor = evColor || '#7c8aff';
-                    const textColor = evColor ? getContrastText(evColor) : '#ffffff';
-                    return (
-                      <button
-                        key={ev.id}
-                        onClick={() => onSelectEvent?.(ev)}
-                        className={cn(
-                          'w-full text-left px-1.5 py-0.5 text-[10px] font-medium rounded truncate transition-colors hover:brightness-95',
-                          isFlexible && 'all-day-flexible border border-dashed border-muted-foreground/15',
-                          !isFlexible && 'border border-solid',
-                        )}
-                        style={{ backgroundColor: bgColor, color: textColor, borderColor: evColor ? `${evColor}40` : 'var(--border)' }}
-                      >
-                        {ev.title}
-                      </button>
-                    );
-                  })}
-                  {allDayPerDay[i].length > 2 && (
-                    <span className="text-[9px] font-medium text-muted-foreground px-1">
-                      +{allDayPerDay[i].length - 2}
-                    </span>
-                  )}
-                </div>
-              ))}
+          {/* Single-day all-day events — absolutely positioned, bypassing grid/flex alignment issues */}
+          {allDayPills.length > 0 && (
+            <div className="relative" style={{ minHeight: allDayMaxRows * 24 + 4 }}>
+              {/* Column guide lines — match scrollbar-compensated pill positions */}
+              <div className="absolute inset-0 grid grid-cols-[56px_repeat(7,1fr)] pr-[5px] pointer-events-none">
+                <div />
+                {days.map((d) => (
+                  <div key={d.toISOString()} className="border-r border-border/20 last:border-r-0" />
+                ))}
+              </div>
+              {allDayPills.map(({ ev, colIdx, rowIdx }) => {
+                const evColor = ev.data?.color || '';
+                const isLocked = ev.data?.is_locked;
+                const isGoogle = ev.data?.source === 'google';
+                const isFlexible = !isLocked && !isGoogle && ev.data?.source === 'task';
+                const bgColor = evColor || '#7c8aff';
+                const textColor = evColor ? getContrastText(evColor) : '#ffffff';
+                // Column width = (full width - 56px gutter - scrollbar) / 7 columns
+                const left = `calc(56px + (100% - 56px - ${SCROLLBAR_W}px) * ${colIdx} / 7)`;
+                const width = `calc((100% - 56px - ${SCROLLBAR_W}px) / 7)`;
+                const topPx = rowIdx * 24 + 2;
+                return (
+                  <button
+                    key={ev.id}
+                    onClick={() => onSelectEvent?.(ev)}
+                    className={cn(
+                      'absolute h-[22px] text-[10px] font-medium rounded truncate transition-colors hover:brightness-95 px-1.5 flex items-center',
+                      isFlexible ? 'all-day-flexible border border-dashed border-muted-foreground/15' : 'border border-solid',
+                    )}
+                    style={{
+                      backgroundColor: bgColor,
+                      color: textColor,
+                      borderColor: evColor ? `${evColor}40` : 'var(--border)',
+                      left,
+                      width,
+                      top: topPx,
+                    }}
+                    title={ev.title}
+                  >
+                    {ev.title}
+                  </button>
+                );
+              })}
+              {/* +N overflow indicators */}
+              {allDayPerDay.map((dayEvents, colIdx) => {
+                if (dayEvents.length <= 2) return null;
+                const left = `calc(56px + (100% - 56px - ${SCROLLBAR_W}px) * ${colIdx} / 7)`;
+                return (
+                  <span
+                    key={`overflow-${colIdx}`}
+                    className="absolute text-[9px] font-medium text-muted-foreground px-1.5"
+                    style={{ left, top: allDayMaxRows * 24 + 2 }}
+                  >
+                    +{dayEvents.length - 2}
+                  </span>
+                );
+              })}
             </div>
           )}
         </div>
