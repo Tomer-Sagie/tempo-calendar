@@ -187,8 +187,8 @@ export function TempoCalendarWeekView({
 
   return (
     <div className="flex flex-col h-full bg-card rounded-xl border border-border/50 overflow-hidden">
-      {/* Day header row */}
-      <div className={cn('grid border-b border-border/50 bg-card', 'grid-cols-[56px_repeat(7,1fr)]')}>
+      {/* Day header row — pr-[5px] matches scrollbar width in time grid below */}
+      <div className={cn('grid border-b border-border/50 bg-card', 'grid-cols-[56px_repeat(7,1fr)] pr-[5px]')}>
         <div className="border-r border-border" />
         {days.map((d) => {
           const t = isToday(d);
@@ -221,8 +221,8 @@ export function TempoCalendarWeekView({
           {/* Multi-day spanning events — each gets its own row spanning columns */}
           {multiDaySpans.length > 0 && (
             <div className="relative" style={{ minHeight: (Math.max(...multiDayRows, 0) + 1) * 24 + 4 }}>
-              {/* Grid column lines for positioning reference */}
-              <div className="absolute inset-0 grid grid-cols-[56px_repeat(7,1fr)] pointer-events-none">
+              {/* Grid column lines for positioning reference. pr-[5px] matches scrollbar. */}
+              <div className="absolute inset-0 grid grid-cols-[56px_repeat(7,1fr)] pr-[5px] pointer-events-none">
                 <div />
                 {days.map((d) => (
                   <div key={d.toISOString()} className="border-r border-border/20 last:border-r-0" />
@@ -265,9 +265,9 @@ export function TempoCalendarWeekView({
               })}
             </div>
           )}
-          {/* Single-day all-day events — compact pills per day column */}
+          {/* Single-day all-day events — compact pills per day column. pr-[5px] matches scrollbar. */}
           {allDayPerDay.some((d) => d.length > 0) && (
-            <div className="grid grid-cols-[56px_repeat(7,1fr)]">
+            <div className="grid grid-cols-[56px_repeat(7,1fr)] pr-[5px]">
               <div className="border-r border-border/70" />
               {days.map((d, i) => (
                 <div
@@ -309,7 +309,7 @@ export function TempoCalendarWeekView({
       )}
 
       {/* Scrollable time grid — always visible so users can click slots */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto tempo-scrollbar relative">
+      <div ref={containerRef} className="flex-1 overflow-y-auto tempo-scrollbar relative [scrollbar-gutter:stable]">
         {/* Subtle empty-state overlay when no events */}
         {events.length === 0 && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-6 bg-card/60 backdrop-blur-[1px] pointer-events-none" role="status">
