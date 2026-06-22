@@ -272,7 +272,7 @@ export function TempoCalendarWeekView({
               {days.map((d, i) => (
                 <div
                   key={d.toISOString()}
-                  className="border-r border-border/30 last:border-r-0 py-0.5 min-h-[24px] flex flex-wrap gap-0.5 items-start"
+                  className="border-r border-border/30 last:border-r-0 py-0.5 px-1 min-h-[24px] flex flex-col gap-0.5"
                 >
                   {allDayPerDay[i].slice(0, 2).map((ev) => {
                     const evColor = ev.data?.color || '';
