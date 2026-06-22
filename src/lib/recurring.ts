@@ -1,4 +1,4 @@
-import { addDays, parseISO, format, getDay, startOfWeek, startOfDay } from 'date-fns';
+import { addDays, addMinutes, parseISO, format, getDay, startOfWeek, startOfDay } from 'date-fns';
 import type { Task } from './types';
 import type { CalendarEventType } from '../components/TempoCalendarHelpers';
 import { isAllDayTimeString } from './utils';
@@ -57,9 +57,16 @@ export function generateRecurringOccurrences(
 
   const occurrences: CalendarEventType[] = [];
 
-  // Preserve the time-of-day from the base occurrence so generated
-  // occurrences start at the same clock time, not at midnight.
-  const timeOfDayMs = baseStart.getTime() - startOfDay(baseStart).getTime();
+  // Preserve the wall-clock time from the base occurrence. Instead of
+  // computing a raw ms offset from midnight (which breaks across DST
+  // transitions where days are 23 or 25 hours), we snap to the target
+  // calendar day with `addDays` and then copy the local hour/minute
+  // directly. `addDays` is DST-aware; `setHours` respects the local
+  // timezone of the target day.
+  const baseHours = baseStart.getHours();
+  const baseMinutes = baseStart.getMinutes();
+  const baseSeconds = baseStart.getSeconds();
+  const baseMs = baseStart.getMilliseconds();
 
   // Start from the beginning of the week containing the base start.
   const weekStart = startOfWeek(startOfDay(baseStart), { weekStartsOn: 1 });
@@ -83,7 +90,10 @@ export function generateRecurringOccurrences(
     for (const isoDay of sortedDays) {
       // isoDay is 1-7 (Mon-Sun). Compute the offset from week start (Mon = 0).
       const dayOffset = isoDay - 1; // 0=Mon, 6=Sun
-      const candidate = new Date(weekCursor.getTime() + dayOffset * 24 * 60 * 60 * 1000 + timeOfDayMs);
+      // DST-safe: compute the target calendar day, then set the local
+      // wall-clock time directly so the hour doesn't drift on DST boundaries.
+      const candidate = addDays(weekCursor, dayOffset);
+      candidate.setHours(baseHours, baseMinutes, baseSeconds, baseMs);
 
       // Only include if it's within the requested range and after the base start
       if (candidate >= fromDate && candidate <= horizon && candidate >= baseStart) {
@@ -103,7 +113,7 @@ export function generateRecurringOccurrences(
           : new Date(candidate);
         const occEnd = override?.scheduled_end
           ? parseISO(override.scheduled_end)
-          : new Date(occStart.getTime() + durationMs);
+          : addMinutes(occStart, Math.round(durationMs / 60000));
 
         // Determine status: override status wins, then base task status
         const occurrenceStatus = override?.status || task.status;
