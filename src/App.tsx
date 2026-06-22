@@ -1228,7 +1228,7 @@ function App() {
         {/* Calendar workspace */}
         <div
           data-onboarding="calendar"
-          className={`flex-1 flex flex-col min-w-0 p-3 gap-3 ${activeView === 'calendar' || activeView === 'today' ? '' : activeView === 'insights' ? 'hidden' : 'hidden lg:flex'}`}
+          className={`flex-1 flex flex-col min-w-0 min-h-0 p-3 gap-3 ${activeView === 'calendar' || activeView === 'today' ? '' : activeView === 'insights' ? 'hidden' : 'hidden lg:flex'}`}
         >
           {activeView === 'calendar' && allTasks.length === 0 && calendar.events.length === 0 && !tasksHook.isLoading && (
             <Suspense fallback={null}>
@@ -1263,6 +1263,7 @@ function App() {
             onSkipEvent={handleSkipEvent}
             onViewRangeChange={setVisibleRange}
             navigateToDate={navigateToDate}
+            isLoading={tasksHook.isLoading || !calendar.isLoaded}
             startHour={6}
             endHour={24}
             weekStartsOn={calendarSettings.weekStartsOn}

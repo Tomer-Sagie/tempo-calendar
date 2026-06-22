@@ -69,7 +69,7 @@ export function useTasks(): UseTasksReturn {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskLists, setTaskLists] = useState<TaskList[]>([]);
   const [schedulingProfiles, setSchedulingProfiles] = useState<SchedulingProfile[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncErrors, setSyncErrors] = useState<string[]>([]);
   const mountedRef = useRef(false);
