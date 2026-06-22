@@ -179,7 +179,7 @@ export function TempoCalendarDayView({
       )}
 
       {/* Scrollable time grid — always visible so users can click slots */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto tempo-scrollbar relative">
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto tempo-scrollbar relative">
         {/* Subtle empty-state overlay when no events */}
         {events.length === 0 && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-6 bg-card/60 backdrop-blur-[1px] pointer-events-none" role="status">

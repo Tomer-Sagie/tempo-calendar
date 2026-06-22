@@ -206,7 +206,7 @@ export function TempoCalendarWeekView({
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-card rounded-xl border border-border/50 overflow-hidden">
       {/* Single scroll container — header + all-day pinned via sticky, only time grid scrolls */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto tempo-scrollbar">
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto tempo-scrollbar">
         {/* Sticky header + all-day block — stays pinned at top like Google Calendar */}
         <div className="sticky top-0 z-20 bg-card">
           {/* Day header row */}
