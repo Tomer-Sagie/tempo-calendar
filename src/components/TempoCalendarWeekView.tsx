@@ -263,7 +263,7 @@ export function TempoCalendarWeekView({
                     key={ev.id}
                     onClick={() => onSelectEvent?.(ev)}
                     className={cn(
-                      'absolute h-[22px] text-[10px] font-medium rounded truncate transition-colors hover:brightness-95 px-1.5 flex items-center border-l-[3px]',
+                      'absolute h-[22px] text-[10px] font-medium rounded truncate transition-[box-shadow,transform,filter] duration-150 hover:brightness-95 hover:-translate-y-px hover:shadow-md cursor-pointer px-1.5 flex items-center border-l-[3px] shadow-sm',
                       isFlexible && 'all-day-flexible border-dashed',
                       !isFlexible && 'border-solid',
                     )}
@@ -309,7 +309,7 @@ export function TempoCalendarWeekView({
                     key={ev.id}
                     onClick={() => onSelectEvent?.(ev)}
                     className={cn(
-                      'absolute h-[22px] text-[10px] font-medium rounded truncate transition-colors hover:brightness-95 px-1.5 flex items-center',
+                      'absolute h-[22px] text-[10px] font-medium rounded truncate transition-[box-shadow,transform,filter] duration-150 hover:brightness-95 hover:-translate-y-px hover:shadow-md cursor-pointer px-1.5 flex items-center shadow-sm',
                       isFlexible ? 'all-day-flexible border border-dashed border-muted-foreground/15' : 'border border-solid',
                     )}
                     style={{
