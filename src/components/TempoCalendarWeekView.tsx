@@ -204,43 +204,47 @@ export function TempoCalendarWeekView({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-xl border border-border/50 overflow-hidden">
-      {/* Day header row — pr-[5px] matches scrollbar width in time grid below */}
-      <div className={cn('grid border-b border-border/50 bg-card', 'grid-cols-[56px_repeat(7,1fr)] pr-[5px]')}>
-        <div className="border-r border-border" />
-        {days.map((d) => {
-          const t = isToday(d);
-          return (
-            <div
-              key={d.toISOString()}
-              className={cn(                  'flex flex-col items-center py-2.5 border-r border-border/30 last:border-r-0 transition-colors',
-                t && 'bg-primary/5',
-              )}
-            >
-              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                {format(d, 'EEE')}
-              </span>
-              <span
-                className={cn(
-                  'mt-0.5 text-sm font-semibold tabular-nums w-6 h-6 flex items-center justify-center rounded-full transition-colors',
-                  t ? 'bg-primary text-primary-foreground' : 'text-foreground',
-                )}
-              >
-                {format(d, 'd')}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+    <div className="flex flex-col h-full bg-card rounded-xl border border-border/50">
+      {/* Single scroll container — header + all-day pinned via sticky, only time grid scrolls */}
+      <div ref={containerRef} className="flex-1 overflow-y-auto tempo-scrollbar">
+        {/* Sticky header + all-day block — stays pinned at top like Google Calendar */}
+        <div className="sticky top-0 z-20 bg-card">
+          {/* Day header row */}
+          <div className={cn('grid border-b border-border/50', 'grid-cols-[56px_repeat(7,1fr)]')}>
+            <div className="border-r border-border" />
+            {days.map((d) => {
+              const t = isToday(d);
+              return (
+                <div
+                  key={d.toISOString()}
+                  className={cn('flex flex-col items-center py-2.5 border-r border-border/30 last:border-r-0 transition-colors',
+                    t && 'bg-primary/5',
+                  )}
+                >
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    {format(d, 'EEE')}
+                  </span>
+                  <span
+                    className={cn(
+                      'mt-0.5 text-sm font-semibold tabular-nums w-6 h-6 flex items-center justify-center rounded-full transition-colors',
+                      t ? 'bg-primary text-primary-foreground' : 'text-foreground',
+                    )}
+                  >
+                    {format(d, 'd')}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
 
-      {/* All-day row — spanning bars for multi-day events + pills for single-day all-day */}
-      {hasAllDay && (
-        <div className="border-b border-border/50 bg-card">
+          {/* All-day row */}
+          {hasAllDay && (
+            <div className="border-b border-border/50 bg-card">
           {/* Multi-day spanning events — each gets its own row spanning columns */}
           {multiDaySpans.length > 0 && (
             <div className="relative" style={{ minHeight: (Math.max(...multiDayRows, 0) + 1) * 24 + 4 }}>
               {/* Grid column lines for positioning reference. pr-[5px] matches scrollbar. */}
-              <div className="absolute inset-0 grid grid-cols-[56px_repeat(7,1fr)] pr-[5px] pointer-events-none">
+              <div className="absolute inset-0 grid grid-cols-[56px_repeat(7,1fr)] pointer-events-none">
                 <div />
                 {days.map((d) => (
                   <div key={d.toISOString()} className="border-r border-border/20 last:border-r-0" />
@@ -287,7 +291,7 @@ export function TempoCalendarWeekView({
           {allDayPills.length > 0 && (
             <div className="relative" style={{ minHeight: allDayMaxRows * 24 + 4 }}>
               {/* Column guide lines — match scrollbar-compensated pill positions */}
-              <div className="absolute inset-0 grid grid-cols-[56px_repeat(7,1fr)] pr-[5px] pointer-events-none">
+              <div className="absolute inset-0 grid grid-cols-[56px_repeat(7,1fr)] pointer-events-none">
                 <div />
                 {days.map((d) => (
                   <div key={d.toISOString()} className="border-r border-border/20 last:border-r-0" />
@@ -344,26 +348,26 @@ export function TempoCalendarWeekView({
           )}
         </div>
       )}
+        </div>{/* end sticky header+all-day block */}
 
-      {/* Scrollable time grid — always visible so users can click slots */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto tempo-scrollbar relative">
-        {/* Subtle empty-state overlay when no events */}
-        {events.length === 0 && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-6 bg-card/60 backdrop-blur-[1px] pointer-events-none" role="status">
-            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mb-3">
-              <CalendarDays className="w-5 h-5 text-muted-foreground/60" />
-            </div>
-            <p className="text-sm font-medium text-foreground mb-1">Nothing scheduled this week</p>
-            <p className="text-xs text-muted-foreground max-w-[260px] leading-relaxed">
-              Click any time slot to create a task. Press <kbd className="inline-flex items-center h-4 px-1 font-mono text-[10px] font-medium bg-muted border border-border rounded mx-0.5">Q</kbd> to quick-add.
-            </p>
-          </div>
-        )}
+        {/* Time grid — scrolls underneath the sticky header */}
         <div
           ref={gridRef}
           className="relative grid grid-cols-[56px_repeat(7,1fr)]"
           style={{ height: (endHour - startHour) * HOUR_HEIGHT }}
         >
+          {/* Subtle empty-state overlay when no events */}
+          {events.length === 0 && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-6 bg-card/60 backdrop-blur-[1px] pointer-events-none" role="status">
+              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mb-3">
+                <CalendarDays className="w-5 h-5 text-muted-foreground/60" />
+              </div>
+              <p className="text-sm font-medium text-foreground mb-1">Nothing scheduled this week</p>
+              <p className="text-xs text-muted-foreground max-w-[260px] leading-relaxed">
+                Click any time slot to create a task. Press <kbd className="inline-flex items-center h-4 px-1 font-mono text-[10px] font-medium bg-muted border border-border rounded mx-0.5">Q</kbd> to quick-add.
+              </p>
+            </div>
+          )}
           {/* Hour gutter */}              <div className="border-r border-border/70">
             {hours.map((h) => (
               <div key={h} data-hour={h} className="relative border-b border-border/20" style={{ height: HOUR_HEIGHT }}>
@@ -480,7 +484,7 @@ export function TempoCalendarWeekView({
                   {/* Column header highlight */}
                   <div
                     data-drag-ghost-header="true"
-                    className="pointer-events-none absolute z-10 transition-colors"
+                    className="pointer-events-none absolute z-30 transition-colors"
                     style={{
                       // Header is `64px_repeat(7,1fr)`, height matches header
                       left: `calc(56px + (100% - 56px) * ${dayIdx} / 7)`,
