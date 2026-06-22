@@ -7,6 +7,7 @@ import { useSubtasksBatch } from './hooks/useSubtasksBatch';
 import { BentoSidebar } from './components/BentoSidebar';
 import { Header } from './components/Header';
 import { TempoCalendar, type CalendarEventType } from './components/TempoCalendar';
+import { parseEventTime } from './components/TempoCalendarHelpers';
 import { TaskList } from './components/TaskList';
 
 
@@ -266,15 +267,8 @@ function App() {
       return {
         id: ev.id,
         title: ev.title,
-        // For allDay task events, parse the date-only portion so the browser
-        // interprets it as local midnight regardless of timezone (avoids
-        // UTC→local shifts that push the event a day backward).
-        start: ev.allDay && ev.source === 'task'
-          ? new Date(ev.startTime.slice(0, 10))
-          : new Date(ev.startTime),
-        end: ev.allDay && ev.source === 'task'
-          ? new Date(ev.endTime.slice(0, 10))
-          : new Date(ev.endTime),
+        start: parseEventTime(ev.startTime, ev.allDay || false, ev.source),
+        end: parseEventTime(ev.endTime, ev.allDay || false, ev.source),
         variant,
         allDay: ev.allDay || false,
         data: {

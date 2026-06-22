@@ -250,6 +250,28 @@ interface PositionedEvent extends CalendarEventType {
 }
 
 /**
+ * Parse an ISO date-time string into a local Date for calendar rendering.
+ *
+ * For allDay task events, parses only the date portion (e.g. "2024-01-15")
+ * so the browser interprets it as local midnight regardless of UTC timezone
+ * offsets. Without this, "2024-01-15T00:00:00.000Z" in EST would produce
+ * Jan 14 7pm, shifting the all-day event a day backward.
+ *
+ * For timed task events and all Google events (which already use date-only
+ * strings for all-day events), parses the full ISO string normally.
+ */
+export function parseEventTime(
+  isoTime: string,
+  allDay: boolean,
+  source: 'google' | 'task',
+): Date {
+  if (allDay && source === 'task') {
+    return new Date(isoTime.slice(0, 10));
+  }
+  return new Date(isoTime);
+}
+
+/**
  * Position events on a day, handling overlap with side-by-side columns.
  * Pure function — easy to unit-test if needed.
  *
