@@ -7,8 +7,8 @@
    ============================================= */
 
 :root {
-  /* Surfaces — pure white, flat */
-  --background: oklch(1 0 0);
+  /* Surfaces — background tinted for depth, cards stay white to pop */
+  --background: oklch(0.975 0.005 260);
   --foreground: oklch(0.18 0.005 260);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.005 260);
@@ -23,12 +23,12 @@
   --secondary: oklch(0.965 0.003 260);
   --secondary-foreground: oklch(0.32 0.012 260);
 
-  /* Muted — clean, flat gray */
-  --muted: oklch(0.965 0.003 260);
+  /* Muted — visible contrast against white cards */
+  --muted: oklch(0.94 0.008 260);
   --muted-foreground: oklch(0.5 0.012 260);
 
-  /* Accent — hover state */
-  --accent: oklch(0.955 0.008 260);
+  /* Accent — subtle blue undertone for hover states */
+  --accent: oklch(0.91 0.015 260);
   --accent-foreground: oklch(0.22 0.015 260);
 
   /* Status — muted, professional */
@@ -39,9 +39,9 @@
   --info: oklch(0.52 0.12 250);
   --overdue: oklch(0.52 0.18 20);
 
-  /* Borders — ultra-thin, barely there */
-  --border: oklch(0.92 0.003 260);
-  --input: oklch(0.94 0.003 260);
+  /* Borders — visible enough to define structure */
+  --border: oklch(0.87 0.012 260);
+  --input: oklch(0.89 0.010 260);
   --ring: oklch(0.52 0.16 260);
 
   /* Calendar events — Reclaim-style: subtle backgrounds, strong left accents */
