@@ -170,14 +170,14 @@ export function getMultiDayEvents(
   const lastDay = days[days.length - 1];
 
   for (const ev of events) {
-    // All-day events are multi-day only if they genuinely span multiple
-    // calendar days (e.g. a 3-day vacation).  Single-day all-day events
-    // are rendered as pills in the all-day strip per day, not as spanning
-    // bars.  Timed events that span multiple calendar days (e.g. 11 PM →
-    // 1 AM) render in the time grid unless they're true multi-day — the
-    // short-midnight-crossing guard keeps those in the time grid too.
+    // All-day events use exclusive end dates (midnight of the day *after*
+    // the last day).  A single-day all-day event has start=Day N 00:00 and
+    // end=Day N+1 00:00 — these are different dates even though the event
+    // only occupies one day.  To test whether an all-day event is truly
+    // multi-day we check both the raw dates AND the end-minus-one-day.
     const isMultiDay = ev.allDay
-      ? !isSameDay(ev.start, ev.end)
+      ? !isSameDay(ev.start, ev.end) &&
+        !isSameDay(ev.start, new Date(ev.end.getTime() - 86400000))
       : (!isSameDay(ev.start, ev.end) && !isShortMidnightCrossing(ev));
     if (!isMultiDay) continue;
 
