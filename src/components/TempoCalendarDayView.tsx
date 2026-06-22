@@ -30,6 +30,8 @@ interface DayViewProps {
   endHour: number;
   onSelectEvent?: (event: CalendarEventType) => void;
   onSelectSlot?: (slot: { start: Date; end: Date }) => void;
+  onCompleteEvent?: (event: CalendarEventType) => void;
+  onSkipEvent?: (event: CalendarEventType) => void;
   /** Resize ghost — translucent preview of the new size during resize. */
   resizeGhost?: import('./TempoCalendarHelpers').DragGhostTarget | null;
   /** Start a resize operation on a task event. */
@@ -52,6 +54,8 @@ export function TempoCalendarDayView({
   endHour,
   onSelectEvent,
   onSelectSlot,
+  onCompleteEvent,
+  onSkipEvent,
   resizeGhost,
   onResizeStart,
   timeFormat = '12h',
@@ -248,6 +252,8 @@ export function TempoCalendarDayView({
                   key={ev.id}
                   event={ev}
                   onClick={(e) => onSelectEvent?.(e)}
+                  onComplete={onCompleteEvent}
+                  onSkip={onSkipEvent}
                   draggable={ev.data?.source === 'task' && !ev.data?.is_locked}
                   isLocked={ev.data?.is_locked}
                   onResizeStart={ev.data?.source === 'task' && !ev.data?.is_locked ? (dir, y) => onResizeStart?.(ev.id, dir, y) : undefined}

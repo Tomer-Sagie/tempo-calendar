@@ -43,6 +43,10 @@ export interface TempoCalendarProps {
   onEventDrop?: (eventId: string, newStart: Date, newEnd: Date) => void;
   /** Resize a task by dragging top or bottom edge */
   onEventResize?: (eventId: string, newStart: Date, newEnd: Date) => void;
+  /** Quick-complete a task event (inline action button) */
+  onCompleteEvent?: (event: CalendarEventType) => void;
+  /** Quick-skip a task event (inline action button) */
+  onSkipEvent?: (event: CalendarEventType) => void;
   /**
    * Called whenever the visible calendar range changes (date, view, or
    * navigation). The parent can use this to generate recurring task
@@ -125,6 +129,8 @@ export function TempoCalendar({
   onSelectSlot,
   onEventDrop,
   onEventResize,
+  onCompleteEvent,
+  onSkipEvent,
   onViewRangeChange,
   navigateToDate,
   className,
@@ -484,6 +490,8 @@ export function TempoCalendar({
                 endHour={endHour}
                 onSelectEvent={onSelectEvent}
                 onSelectSlot={onSelectSlot}
+                onCompleteEvent={onCompleteEvent}
+                onSkipEvent={onSkipEvent}
                 resizeGhost={resizeGhost}
                 onResizeStart={handleResizeStart}
                 timeFormat={timeFormat}
@@ -499,6 +507,8 @@ export function TempoCalendar({
                 endHour={endHour}
                 onSelectEvent={onSelectEvent}
                 onSelectSlot={onSelectSlot}
+                onCompleteEvent={onCompleteEvent}
+                onSkipEvent={onSkipEvent}
                 dayColumnWidthRef={dayColumnWidthRef}
                 dragGhost={dragGhost}
                 resizeGhost={resizeGhost}

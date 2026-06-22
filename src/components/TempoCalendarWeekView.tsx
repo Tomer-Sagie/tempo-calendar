@@ -35,6 +35,8 @@ interface WeekViewProps {
   endHour: number;
   onSelectEvent?: (event: CalendarEventType) => void;
   onSelectSlot?: (slot: { start: Date; end: Date }) => void;
+  onCompleteEvent?: (event: CalendarEventType) => void;
+  onSkipEvent?: (event: CalendarEventType) => void;
   /** Ref the parent reads to compute horizontal drag → day offset. */
   dayColumnWidthRef: DayColumnWidthRef;
   /**
@@ -65,6 +67,8 @@ export function TempoCalendarWeekView({
   endHour,
   onSelectEvent,
   onSelectSlot,
+  onCompleteEvent,
+  onSkipEvent,
   dayColumnWidthRef,
   dragGhost,
   resizeGhost,
@@ -371,6 +375,8 @@ export function TempoCalendarWeekView({
                       key={ev.id}
                       event={ev}
                       onClick={(e) => onSelectEvent?.(e)}
+                      onComplete={onCompleteEvent}
+                      onSkip={onSkipEvent}
                       draggable={ev.data?.source === 'task' && !ev.data?.is_locked}
                       isLocked={ev.data?.is_locked}
                       small

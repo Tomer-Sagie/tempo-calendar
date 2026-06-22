@@ -218,6 +218,9 @@ function App() {
         calendar: 'tasks',
         source: 'task' as const,
         color: t.color,
+        priority: t.priority,
+        due_date: t.due_date || undefined,
+        tags: t.tags || undefined,
         allDay: isAllDayTimeString(t.scheduled_start!, t.scheduled_end!),
       }));
     return [...googleEvents, ...taskEvents];
@@ -271,6 +274,9 @@ function App() {
           description: ev.description,
           source: ev.source,
           color: ev.color,
+          priority: ev.priority || (originalTask?.priority),
+          due_date: ev.due_date || (originalTask?.due_date || undefined),
+          tags: ev.tags || (originalTask?.tags || undefined),
           is_locked: isLocked,
           is_missed: isMissed,
           is_completed: isCompleted,
@@ -506,6 +512,40 @@ function App() {
     await tasksHookRef.current.complete(id);
     triggerAutoSchedule();
   }, [triggerAutoSchedule]);
+
+  // Quick-complete a task from the calendar event chip
+  const handleCompleteEvent = useCallback(async (event: CalendarEventType) => {
+    if (!event.id.startsWith('task-')) return;
+    const m = event.id.match(/^task-(.+?)(?:-occ-.+)?$/);
+    const taskId = m?.[1] ?? '';
+    if (!taskId) return;
+    await handleCompleteTask(taskId);
+    toast.success('Completed', { description: event.title });
+  }, [handleCompleteTask]);
+
+  // Quick-skip a task from the calendar event chip
+  const handleSkipEvent = useCallback((event: CalendarEventType) => {
+    if (!event.id.startsWith('task-')) return;
+    const m = event.id.match(/^task-(.+?)(?:-occ-.+)?$/);
+    const taskId = m?.[1] ?? '';
+    if (!taskId) return;
+    const task = allTasks.find((t) => t.id === taskId);
+    if (!task) return;
+    // For recurring tasks, open the occurrence scope dialog
+    if (event.id.includes('-occ-') || task.frequency !== 'once') {
+      setOccurrenceEdit({
+        open: true,
+        taskId,
+        occurrenceDate: event.start,
+        changeType: 'skip',
+        pendingUpdate: null,
+      });
+      return;
+    }
+    // For non-recurring tasks, just mark as skipped
+    void tasksHook.update(taskId, { status: 'skipped' });
+    toast.info('Skipped', { description: event.title });
+  }, [allTasks, tasksHook]);
 
   // Auto-import calendar names as task lists on first calendar connect.
   // Uses a localStorage flag so it only runs once per calendar set.
@@ -1206,6 +1246,8 @@ function App() {
             onSelectSlot={handleSelectSlot}
             onEventDrop={handleEventDrop}
             onEventResize={handleEventResize}
+            onCompleteEvent={handleCompleteEvent}
+            onSkipEvent={handleSkipEvent}
             onViewRangeChange={setVisibleRange}
             navigateToDate={navigateToDate}
             startHour={0}

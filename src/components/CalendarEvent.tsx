@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { format } from 'date-fns';
-import { Lock, GripVertical, Repeat, ExternalLink, Clock } from 'lucide-react';
+import { Lock, GripVertical, Repeat, Clock, CheckCircle2, SkipForward, Pencil, Hash, CalendarDays } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { CalendarEventType } from './TempoCalendar';
 
@@ -11,6 +11,8 @@ interface DraggableEventProps {
   event: CalendarEventType;
   isLocked?: boolean;
   onClick: (event: CalendarEventType) => void;
+  onComplete?: (event: CalendarEventType) => void;
+  onSkip?: (event: CalendarEventType) => void;
   /** Disable drag (e.g., for google events we don't own) */
   draggable?: boolean;
   /** Small variant for week view */
@@ -36,10 +38,27 @@ interface DraggableEventProps {
 /** Fallback color for task events that don't have an explicit color. */
 const DEFAULT_TASK_COLOR = '#6366f1';
 
+// Priority color mapping for the indicator dot
+const PRIORITY_COLORS: Record<string, string> = {
+  ASAP: '#DC2626',
+  HIGH: '#EA580C',
+  NORMAL: '#2563EB',
+  LOW: '#9CA3AF',
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  ASAP: 'ASAP',
+  HIGH: 'High',
+  NORMAL: 'Normal',
+  LOW: 'Low',
+};
+
 export function DraggableEvent({
   event,
   isLocked,
   onClick,
+  onComplete,
+  onSkip,
   draggable = true,
   small,
   positionStyle,
@@ -68,6 +87,7 @@ export function DraggableEvent({
   }, [isDragging]);
 
   const isCompleted = event.data?.is_completed;
+  const isSkipped = event.data?.is_skipped;
   const isGoogle = event.data?.source === 'google';
   const isRecurring = event.data?.is_recurring;
   const isBusyBlock = event.data?.is_busy_block;
@@ -75,12 +95,18 @@ export function DraggableEvent({
   const isSplitChunk = event.data?.is_split_chunk;
   const splitPosition = event.data?.split_position;
   const taskColor = event.data?.color;
+  const priority = event.data?.priority;
+  const dueDate = event.data?.due_date;
+  const tags = event.data?.tags;
 
   // For task events, use the task's assigned color as the left border accent.
   // Always apply a color so task events are never plain gray.
   const effectiveColor = taskColor && !isGoogle ? taskColor : (isGoogle ? '' : DEFAULT_TASK_COLOR);
   const colorBorder = effectiveColor ? { borderLeftColor: effectiveColor } : {};
   const colorBg = effectiveColor ? { backgroundColor: `${effectiveColor}18` } : {};
+
+  // Priority indicator
+  const priorityColor = priority ? PRIORITY_COLORS[priority] || PRIORITY_COLORS.NORMAL : null;
 
   // Reclaim-style: dashed border for flexible (non-locked) tasks, solid for fixed/locked
   const isFlexible = !isLocked && !isBusyBlock && !isGoogle;
@@ -89,12 +115,14 @@ export function DraggableEvent({
     ...colorBorder,
     ...(isGoogle ? {} : colorBg),
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.4 : isCompleted ? 0.55 : 1,
+    opacity: isDragging ? 0.4 : isCompleted || isSkipped ? 0.55 : 1,
     zIndex: isDragging ? 50 : isGoogle ? 5 : 10,
-    // Dashed border for flexible tasks (free to move), solid for fixed/locked
     ...(isFlexible ? { borderStyle: 'dashed', borderWidth: '2px' } : {}),
     ...(isLocked || isBusyBlock ? { borderStyle: 'solid' } : {}),
   };
+
+  // Show quick actions for task events that aren't completed, skipped, or google
+  const showQuickActions = !isGoogle && !isCompleted && !isSkipped && (onComplete || onSkip);
 
   // Google event popover state — minimal Reclaim-style
   const [showPopover, setShowPopover] = useState(false);
@@ -102,13 +130,25 @@ export function DraggableEvent({
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const eventRef = useRef<HTMLDivElement | null>(null);
 
+  // Task event tooltip on hover (shows extra info)
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTooltipTimer = useCallback(() => {
+    if (tooltipTimer.current) { clearTimeout(tooltipTimer.current); tooltipTimer.current = null; }
+  }, []);
+
+  useEffect(() => () => clearTooltipTimer(), [clearTooltipTimer]);
+
   // Task click: brief pressed state before dialog opens
   const [taskPressed, setTaskPressed] = useState(false);
   const taskPressedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (taskPressedTimer.current) clearTimeout(taskPressedTimer.current); }, []);
 
-  // Stable ref for scroll handler so removeEventListener works correctly
-  const scrollCloseRef = useRef<() => void>(() => setShowPopover(false));
+  // Stable refs for scroll handlers so removeEventListener works correctly
+  const scrollClosePopoverRef = useRef<() => void>(() => setShowPopover(false));
 
   useEffect(() => {
     if (!showPopover) return;
@@ -118,10 +158,8 @@ export function DraggableEvent({
         setShowPopover(false);
       }
     };
-    const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowPopover(false);
-    };
-    const scrollClose = scrollCloseRef.current;
+    const keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowPopover(false); };
+    const scrollClose = scrollClosePopoverRef.current;
     document.addEventListener('mousedown', handler);
     document.addEventListener('keydown', keyHandler);
     window.addEventListener('scroll', scrollClose, { passive: true });
@@ -131,6 +169,29 @@ export function DraggableEvent({
       window.removeEventListener('scroll', scrollClose);
     };
   }, [showPopover]);
+
+  // Tooltip mouse enter/leave with 400ms delay to avoid flickering
+  const handleTooltipEnter = useCallback(() => {
+    clearTooltipTimer();
+    tooltipTimer.current = setTimeout(() => {
+      if (eventRef.current && !isGoogle) {
+        const rect = eventRef.current.getBoundingClientRect();
+        const tooltipWidth = 224; // w-56
+        const left = rect.right + 8 + tooltipWidth > window.innerWidth
+          ? rect.left - tooltipWidth - 8
+          : rect.right + 8;
+        const top = Math.max(8, Math.min(rect.top, window.innerHeight - 320));
+        setTooltipPos({ left, top });
+        setShowTooltip(true);
+      }
+    }, 400);
+  }, [isGoogle, clearTooltipTimer]);
+
+  const handleTooltipLeave = useCallback(() => {
+    clearTooltipTimer();
+    const timer = setTimeout(() => setShowTooltip(false), 200);
+    tooltipTimer.current = timer;
+  }, [clearTooltipTimer]);
 
   const togglePopover = () => {
     if (!showPopover && eventRef.current) {
@@ -181,13 +242,15 @@ export function DraggableEvent({
         }
       }}
       onKeyDown={handleKeyDown}
+      onMouseEnter={handleTooltipEnter}
+      onMouseLeave={handleTooltipLeave}
       data-event-id={event.id}
       role="button"
       tabIndex={0}
       aria-label={`${event.title} ${format(event.start, 'h:mma')} - ${format(event.end, 'h:mma')}`}
       title={event.title}
       className={cn(
-        'absolute text-left px-2 py-1 rounded overflow-hidden transition-shadow duration-150',
+        'absolute text-left px-2 py-1 rounded-[6px] overflow-hidden transition-shadow duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'border-l-[3px] leading-snug group/event',
         !isDragging && !isGoogle && 'hover:shadow-[inset_0_0_0_9999px_rgba(0,0,0,0.05)]',
@@ -220,24 +283,73 @@ export function DraggableEvent({
         taskPressed && 'brightness-90',
       )}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 min-w-0">
         {isLocked && <Lock className="w-2.5 h-2.5 shrink-0 opacity-60" />}
         {isRecurring && <Repeat className="w-2.5 h-2.5 shrink-0 opacity-60" />}
-        {isGoogle && <ExternalLink className="w-2 h-2 shrink-0 opacity-40" />}          <span className={cn(
-          'truncate',
+        {/* Priority indicator dot */}
+        {priorityColor && !isGoogle && (
+          <span
+            className="w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: priorityColor }}
+            title={priority ? PRIORITY_LABELS[priority] || priority : undefined}
+          />
+        )}
+        <span className={cn(
+          'truncate flex-1 min-w-0',
           small ? 'text-[11px]' : 'text-[13px]',
           isGoogle ? 'font-medium' : 'font-semibold',
           isCompleted && 'line-through',
         )}>
           {event.title}
         </span>
-        {draggable && !isLocked && !small && (
+        {/* Quick action buttons — appear on hover, replace grip */}
+        {showQuickActions && !small && (
+          <div
+            className="flex items-center gap-0.5 ml-auto shrink-0 opacity-0 group-hover/event:opacity-100 transition-opacity duration-100"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {onComplete && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onComplete(event); }}
+                className="p-0.5 rounded-sm hover:bg-black/10 transition-colors"
+                title="Complete task"
+                aria-label="Complete task"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-foreground/70 hover:text-success" />
+              </button>
+            )}
+            {onSkip && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onSkip(event); }}
+                className="p-0.5 rounded-sm hover:bg-black/10 transition-colors"
+                title="Skip occurrence"
+                aria-label="Skip task"
+              >
+                <SkipForward className="w-3.5 h-3.5 text-foreground/70 hover:text-warning" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onClick(event); }}
+              className="p-0.5 rounded-sm hover:bg-black/10 transition-colors"
+              title="Edit task"
+              aria-label="Edit task"
+            >
+              <Pencil className="w-3 h-3 text-foreground/70" />
+            </button>
+          </div>
+        )}
+        {draggable && !isLocked && !small && !showQuickActions && (
           <GripVertical className="w-2.5 h-2.5 shrink-0 opacity-0 group-hover/event:opacity-50 ml-auto" />
         )}
       </div>
       {!small && event.end.getTime() - event.start.getTime() > 20 * 60 * 1000 && (
-        <div className={cn('text-muted-foreground text-[11px] mt-0.5 num', isCompleted && 'line-through')}>
-          {format(event.start, 'h:mma')} - {format(event.end, 'h:mma')}
+        <div className={cn('flex items-center gap-1 text-muted-foreground text-[11px] mt-0.5', isCompleted && 'line-through')}>
+          <Clock className="w-2.5 h-2.5 shrink-0" />
+          <span className="tabular-nums">{format(event.start, 'h:mma')}</span>
+          <span className="tabular-nums">{format(event.end, 'h:mma')}</span>
         </div>
       )}
 
@@ -255,7 +367,7 @@ export function DraggableEvent({
           </div>
           <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Clock className="w-3 h-3 shrink-0" />
-            <span className="num">
+            <span className="tabular-nums">
               {event.allDay
                 ? format(event.start, 'MMM d')
                 : `${format(event.start, 'h:mm a')} - ${format(event.end, 'h:mm a')}`
@@ -264,6 +376,64 @@ export function DraggableEvent({
           </div>
           {event.data?.description && (
             <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+              {event.data.description}
+            </p>
+          )}
+        </div>,
+        document.body,
+      )}
+
+      {/* Task event tooltip — shows extra info on hover (portal) */}
+      {showTooltip && !isGoogle && createPortal(
+        <div
+          ref={tooltipRef}
+          className="fixed z-[100] w-56 rounded-lg bg-popover border border-border/50 shadow-lg p-3 animate-scale-in pointer-events-auto"
+          style={{ left: tooltipPos.left, top: tooltipPos.top }}
+          onMouseEnter={() => { clearTooltipTimer(); }}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          <h4 className="text-[13px] font-semibold text-foreground leading-snug">{event.title}</h4>
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <Clock className="w-3 h-3 shrink-0" />
+            <span className="tabular-nums">
+              {event.allDay
+                ? format(event.start, 'MMM d')
+                : `${format(event.start, 'h:mm a')} - ${format(event.end, 'h:mm a')}`
+              }
+            </span>
+          </div>
+          {priority && (
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: priorityColor || undefined }}
+              />
+              <span className="text-[11px] font-medium" style={{ color: priorityColor || undefined }}>
+                {PRIORITY_LABELS[priority] || priority}
+              </span>
+            </div>
+          )}
+          {dueDate && (
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <CalendarDays className="w-3 h-3 shrink-0" />
+              <span>{(() => { try { return format(new Date(dueDate + (dueDate.includes('T') ? '' : 'T00:00:00')), 'MMM d, yyyy'); } catch { return dueDate; } })()}</span>
+            </div>
+          )}
+          {tags && tags.length > 0 && (
+            <div className="mt-1.5 flex items-center gap-1 flex-wrap">
+              <Hash className="w-3 h-3 text-muted-foreground shrink-0" />
+              {tags.slice(0, 3).map((tag) => (
+                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                  {tag}
+                </span>
+              ))}
+              {tags.length > 3 && (
+                <span className="text-[10px] text-muted-foreground">+{tags.length - 3}</span>
+              )}
+            </div>
+          )}
+          {event.data?.description && (
+            <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed line-clamp-3">
               {event.data.description}
             </p>
           )}

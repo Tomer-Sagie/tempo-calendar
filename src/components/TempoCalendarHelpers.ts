@@ -48,6 +48,9 @@ export interface CalendarEventType {
     description?: string;
     source?: 'google' | 'task';
     color?: string;
+    priority?: string; // 'ASAP' | 'HIGH' | 'NORMAL' | 'LOW'
+    due_date?: string;
+    tags?: string[];
     is_locked?: boolean;
     is_missed?: boolean;
     is_flexible?: boolean;
