@@ -633,6 +633,32 @@
   border-style: solid;
 }
 
+/* =============================================
+   Calendar sticky header — bulletproof pinning
+   ============================================= */
+
+.calendar-sticky-header {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  background: var(--card) !important;
+  width: 100% !important;
+  left: 0 !important;
+  will-change: transform;
+}
+
+/* Scroll container that hosts the sticky header */
+.calendar-scroll-host {
+  position: relative;
+  will-change: scroll-position;
+}
+
+/* Outer calendar view wrapper — clip without creating a scroll container */
+.calendar-view-clip {
+  overflow: clip;
+}
+
 
 
 /* =============================================

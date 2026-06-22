@@ -144,10 +144,12 @@ export function TempoCalendarDayView({
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-card rounded-xl border border-border/50 overflow-hidden">
-      {/* All-day row */}
+    <div className="flex-1 min-h-0 flex flex-col bg-card rounded-xl border border-border/50 calendar-view-clip">
+      {/* Scrollable time grid with sticky all-day header */}
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto tempo-scrollbar calendar-scroll-host">
+      {/* All-day row — pinned at top */}
       {allDayEvents.length > 0 && (
-        <div className="border-b border-border/40 bg-card/50 px-3 py-1.5 flex items-center gap-2 overflow-x-auto">
+        <div className="calendar-sticky-header border-b border-border/40 px-3 py-1.5 flex items-center gap-2 overflow-x-auto">
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50 shrink-0">All day</span>
           <div className="flex gap-1 flex-wrap">
             {allDayEvents.map((ev) => {
@@ -178,8 +180,8 @@ export function TempoCalendarDayView({
         </div>
       )}
 
-      {/* Scrollable time grid — always visible so users can click slots */}
-      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto tempo-scrollbar relative">
+      {/* Time grid — scrolls underneath the sticky all-day header */}
+      <div className="relative">
         {/* Subtle empty-state overlay when no events */}
         {events.length === 0 && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center px-6 bg-card/60 backdrop-blur-[1px] pointer-events-none" role="status">
@@ -317,5 +319,6 @@ export function TempoCalendarDayView({
         </div>
       </div>
     </div>
+  </div>
   );
 }
