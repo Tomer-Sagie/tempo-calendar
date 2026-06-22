@@ -178,18 +178,6 @@ export function getMultiDayEvents(
     const isMultiDay = ev.allDay
       ? !isSameDay(ev.start, ev.end)
       : (!isSameDay(ev.start, ev.end) && !isShortMidnightCrossing(ev));
-    
-    // DEBUG: log allDay events to trace the chip positioning bug
-    if (ev.allDay || ev.data?.source === 'google') {
-      console.group('🔍 getMultiDayEvents:', ev.title);
-      console.log('  allDay:', ev.allDay);
-      console.log('  start:', ev.start.toString(), '| ms:', ev.start.getTime());
-      console.log('  end:  ', ev.end.toString(), '| ms:', ev.end.getTime());
-      console.log('  isSameDay(start,end):', isSameDay(ev.start, ev.end));
-      console.log('  isMultiDay:', isMultiDay);
-      console.log('  source:', ev.data?.source);
-      console.groupEnd();
-    }
     if (!isMultiDay) continue;
 
     // Clamp to the visible range

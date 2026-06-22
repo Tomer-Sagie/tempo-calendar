@@ -132,20 +132,6 @@ export function TempoCalendarWeekView({
     () => days.map((d) => getAllDayEvents(getEventsForDay(events, d)).filter((ev) => !multiDayIds.has(ev.id))),
     [days, events, multiDayIds],
   );
-
-  // DEBUG: log which events are assigned to which day columns
-  if (allDayPerDay.some(d => d.length > 0)) {
-    console.group('📅 allDayPerDay column assignment');
-    console.log('  weekStart:', weekStart.toString(), 'weekStartsOn:', weekStartsOn);
-    days.forEach((d, i) => {
-      const evs = allDayPerDay[i];
-      if (evs.length > 0) {
-        console.log(`  col[${i}] ${d.toDateString()}:`, evs.map(e => e.title).join(', '));
-      }
-    });
-    console.log('  multiDaySpans:', multiDaySpans.map(s => `${s.event.title} [${s.startCol}-${s.endCol}]`).join(', ') || 'none');
-    console.groupEnd();
-  }
   const hasAllDay = multiDaySpans.length > 0 || allDayPerDay.some((d) => d.length > 0);
 
   // Scroll to current time on mount and update now-line via RAF (no React re-render)
@@ -286,12 +272,8 @@ export function TempoCalendarWeekView({
               {days.map((d, i) => (
                 <div
                   key={d.toISOString()}
-                  className="border-r border-border/30 last:border-r-0 px-1 py-0.5 min-h-[24px] flex flex-wrap gap-0.5 items-start relative"
+                  className="border-r border-border/30 last:border-r-0 py-0.5 min-h-[24px] flex flex-wrap gap-0.5 items-start"
                 >
-                  {/* DEBUG: column label overlay to verify alignment */}
-                  <span className="absolute bottom-0.5 right-0.5 text-[7px] text-muted-foreground/30 pointer-events-none tabular-nums select-none z-10">
-                    {format(d, 'EEE d')}
-                  </span>
                   {allDayPerDay[i].slice(0, 2).map((ev) => {
                     const evColor = ev.data?.color || '';
                     const isLocked = ev.data?.is_locked;
