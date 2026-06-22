@@ -256,21 +256,24 @@ interface PositionedEvent extends CalendarEventType {
 /**
  * Parse an ISO date-time string into a local Date for calendar rendering.
  *
- * For allDay events, constructs local midnight explicitly from the date
- * parts (year/month/day constructor) rather than using `new Date(dateOnly)`
- * which JS parses as **UTC** midnight per spec.  Without this, every all-day
- * event in a non-UTC timezone shifts a day backward.
+ * For allDay events AND any date-only string (no time portion), constructs
+ * local midnight explicitly from the date parts (year/month/day constructor)
+ * rather than using `new Date(dateOnly)` which JS parses as **UTC** midnight
+ * per spec.  Without this, every all-day event in a non-UTC timezone shifts
+ * a day backward.
  *
- * For timed events, parses the full ISO string normally.
+ * For full ISO date-time strings, parses normally via `new Date(isoTime)`.
  */
 export function parseEventTime(
   isoTime: string,
   allDay: boolean,
 ): Date {
-  if (allDay) {
-    // `new Date("2026-06-21")` creates UTC midnight per ECMAScript, *not*
-    // local midnight.  Construct local midnight explicitly so the event
-    // lands on the correct calendar day regardless of system timezone.
+  // Date-only strings (e.g. "2026-06-21" from Google Calendar all-day events)
+  // MUST be treated as local midnight regardless of the `allDay` flag, because
+  // `new Date("2026-06-21")` creates UTC midnight and shifts backward in
+  // non-UTC timezones.
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(isoTime);
+  if (allDay || isDateOnly) {
     const [y, m, d] = isoTime.slice(0, 10).split('-').map(Number);
     return new Date(y, m - 1, d);
   }

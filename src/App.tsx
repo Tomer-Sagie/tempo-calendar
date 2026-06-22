@@ -248,6 +248,12 @@ function App() {
       const isLocked = originalTask?.is_locked === true;
       const isBusyBlock = originalTask?.is_busy_block === true;
       const isRecurring = originalTask?.frequency !== 'once';
+      // Detect all-day events from both the explicit flag AND the string
+      // format (date-only ISO strings like "2026-06-21" from Google Calendar).
+      // The explicit flag may be missing if the event was transformed through
+      // intermediate state, but the string format is always reliable.
+      const isAllDay = ev.allDay || /^\d{4}-\d{2}-\d{2}$/.test(ev.startTime);
+
       const variant: CalendarEventType['variant'] = isSkipped
         ? 'muted'
         : isCompleted
@@ -267,16 +273,16 @@ function App() {
       return {
         id: ev.id,
         title: ev.title,
-        start: parseEventTime(ev.startTime, ev.allDay || false),
+        start: parseEventTime(ev.startTime, isAllDay),
         // Google Calendar and the scheduler both use exclusive end dates for
         // all-day events (midnight of the day *after* the last day).  Subtract
         // 1 ms so the end falls on the actual last day — single-day events
         // then pass `isSameDay` and render as pills, not spanning bars.
-        end: ev.allDay
+        end: isAllDay
           ? new Date(parseEventTime(ev.endTime, true).getTime() - 1)
           : parseEventTime(ev.endTime, false),
         variant,
-        allDay: ev.allDay || false,
+        allDay: isAllDay,
         data: {
           description: ev.description,
           source: ev.source,
