@@ -1263,7 +1263,7 @@ function App() {
             onSkipEvent={handleSkipEvent}
             onViewRangeChange={setVisibleRange}
             navigateToDate={navigateToDate}
-            startHour={0}
+            startHour={6}
             endHour={24}
             weekStartsOn={calendarSettings.weekStartsOn}
             timeFormat={calendarSettings.timeFormat}

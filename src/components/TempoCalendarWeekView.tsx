@@ -162,7 +162,7 @@ export function TempoCalendarWeekView({
       return;
     }
     const minutesFromTop = Math.max(0, (now.getHours() - startHour) * 60 + now.getMinutes());
-    const target = (minutesFromTop / 60) * HOUR_HEIGHT - 80;
+    const target = (minutesFromTop / 60 - 2) * HOUR_HEIGHT;
     containerRef.current.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
 
     // Update now-line position via RAF instead of setInterval + setState
