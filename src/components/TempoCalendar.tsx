@@ -453,7 +453,7 @@ export function TempoCalendar({
   const handleDragCancel = useCallback(() => setDragGhost(null), []);
 
   return (
-    <div className={cn('flex flex-col h-full gap-3', className)}>
+    <div className={cn('flex flex-col flex-1 gap-3 min-h-0', className)}>
       <TempoCalendarHeader
         date={date}
         view={view}
@@ -480,9 +480,9 @@ export function TempoCalendar({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 flex flex-col">
           {view === 'day' && (
-            <div className="h-full" key="day">
+            <div className="flex-1 min-h-0 flex flex-col" key="day">
               <TempoCalendarDayView
                 date={date}
                 events={events}
@@ -499,7 +499,7 @@ export function TempoCalendar({
             </div>
           )}
           {view === 'week' && (
-            <div className="h-full" key="week">
+            <div className="flex-1 min-h-0 flex flex-col" key="week">
               <TempoCalendarWeekView
                 date={date}
                 events={events}
@@ -519,7 +519,7 @@ export function TempoCalendar({
             </div>
           )}
           {view === 'month' && (
-            <div className="h-full" key="month">
+            <div className="flex-1 min-h-0 flex flex-col" key="month">
               <TempoCalendarMonthView
                 date={date}
                 events={events}
