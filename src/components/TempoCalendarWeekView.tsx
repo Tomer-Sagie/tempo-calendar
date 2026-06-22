@@ -132,6 +132,20 @@ export function TempoCalendarWeekView({
     () => days.map((d) => getAllDayEvents(getEventsForDay(events, d)).filter((ev) => !multiDayIds.has(ev.id))),
     [days, events, multiDayIds],
   );
+
+  // DEBUG: log which events are assigned to which day columns
+  if (allDayPerDay.some(d => d.length > 0)) {
+    console.group('📅 allDayPerDay column assignment');
+    console.log('  weekStart:', weekStart.toString(), 'weekStartsOn:', weekStartsOn);
+    days.forEach((d, i) => {
+      const evs = allDayPerDay[i];
+      if (evs.length > 0) {
+        console.log(`  col[${i}] ${d.toDateString()}:`, evs.map(e => e.title).join(', '));
+      }
+    });
+    console.log('  multiDaySpans:', multiDaySpans.map(s => `${s.event.title} [${s.startCol}-${s.endCol}]`).join(', ') || 'none');
+    console.groupEnd();
+  }
   const hasAllDay = multiDaySpans.length > 0 || allDayPerDay.some((d) => d.length > 0);
 
   // Scroll to current time on mount and update now-line via RAF (no React re-render)
