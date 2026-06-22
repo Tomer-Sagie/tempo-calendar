@@ -254,6 +254,20 @@ function App() {
       // intermediate state, but the string format is always reliable.
       const isAllDay = ev.allDay || /^\d{4}-\d{2}-\d{2}$/.test(ev.startTime);
 
+      // DEBUG: log Google all-day events through the pipeline
+      if (ev.source === 'google' && (ev.allDay || /^\d{4}-\d{2}-\d{2}$/.test(ev.startTime))) {
+        console.group('📦 baseEvents:', ev.title);
+        console.log('  ev.allDay:', ev.allDay);
+        console.log('  isAllDay (derived):', isAllDay);
+        console.log('  startTime:', ev.startTime);
+        console.log('  endTime:', ev.endTime);
+        const s = parseEventTime(ev.startTime, isAllDay);
+        const e = isAllDay ? new Date(parseEventTime(ev.endTime, true).getTime() - 1) : parseEventTime(ev.endTime, false);
+        console.log('  parsed start:', s.toString());
+        console.log('  parsed end:  ', e.toString());
+        console.groupEnd();
+      }
+
       const variant: CalendarEventType['variant'] = isSkipped
         ? 'muted'
         : isCompleted
