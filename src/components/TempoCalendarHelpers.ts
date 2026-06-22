@@ -170,11 +170,15 @@ export function getMultiDayEvents(
   const lastDay = days[days.length - 1];
 
   for (const ev of events) {
-    // Include events flagged as allDay, PLUS timed events that span
-    // multiple calendar days (e.g. a task from 11 PM to 1 AM should
-    // render as a spanning bar, not a clipped box in the time grid).
-    // Exception: short midnight-crossing events stay in the time grid.
-    const isMultiDay = ev.allDay || (!isSameDay(ev.start, ev.end) && !isShortMidnightCrossing(ev));
+    // All-day events are multi-day only if they genuinely span multiple
+    // calendar days (e.g. a 3-day vacation).  Single-day all-day events
+    // are rendered as pills in the all-day strip per day, not as spanning
+    // bars.  Timed events that span multiple calendar days (e.g. 11 PM →
+    // 1 AM) render in the time grid unless they're true multi-day — the
+    // short-midnight-crossing guard keeps those in the time grid too.
+    const isMultiDay = ev.allDay
+      ? !isSameDay(ev.start, ev.end)
+      : (!isSameDay(ev.start, ev.end) && !isShortMidnightCrossing(ev));
     if (!isMultiDay) continue;
 
     // Clamp to the visible range
@@ -252,21 +256,23 @@ interface PositionedEvent extends CalendarEventType {
 /**
  * Parse an ISO date-time string into a local Date for calendar rendering.
  *
- * For allDay task events, parses only the date portion (e.g. "2024-01-15")
- * so the browser interprets it as local midnight regardless of UTC timezone
- * offsets. Without this, "2024-01-15T00:00:00.000Z" in EST would produce
- * Jan 14 7pm, shifting the all-day event a day backward.
+ * For allDay events, constructs local midnight explicitly from the date
+ * parts (year/month/day constructor) rather than using `new Date(dateOnly)`
+ * which JS parses as **UTC** midnight per spec.  Without this, every all-day
+ * event in a non-UTC timezone shifts a day backward.
  *
- * For timed task events and all Google events (which already use date-only
- * strings for all-day events), parses the full ISO string normally.
+ * For timed events, parses the full ISO string normally.
  */
 export function parseEventTime(
   isoTime: string,
   allDay: boolean,
-  source: 'google' | 'task',
 ): Date {
-  if (allDay && source === 'task') {
-    return new Date(isoTime.slice(0, 10));
+  if (allDay) {
+    // `new Date("2026-06-21")` creates UTC midnight per ECMAScript, *not*
+    // local midnight.  Construct local midnight explicitly so the event
+    // lands on the correct calendar day regardless of system timezone.
+    const [y, m, d] = isoTime.slice(0, 10).split('-').map(Number);
+    return new Date(y, m - 1, d);
   }
   return new Date(isoTime);
 }

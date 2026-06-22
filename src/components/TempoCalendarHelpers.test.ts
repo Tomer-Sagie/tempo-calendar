@@ -147,34 +147,39 @@ describe('isShortMidnightCrossing', () => {
 // ============================================================
 
 describe('parseEventTime', () => {
-  describe('allDay task events (date-only parsing)', () => {
-    it('parses only the date portion, ignoring the time in the ISO string', () => {
-      const result = parseEventTime('2026-03-15T12:34:56.789Z', true, 'task');
+  describe('allDay events (explicit local-midnight construction)', () => {
+    it('constructs local midnight from date parts — NOT UTC midnight from date-only string', () => {
+      const result = parseEventTime('2026-03-15', true);
 
-      // Should be midnight local on March 15 (in UTC test env, midnight UTC)
-      expect(result.getUTCFullYear()).toBe(2026);
-      expect(result.getUTCMonth()).toBe(2); // 0-indexed → March
-      expect(result.getUTCDate()).toBe(15);
-      expect(result.getUTCHours()).toBe(0);
-      expect(result.getUTCMinutes()).toBe(0);
-      expect(result.getUTCSeconds()).toBe(0);
-      expect(result.getUTCMilliseconds()).toBe(0);
+      expect(result.getFullYear()).toBe(2026);
+      expect(result.getMonth()).toBe(2);
+      expect(result.getDate()).toBe(15);
+      expect(result.getHours()).toBe(0);
+      expect(result.getMinutes()).toBe(0);
+      expect(result.getSeconds()).toBe(0);
+      expect(result.getMilliseconds()).toBe(0);
     });
 
-    it('produces the same Date regardless of the time portion', () => {
-      const a = parseEventTime('2026-03-15T00:00:00.000Z', true, 'task');
-      const b = parseEventTime('2026-03-15T14:30:00.000Z', true, 'task');
-      const c = parseEventTime('2026-03-15T23:59:59.999Z', true, 'task');
+    it('produces the same Date regardless of the time portion in the ISO string', () => {
+      const a = parseEventTime('2026-03-15T00:00:00.000Z', true);
+      const b = parseEventTime('2026-03-15T14:30:00.000Z', true);
+      const c = parseEventTime('2026-03-15T23:59:59.999Z', true);
 
-      // All three should resolve to the same midnight Date
       expect(a.getTime()).toBe(b.getTime());
       expect(a.getTime()).toBe(c.getTime());
     });
+
+    it('strips the time regardless of whether ISO string is full or date-only', () => {
+      const fromFull = parseEventTime('2026-06-21T14:30:00.000Z', true);
+      const fromDateOnly = parseEventTime('2026-06-21', true);
+
+      expect(fromFull.getTime()).toBe(fromDateOnly.getTime());
+    });
   });
 
-  describe('non-allDay task events (full ISO parsing)', () => {
+  describe('non-allDay events (full ISO parsing)', () => {
     it('preserves the exact UTC time from the ISO string', () => {
-      const result = parseEventTime('2026-03-15T14:30:00.000Z', false, 'task');
+      const result = parseEventTime('2026-03-15T14:30:00.000Z', false);
 
       expect(result.getUTCFullYear()).toBe(2026);
       expect(result.getUTCMonth()).toBe(2);
@@ -184,51 +189,26 @@ describe('parseEventTime', () => {
     });
 
     it('produces different Dates for different time portions', () => {
-      const a = parseEventTime('2026-03-15T09:00:00.000Z', false, 'task');
-      const b = parseEventTime('2026-03-15T17:00:00.000Z', false, 'task');
+      const a = parseEventTime('2026-03-15T09:00:00.000Z', false);
+      const b = parseEventTime('2026-03-15T17:00:00.000Z', false);
 
-      // These should be different (9 AM vs 5 PM UTC)
       expect(a.getTime()).not.toBe(b.getTime());
     });
   });
 
-  describe('Google events (always full ISO parsing)', () => {
-    it('uses full ISO parsing for allDay Google events', () => {
-      // Google allDay events come as date-only strings like "2026-03-15"
-      // which parse fine with new Date() anyway
-      const result = parseEventTime('2026-03-15', true, 'google');
-      expect(result.getUTCFullYear()).toBe(2026);
-      expect(result.getUTCMonth()).toBe(2);
-      expect(result.getUTCDate()).toBe(15);
-    });
-
-    it('uses full ISO parsing for timed Google events', () => {
-      const result = parseEventTime('2026-03-15T14:30:00.000Z', false, 'google');
-      expect(result.getUTCHours()).toBe(14);
-      expect(result.getUTCMinutes()).toBe(30);
-    });
-  });
-
   describe('correct branching — the regression test', () => {
-    it('strips the time for allDay task events but NOT for non-allDay task events', () => {
-      // Same ISO string — only the branch matters
-      const allDay = parseEventTime('2026-03-15T12:00:00.000Z', true, 'task');
-      const timed = parseEventTime('2026-03-15T12:00:00.000Z', false, 'task');
+    it('strips the time for allDay events but NOT for non-allDay events', () => {
+      const allDay = parseEventTime('2026-03-15T12:00:00.000Z', true);
+      const timed = parseEventTime('2026-03-15T12:00:00.000Z', false);
 
-      // allDay should be midnight, timed should be noon
-      expect(allDay.getUTCHours()).toBe(0);
-      expect(timed.getUTCHours()).toBe(12);
+      expect(allDay.getHours()).toBe(0);
+      expect(timed.getHours()).toBe(12);
     });
 
-    it('matches the behavior expected in real timezones (UTC-safety)', () => {
-      // In non-UTC timezones (e.g. EST/UTC-5), new Date("2026-01-15T00:00:00.000Z")
-      // would produce Jan 14 19:00 local. The allDay branch prevents that by
-      // parsing only the date portion. While this test runs in UTC (so we can't
-      // observe the EST shift), we verify the branch is correctly taken by
-      // checking that allDay task events always land at midnight.
-      const result = parseEventTime('2026-01-15T00:00:00.000Z', true, 'task');
-      expect(result.getUTCHours()).toBe(0);
-      expect(result.getUTCDate()).toBe(15); // Jan 15, never Jan 14
+    it('uses local-midnight construction for allDay events (year/month/day constructor)', () => {
+      const result = parseEventTime('2026-01-15T00:00:00.000Z', true);
+      expect(result.getHours()).toBe(0);
+      expect(result.getDate()).toBe(15);
     });
   });
 });

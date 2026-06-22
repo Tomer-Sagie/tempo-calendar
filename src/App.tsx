@@ -267,8 +267,14 @@ function App() {
       return {
         id: ev.id,
         title: ev.title,
-        start: parseEventTime(ev.startTime, ev.allDay || false, ev.source),
-        end: parseEventTime(ev.endTime, ev.allDay || false, ev.source),
+        start: parseEventTime(ev.startTime, ev.allDay || false),
+        // Google Calendar and the scheduler both use exclusive end dates for
+        // all-day events (midnight of the day *after* the last day).  Subtract
+        // 1 ms so the end falls on the actual last day — single-day events
+        // then pass `isSameDay` and render as pills, not spanning bars.
+        end: ev.allDay
+          ? new Date(parseEventTime(ev.endTime, true).getTime() - 1)
+          : parseEventTime(ev.endTime, false),
         variant,
         allDay: ev.allDay || false,
         data: {
